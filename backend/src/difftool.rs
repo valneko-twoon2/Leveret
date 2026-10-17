@@ -67,7 +67,10 @@ fn registered() -> Vec<PathBuf> {
         let text = text.trim_end_matches('\0').trim();
         (!text.is_empty()).then(|| PathBuf::from(text))
     };
-    [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE].into_iter().filter_map(read).collect()
+    [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
+        .into_iter()
+        .filter_map(read)
+        .collect()
 }
 
 #[cfg(not(windows))]
@@ -152,7 +155,11 @@ pub fn open_working(repo: &Path, path: &str, orig_path: Option<&str>) -> Result<
     };
     let working = Side {
         // A deleted file is compared with an empty one.
-        file: if file.is_file() { file } else { empty(path, &dir.join("working"))? },
+        file: if file.is_file() {
+            file
+        } else {
+            empty(path, &dir.join("working"))?
+        },
         caption: path.to_string(),
     };
     start(&exe, &[head, working], None)
@@ -205,7 +212,11 @@ fn start(exe: &Path, sides: &[Side], output: Option<&Path>) -> Result<()> {
             if right_temp {
                 cmd.arg("/wr");
             }
-            cmd.arg("/dl").arg(&left.caption).arg("/dr").arg(&right.caption).args([&left.file, &right.file]);
+            cmd.arg("/dl")
+                .arg(&left.caption)
+                .arg("/dr")
+                .arg(&right.caption)
+                .args([&left.file, &right.file]);
         }
         _ => return Err(AppError::Other("unsupported comparison".into())),
     }
@@ -239,14 +250,24 @@ mod tests {
         git(p, &["switch", "-q", "main"]);
         std::fs::write(p.join("src/メモ.txt"), "ours\n").unwrap();
         git(p, &["commit", "-qam", "ours"]);
-        Git::new(p).args(["merge", "-q", "other"]).ok_codes(&[0, 1]).run().unwrap();
+        Git::new(p)
+            .args(["merge", "-q", "other"])
+            .ok_codes(&[0, 1])
+            .run()
+            .unwrap();
 
         let out = tempfile::tempdir().unwrap();
         let file = extract(p, "HEAD~1", "src/メモ.txt", &out.path().join("a")).unwrap();
         assert_eq!(file.file_name().unwrap(), "メモ.txt");
         assert_eq!(std::fs::read_to_string(&file).unwrap(), "base\n");
         for (stage, text) in [(1, "base\n"), (2, "ours\n"), (3, "theirs\n")] {
-            let file = extract(p, &format!(":{stage}"), "src/メモ.txt", &out.path().join(stage.to_string())).unwrap();
+            let file = extract(
+                p,
+                &format!(":{stage}"),
+                "src/メモ.txt",
+                &out.path().join(stage.to_string()),
+            )
+            .unwrap();
             assert_eq!(std::fs::read_to_string(file).unwrap(), text);
         }
         // Missing on that side: an empty file.

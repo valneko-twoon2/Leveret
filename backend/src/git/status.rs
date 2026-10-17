@@ -60,7 +60,11 @@ pub fn get_with(repo: &Path, untracked: bool) -> Result<RepoStatus> {
         let remotes = s.spawn(|| remote::remotes(repo));
         let out = Git::new(repo)
             .args(["status", "--porcelain=v2", "-z", "--branch"])
-            .arg(if untracked { "--untracked-files=all" } else { "--untracked-files=no" })
+            .arg(if untracked {
+                "--untracked-files=all"
+            } else {
+                "--untracked-files=no"
+            })
             .run();
         (out, join(dir), join(remotes))
     });

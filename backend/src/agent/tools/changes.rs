@@ -117,13 +117,15 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
             match opt_str(args, "commit")? {
                 None => {
                     let file = git::status::get(&repo)?.files.into_iter().find(|f| f.path == path);
-                    let file = file.ok_or_else(|| AppError::InvalidInput(format!("'{path}' has no uncommitted changes")))?;
+                    let file =
+                        file.ok_or_else(|| AppError::InvalidInput(format!("'{path}' has no uncommitted changes")))?;
                     difftool::open_working(&repo, &path, file.orig_path.as_deref())?;
                 }
                 Some(rev) => {
                     let detail = git::log::detail(&repo, &resolve_commit(&repo, rev)?)?;
                     let file = detail.files.iter().find(|f| f.path == path);
-                    let file = file.ok_or_else(|| AppError::InvalidInput(format!("the commit does not change '{path}'")))?;
+                    let file =
+                        file.ok_or_else(|| AppError::InvalidInput(format!("the commit does not change '{path}'")))?;
                     let parent = detail.parents.first().map(String::as_str);
                     difftool::open_commit(&repo, &detail.hash, parent, &path, file.orig_path.as_deref())?;
                 }

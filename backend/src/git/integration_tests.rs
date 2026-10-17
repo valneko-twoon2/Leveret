@@ -131,7 +131,10 @@ fn status_leaves_out_ignored_and_optionally_untracked_files() {
     };
     assert_eq!(
         paths(true),
-        [("a.txt".to_string(), ChangeKind::Modified), ("new.txt".to_string(), ChangeKind::Untracked)]
+        [
+            ("a.txt".to_string(), ChangeKind::Modified),
+            ("new.txt".to_string(), ChangeKind::Untracked)
+        ]
     );
     assert_eq!(paths(false), [("a.txt".to_string(), ChangeKind::Modified)]);
 }
