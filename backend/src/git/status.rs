@@ -2,7 +2,8 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use super::{Git, decode, git_path_exists};
+use super::operation::{self, Operation};
+use super::{Git, decode, git_dir, remote};
 use crate::error::Result;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -37,7 +38,12 @@ pub struct RepoStatus {
     pub upstream: Option<String>,
     pub ahead: u32,
     pub behind: u32,
-    pub merging: bool,
+    /// Merge, rebase, revert or cherry-pick in progress.
+    pub operation: Option<Operation>,
+    /// Whether any remote is configured.
+    pub has_remote: bool,
+    /// Unix seconds of the last fetch (from `FETCH_HEAD`), if any.
+    pub last_fetched: Option<i64>,
     pub files: Vec<FileChange>,
 }
 
@@ -46,7 +52,14 @@ pub fn get(repo: &Path) -> Result<RepoStatus> {
         .args(["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"])
         .run()?;
     let mut status = parse(&decode(&out.stdout));
-    status.merging = git_path_exists(repo, "MERGE_HEAD")?;
+    let dir = git_dir(repo)?;
+    status.operation = operation::current_in(&dir);
+    status.has_remote = !remote::remotes(repo)?.is_empty();
+    status.last_fetched = std::fs::metadata(dir.join("FETCH_HEAD"))
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs() as i64);
     Ok(status)
 }
 
@@ -64,7 +77,11 @@ fn parse(text: &str) -> RepoStatus {
                 // 1 XY sub mH mI mW hH hI <path>
                 let f: Vec<&str> = tok.splitn(9, ' ').collect();
                 if let [_, xy, .., path] = f[..] {
-                    status.files.push(FileChange { path: path.into(), orig_path: None, kind: kind_of(xy) });
+                    status.files.push(FileChange {
+                        path: path.into(),
+                        orig_path: None,
+                        kind: kind_of(xy),
+                    });
                 }
             }
             b'2' => {
@@ -72,18 +89,30 @@ fn parse(text: &str) -> RepoStatus {
                 let f: Vec<&str> = tok.splitn(10, ' ').collect();
                 let orig = tokens.next().map(String::from);
                 if let [_, xy, .., path] = f[..] {
-                    status.files.push(FileChange { path: path.into(), orig_path: orig, kind: kind_of(xy) });
+                    status.files.push(FileChange {
+                        path: path.into(),
+                        orig_path: orig,
+                        kind: kind_of(xy),
+                    });
                 }
             }
             b'u' => {
                 // u XY sub m1 m2 m3 mW h1 h2 h3 <path>
                 let f: Vec<&str> = tok.splitn(11, ' ').collect();
                 if let Some(path) = f.last() {
-                    status.files.push(FileChange { path: (*path).into(), orig_path: None, kind: ChangeKind::Conflicted });
+                    status.files.push(FileChange {
+                        path: (*path).into(),
+                        orig_path: None,
+                        kind: ChangeKind::Conflicted,
+                    });
                 }
             }
             b'?' => {
-                status.files.push(FileChange { path: tok[2..].into(), orig_path: None, kind: ChangeKind::Untracked });
+                status.files.push(FileChange {
+                    path: tok[2..].into(),
+                    orig_path: None,
+                    kind: ChangeKind::Untracked,
+                });
             }
             _ => {}
         }

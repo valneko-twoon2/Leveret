@@ -2,10 +2,13 @@
 <script lang="ts">
   import { formatDateTime, shortHash } from '../format'
   import { t } from '../i18n/index.svelte'
+  import { layout } from '../layout.svelte'
+  import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
   import DiffView from './DiffView.svelte'
   import FileRow from './FileRow.svelte'
   import Icon from './Icon.svelte'
+  import Splitter from './Splitter.svelte'
   import VirtualList from './VirtualList.svelte'
 
   const detail = $derived(app.detail)
@@ -49,7 +52,7 @@
     </header>
 
     <div class="split">
-      <div class="files">
+      <div class="files" style:width="{layout.sizes.commitFiles}px">
         <div class="files-header">{t('history.filesChanged', { count: detail.files.length })}</div>
         <div class="files-list">
           <VirtualList
@@ -57,7 +60,8 @@
             rowHeight={30}
             {selectedIndex}
             label={t('history.filesChanged', { count: detail.files.length })}
-            onselect={(i) => app.selectCommitFile(detail.files[i].path)}
+            onselect={(i) => detail.files[i] && app.selectCommitFile(detail.files[i].path)}
+            oncontext={(i, e) => menu.open(e, [{ label: t('common.copyPath'), action: () => app.copy(detail.files[i]?.path ?? '') }])}
           >
             {#snippet row(f)}
               <FileRow path={f.path} origPath={f.origPath} kind={f.kind} />
@@ -65,6 +69,7 @@
           </VirtualList>
         </div>
       </div>
+      <Splitter pane="commitFiles" />
       <div class="diff">
         <DiffView diff={app.commitDiff} />
       </div>
@@ -142,9 +147,8 @@
   .files {
     display: flex;
     flex-direction: column;
-    width: 280px;
     flex: none;
-    border-right: 1px solid var(--border);
+    min-width: 0;
   }
 
   .files-header {

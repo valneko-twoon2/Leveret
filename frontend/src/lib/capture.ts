@@ -8,6 +8,7 @@ import { tick } from 'svelte'
 import { api, usingMock, type CaptureRequest } from './api'
 import { github } from './github.svelte'
 import { t } from './i18n/index.svelte'
+import { menu } from './menu.svelte'
 import { app } from './state.svelte'
 
 export interface Scene {
@@ -115,7 +116,83 @@ export const scenes: Scene[] = [
       github.progress = { phase: 'Receiving objects', percent: 62 }
     },
   },
+  {
+    id: '10-branches',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('changes')
+      await app.openBranches()
+    },
+  },
+  {
+    id: '11-new-branch',
+    run: async () => {
+      closeOverlays()
+      app.openNewBranch()
+      app.newBranchName = 'feature/stash-ui'
+    },
+  },
+  {
+    id: '12-history-menu',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      await app.setScope('head')
+      await app.selectCommit(app.log[1]?.hash ?? null)
+      await settle()
+      openContextMenuOnSelectedRow()
+    },
+  },
+  {
+    id: '13-rebase-conflict',
+    mockOnly: true,
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      // Straight through the API: the confirmation dialog can't be answered off-screen.
+      if (app.selectedPath && !app.operation) await api.rebaseBranch(app.selectedPath, 'refs/heads/feature/rebase')
+      await app.setTab('changes')
+      await app.refresh()
+      const conflicted = app.files.find((f) => f.kind === 'conflicted')
+      if (conflicted) await app.selectFile(conflicted.path)
+    },
+  },
+  {
+    id: '14-pushing',
+    mockOnly: true,
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      if (app.selectedPath && app.operation) await api.abortOperation(app.selectedPath)
+      await app.refresh()
+      // Show the progress state without waiting for a real push.
+      app.busy = 'push'
+      app.remoteProgress = { repo: app.selectedPath ?? '', operation: 'push', phase: 'Writing objects', percent: 45 }
+    },
+  },
 ]
+
+/** Closes dialogs and menus left open by the previous scene. */
+function closeOverlays() {
+  menu.close()
+  app.error = null
+  app.closeNewBranch()
+  app.closeBranches()
+  github.closeSignIn()
+  github.cloning = false
+  github.progress = null
+  github.closeClone()
+}
+
+/** Right-clicks the selected row of the focused list, as a user would. */
+function openContextMenuOnSelectedRow() {
+  const row = document.querySelector<HTMLElement>('.row.selected')
+  if (!row) return
+  const r = row.getBoundingClientRect()
+  row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 140, clientY: r.top + r.height / 2 }))
+}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 // requestAnimationFrame may never fire in headless browsers, so don't wait on it forever.
@@ -143,6 +220,8 @@ export async function runCaptureRequest(req: CaptureRequest): Promise<void> {
     console.error(`no matching scenes: ${req.scenes?.join(',')}`)
     code = 2
   }
+  // Scenes may be picked individually, so start from a loaded app.
+  await app.init()
   for (const scene of selected) {
     try {
       await scene.run()

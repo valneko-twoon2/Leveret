@@ -1,4 +1,5 @@
 mod capture;
+mod crash;
 mod error;
 mod git;
 mod github;
@@ -15,8 +16,10 @@ use tauri_plugin_opener::OpenerExt;
 
 use capture::StartupOptions;
 use error::{AppError, Result};
+use git::branch::Branch;
 use git::diff::FileDiff;
 use git::log::{CommitDetail, LogEntry, LogScope};
+use git::operation::Outcome;
 use git::status::RepoStatus;
 use repos::{RepoEntry, RepoList, RepoStore};
 
@@ -51,13 +54,13 @@ async fn add_repo(app: AppHandle, path: String) -> Result<RepoEntry> {
 }
 
 #[tauri::command]
-fn remove_repo(store: State<'_, RepoStore>, path: String) -> Result<()> {
-    store.remove(&path)
+async fn remove_repo(app: AppHandle, path: String) -> Result<()> {
+    blocking(move || app.state::<RepoStore>().remove(&path)).await
 }
 
 #[tauri::command]
-fn select_repo(store: State<'_, RepoStore>, path: Option<String>) -> Result<()> {
-    store.select(path)
+async fn select_repo(app: AppHandle, path: Option<String>) -> Result<()> {
+    blocking(move || app.state::<RepoStore>().select(path)).await
 }
 
 // --- changes & history ------------------------------------------------------
@@ -128,6 +131,245 @@ async fn get_commit_diff(
     blocking(move || git::diff::commit_file(&repo, &hash, parent.as_deref(), &path, orig_path.as_deref())).await
 }
 
+// --- discard, revert, rebase -----------------------------------------------
+
+/// Moves the files to the Recycle Bin and restores them from HEAD.
+#[tauri::command]
+async fn discard_changes(store: State<'_, RepoStore>, repo: String, paths: Vec<String>) -> Result<()> {
+    let repo = store.require(&repo)?;
+    for p in &paths {
+        security::relative_path(p)?;
+    }
+    blocking(move || git::discard::discard(&repo, &paths)).await
+}
+
+#[tauri::command]
+async fn revert_commit(store: State<'_, RepoStore>, repo: String, hash: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    security::object_id(&hash)?;
+    blocking(move || {
+        let is_merge = git::log::detail(&repo, &hash)?.parents.len() > 1;
+        git::operation::revert(&repo, &hash, is_merge)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn rebase_branch(store: State<'_, RepoStore>, repo: String, onto: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    security::branch_ref(&onto)?;
+    blocking(move || git::operation::rebase(&repo, &onto)).await
+}
+
+#[tauri::command]
+async fn merge_branch(store: State<'_, RepoStore>, repo: String, branch: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    security::branch_ref(&branch)?;
+    blocking(move || git::operation::merge(&repo, &branch)).await
+}
+
+#[tauri::command]
+async fn mark_resolved(store: State<'_, RepoStore>, repo: String, paths: Vec<String>) -> Result<()> {
+    let repo = store.require(&repo)?;
+    for p in &paths {
+        security::relative_path(p)?;
+    }
+    blocking(move || git::operation::mark_resolved(&repo, &paths)).await
+}
+
+#[tauri::command]
+async fn continue_operation(store: State<'_, RepoStore>, repo: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::operation::continue_(&repo)).await
+}
+
+#[tauri::command]
+async fn skip_operation(store: State<'_, RepoStore>, repo: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::operation::skip(&repo)).await
+}
+
+#[tauri::command]
+async fn abort_operation(store: State<'_, RepoStore>, repo: String) -> Result<()> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::operation::abort(&repo)).await
+}
+
+#[tauri::command]
+async fn cherry_pick(store: State<'_, RepoStore>, repo: String, hash: String) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    security::object_id(&hash)?;
+    blocking(move || {
+        let is_merge = git::log::detail(&repo, &hash)?.parents.len() > 1;
+        git::operation::cherry_pick(&repo, &hash, is_merge)
+    })
+    .await
+}
+
+/// Undoes the last (unpushed) commit, keeping its changes. Returns its message.
+#[tauri::command]
+async fn undo_last_commit(store: State<'_, RepoStore>, repo: String) -> Result<String> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::commit::undo_last(&repo)).await
+}
+
+#[tauri::command]
+async fn ignore_path(store: State<'_, RepoStore>, repo: String, path: String, by_extension: bool) -> Result<()> {
+    let repo = store.require(&repo)?;
+    security::relative_path(&path)?;
+    blocking(move || git::commit::ignore(&repo, &path, by_extension)).await
+}
+
+/// Opens the repository folder in Explorer, or selects `path` in it. Files are
+/// only ever revealed, never opened, so nothing in a repository gets executed.
+#[tauri::command]
+async fn show_in_explorer(app: AppHandle, repo: String, path: Option<String>) -> Result<()> {
+    let root = app.state::<RepoStore>().require(&repo)?;
+    if let Some(p) = &path {
+        security::relative_path(p)?;
+    }
+    blocking(move || {
+        let opener = app.opener();
+        let target = path.map(|p| root.join(p)).filter(|p| p.exists());
+        match target {
+            Some(t) => opener.reveal_item_in_dir(t),
+            None => opener.open_path(root.display().to_string(), None::<&str>),
+        }
+        .map_err(|e| AppError::Other(e.to_string()))
+    })
+    .await
+}
+
+// --- stash ------------------------------------------------------------------
+
+#[tauri::command]
+async fn list_stashes(store: State<'_, RepoStore>, repo: String) -> Result<Vec<git::stash::StashEntry>> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::stash::list(&repo)).await
+}
+
+#[tauri::command]
+async fn stash_save(store: State<'_, RepoStore>, repo: String, message: String) -> Result<()> {
+    let repo = store.require(&repo)?;
+    if message.len() > 1000 || message.chars().any(char::is_control) {
+        return Err(AppError::InvalidInput("stash message".into()));
+    }
+    blocking(move || git::stash::save(&repo, &message)).await
+}
+
+#[tauri::command]
+async fn stash_pop(store: State<'_, RepoStore>, repo: String, index: u32) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::stash::pop(&repo, index)).await
+}
+
+#[tauri::command]
+async fn stash_drop(store: State<'_, RepoStore>, repo: String, index: u32) -> Result<()> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::stash::drop(&repo, index)).await
+}
+
+// --- branches ---------------------------------------------------------------
+
+#[tauri::command]
+async fn list_branches(store: State<'_, RepoStore>, repo: String) -> Result<Vec<Branch>> {
+    let repo = store.require(&repo)?;
+    blocking(move || git::branch::list(&repo)).await
+}
+
+#[tauri::command]
+async fn create_branch(
+    store: State<'_, RepoStore>,
+    repo: String,
+    name: String,
+    start: Option<String>,
+    checkout: bool,
+) -> Result<()> {
+    let repo = store.require(&repo)?;
+    security::branch_name(&name)?;
+    if let Some(s) = &start {
+        security::revision(s)?;
+    }
+    blocking(move || git::branch::create(&repo, &name, start.as_deref(), checkout)).await
+}
+
+#[tauri::command]
+async fn switch_branch(store: State<'_, RepoStore>, repo: String, branch: String) -> Result<()> {
+    let repo = store.require(&repo)?;
+    security::branch_ref(&branch)?;
+    blocking(move || git::branch::switch(&repo, &branch)).await
+}
+
+#[tauri::command]
+async fn checkout_commit(store: State<'_, RepoStore>, repo: String, hash: String) -> Result<()> {
+    let repo = store.require(&repo)?;
+    security::object_id(&hash)?;
+    blocking(move || git::branch::checkout_detached(&repo, &hash)).await
+}
+
+#[tauri::command]
+async fn delete_branch(store: State<'_, RepoStore>, repo: String, name: String, force: bool) -> Result<()> {
+    let repo = store.require(&repo)?;
+    security::branch_name(&name)?;
+    blocking(move || git::branch::delete(&repo, &name, force)).await
+}
+
+// --- remote -----------------------------------------------------------------
+
+#[derive(Clone, Copy, PartialEq, Eq, serde::Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum RemoteOp {
+    Fetch,
+    Pull,
+    Push,
+    Sync,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct RemoteProgress {
+    repo: String,
+    operation: RemoteOp,
+    #[serde(flatten)]
+    progress: git::Progress,
+}
+
+/// Fetch, pull, push or sync. Progress is emitted as `remote-progress` events.
+#[tauri::command]
+async fn remote(
+    store: State<'_, RepoStore>,
+    window: WebviewWindow,
+    repo: String,
+    operation: RemoteOp,
+) -> Result<Outcome> {
+    let path = store.require(&repo)?;
+    blocking(move || {
+        // The token is only sent to github.com (the header is scoped to that URL).
+        let envs = git::remote::remote_urls(&path)?
+            .iter()
+            .find(|u| u.starts_with("https://github.com/"))
+            .map(|u| github::git_auth_env(u))
+            .unwrap_or_default();
+        let report = |progress| {
+            let _ = window.emit(
+                "remote-progress",
+                RemoteProgress {
+                    repo: repo.clone(),
+                    operation,
+                    progress,
+                },
+            );
+        };
+        match operation {
+            RemoteOp::Fetch => git::remote::fetch(&path, envs, report).map(|()| Outcome::Done),
+            RemoteOp::Pull => git::remote::pull(&path, envs, report),
+            RemoteOp::Push => git::remote::push(&path, envs, report).map(|()| Outcome::Done),
+            RemoteOp::Sync => git::remote::sync(&path, envs, report),
+        }
+    })
+    .await
+}
+
 // --- GitHub -----------------------------------------------------------------
 
 #[derive(Serialize)]
@@ -141,7 +383,10 @@ struct GithubState {
 #[tauri::command]
 async fn github_state() -> Result<GithubState> {
     let account = blocking(github::account).await?;
-    Ok(GithubState { account, device_flow: github::client_id().is_some() })
+    Ok(GithubState {
+        account,
+        device_flow: github::client_id().is_some(),
+    })
 }
 
 #[tauri::command]
@@ -176,7 +421,9 @@ async fn github_list_repos() -> Result<Vec<github::GithubRepo>> {
 #[tauri::command]
 fn open_github_url(app: AppHandle, url: String) -> Result<()> {
     security::github_web_url(&url)?;
-    app.opener().open_url(url, None::<&str>).map_err(|e| AppError::Other(e.to_string()))
+    app.opener()
+        .open_url(url, None::<&str>)
+        .map_err(|e| AppError::Other(e.to_string()))
 }
 
 // --- clone ------------------------------------------------------------------
@@ -190,7 +437,13 @@ fn default_clone_dir(app: AppHandle) -> Result<String> {
 /// Clones `url` into `<parent>\<name>` and registers it. Progress is emitted as
 /// `clone-progress` events.
 #[tauri::command]
-async fn clone_repo(app: AppHandle, window: WebviewWindow, url: String, parent: String, name: String) -> Result<RepoEntry> {
+async fn clone_repo(
+    app: AppHandle,
+    window: WebviewWindow,
+    url: String,
+    parent: String,
+    name: String,
+) -> Result<RepoEntry> {
     security::clone_url(&url)?;
     security::folder_name(&name)?;
     let parent = PathBuf::from(parent);
@@ -220,7 +473,10 @@ struct FrontendOptions {
 
 #[tauri::command]
 fn startup_options(options: State<'_, StartupOptions>) -> FrontendOptions {
-    FrontendOptions { startup: options.inner().clone(), devtools: lockdown::devtools_allowed() }
+    FrontendOptions {
+        startup: options.inner().clone(),
+        devtools: lockdown::devtools_allowed(),
+    }
 }
 
 /// Saves the current screen. `path` is only accepted in capture mode and must be a
@@ -295,10 +551,11 @@ fn create_main_window(app: &tauri::App, capture: bool) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    crash::install_panic_hook();
     let options = capture::parse_args(std::env::args());
     let capturing = options.capture.is_some();
 
-    tauri::Builder::default()
+    let result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(options)
@@ -331,6 +588,28 @@ pub fn run() {
             get_log,
             get_commit,
             get_commit_diff,
+            discard_changes,
+            revert_commit,
+            rebase_branch,
+            merge_branch,
+            mark_resolved,
+            continue_operation,
+            skip_operation,
+            abort_operation,
+            cherry_pick,
+            undo_last_commit,
+            ignore_path,
+            show_in_explorer,
+            list_stashes,
+            stash_save,
+            stash_pop,
+            stash_drop,
+            list_branches,
+            create_branch,
+            switch_branch,
+            checkout_commit,
+            delete_branch,
+            remote,
             github_state,
             github_start_sign_in,
             github_poll_sign_in,
@@ -344,8 +623,10 @@ pub fn run() {
             capture_screen,
             exit_app,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running Leveret");
+        .run(tauri::generate_context!());
+    if let Err(e) = result {
+        crash::fatal(&format!("Leveret could not start.\n\n{e}"));
+    }
 }
 
 #[cfg(test)]
@@ -356,7 +637,10 @@ mod tests {
     fn unregistered_repositories_are_rejected() {
         let dir = tempfile::tempdir().unwrap();
         let store = RepoStore::load(dir.path());
-        assert!(matches!(store.require("C:\\Windows"), Err(AppError::RepoNotRegistered(_))));
+        assert!(matches!(
+            store.require("C:\\Windows"),
+            Err(AppError::RepoNotRegistered(_))
+        ));
         assert!(store.select(Some("C:\\Windows".into())).is_err());
     }
 }

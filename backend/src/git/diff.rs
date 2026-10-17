@@ -50,7 +50,11 @@ pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool
     if untracked {
         return untracked_file(&repo.join(path));
     }
-    let base = if has_head(repo)? { "HEAD".to_string() } else { empty_tree(repo)? };
+    let base = if has_head(repo)? {
+        "HEAD".to_string()
+    } else {
+        empty_tree(repo)?
+    };
     let out = Git::new(repo)
         .args(["diff", "--no-color", "--no-ext-diff", "-M", &base, "--", path])
         .args(orig_path)
@@ -59,7 +63,13 @@ pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool
 }
 
 /// Diff of one file in a commit, against its first parent.
-pub fn commit_file(repo: &Path, hash: &str, parent: Option<&str>, path: &str, orig_path: Option<&str>) -> Result<FileDiff> {
+pub fn commit_file(
+    repo: &Path,
+    hash: &str,
+    parent: Option<&str>,
+    path: &str,
+    orig_path: Option<&str>,
+) -> Result<FileDiff> {
     let parent = match parent {
         Some(p) => p.to_string(),
         None => empty_tree(repo)?,
@@ -77,11 +87,17 @@ fn untracked_file(file: &Path) -> Result<FileDiff> {
         return Ok(FileDiff::default());
     }
     if meta.len() > MAX_UNTRACKED_BYTES {
-        return Ok(FileDiff { too_large: true, ..Default::default() });
+        return Ok(FileDiff {
+            too_large: true,
+            ..Default::default()
+        });
     }
     let bytes = std::fs::read(file)?;
     if bytes.iter().take(8000).any(|&b| b == 0) {
-        return Ok(FileDiff { binary: true, ..Default::default() });
+        return Ok(FileDiff {
+            binary: true,
+            ..Default::default()
+        });
     }
     let text = decode(&bytes);
     let mut diff = FileDiff::default();
@@ -91,7 +107,12 @@ fn untracked_file(file: &Path) -> Result<FileDiff> {
             diff.truncated = true;
             break;
         }
-        lines.push(DiffLine { kind: LineKind::Add, old_no: None, new_no: Some(i as u32 + 1), text: line.to_string() });
+        lines.push(DiffLine {
+            kind: LineKind::Add,
+            old_no: None,
+            new_no: Some(i as u32 + 1),
+            text: line.to_string(),
+        });
     }
     if !lines.is_empty() {
         let header = format!("@@ -0,0 +1,{} @@", lines.len());
@@ -123,7 +144,10 @@ fn parse(text: &str) -> FileDiff {
             let (o, n) = parse_hunk_header(line);
             old_no = o;
             new_no = n;
-            diff.hunks.push(Hunk { header: line.to_string(), lines: Vec::new() });
+            diff.hunks.push(Hunk {
+                header: line.to_string(),
+                lines: Vec::new(),
+            });
             continue;
         }
         if count >= MAX_LINES {
@@ -153,7 +177,12 @@ fn parse(text: &str) -> FileDiff {
             }
             LineKind::NoNewline => {}
         }
-        hunk.lines.push(DiffLine { kind, old_no: o, new_no: n, text: rest.to_string() });
+        hunk.lines.push(DiffLine {
+            kind,
+            old_no: o,
+            new_no: n,
+            text: rest.to_string(),
+        });
         count += 1;
     }
     diff
@@ -162,9 +191,7 @@ fn parse(text: &str) -> FileDiff {
 /// Extracts the starting line numbers from `@@ -a,b +c,d @@`.
 fn parse_hunk_header(line: &str) -> (u32, u32) {
     let mut parts = line.split(' ').skip(1);
-    let start = |s: Option<&str>| -> u32 {
-        s.and_then(|s| s[1..].split(',').next()?.parse().ok()).unwrap_or(1)
-    };
+    let start = |s: Option<&str>| -> u32 { s.and_then(|s| s[1..].split(',').next()?.parse().ok()).unwrap_or(1) };
     let old = start(parts.next());
     let new = start(parts.next());
     (old, new)

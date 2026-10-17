@@ -3,6 +3,7 @@
 // in backend/src/lib.rs closely enough to exercise every screen.
 import type {
   AppError,
+  Branch,
   CloneProgress,
   CommitDetail,
   CommitFile,
@@ -17,10 +18,15 @@ import type {
   FileDiff,
   LogEntry,
   LogScope,
+  Operation,
+  Outcome,
   RefLabel,
+  RemoteOp,
+  RemoteProgress,
   RepoEntry,
   RepoList,
   RepoStatus,
+  StashEntry,
 } from './api'
 
 interface MockCommit {
@@ -36,13 +42,33 @@ interface MockCommit {
 
 interface MockRepo {
   entry: RepoEntry
-  branch: string
+  /** null: detached HEAD */
+  branch: string | null
   upstream: string | null
   ahead: number
   behind: number
   files: FileChange[]
   commits: MockCommit[]
   refs: Map<string, RefLabel[]>
+  localBranches: string[]
+  remoteBranches: string[]
+  /** Local branches with commits that are merged nowhere (deleting them needs force). */
+  unmerged: string[]
+  operation: Operation | null
+  stashes: StashEntry[]
+  lastFetched: number | null
+}
+
+/** Defaults for the branch / remote / stash parts of a mock repository. */
+function extras(branch: string, remote: boolean): Pick<MockRepo, 'localBranches' | 'remoteBranches' | 'unmerged' | 'operation' | 'stashes' | 'lastFetched'> {
+  return {
+    localBranches: [branch],
+    remoteBranches: remote ? [`origin/${branch}`] : [],
+    unmerged: [],
+    operation: null,
+    stashes: [],
+    lastFetched: remote ? NOW - 1500 : null,
+  }
 }
 
 const NOW = Date.UTC(2026, 9, 17, 11, 30) / 1000
@@ -154,6 +180,7 @@ function makeRepos(): MockRepo[] {
       behind: 0,
       files: [],
       ...dotfiles,
+      ...extras('master', true),
     },
     {
       entry: { name: 'Leveret', path: 'E:\\Code\\Leveret' },
@@ -170,6 +197,11 @@ function makeRepos(): MockRepo[] {
         { path: 'src/ui/history.rs', origPath: 'src/ui/log.rs', kind: 'renamed' },
       ],
       ...leveret,
+      ...extras('main', true),
+      localBranches: ['main', 'feature/branch-dialog', 'feature/rebase', 'fix/sjis-diff'],
+      remoteBranches: ['origin/main', 'origin/feature/branch-dialog', 'origin/release/0.1'],
+      unmerged: ['feature/rebase'],
+      stashes: [{ index: 0, message: 'On main: 差分ビューの配色を試す', time: NOW - 86400 * 2 }],
     },
     {
       entry: { name: 'web-app', path: 'E:\\Code\\web-app' },
@@ -179,6 +211,8 @@ function makeRepos(): MockRepo[] {
       behind: 0,
       files: [{ path: 'src/routes/login.svelte', origPath: null, kind: 'modified' }],
       ...web,
+      ...extras('feature/login', true),
+      remoteBranches: ['origin/main'],
     },
   ]
 }
@@ -190,6 +224,7 @@ const MOCK_ACCOUNT: GithubAccount = { login: 'dutch', name: 'Dutch', htmlUrl: 'h
 let account: GithubAccount | null = null
 let pollCount = 0
 const cloneListeners = new Set<(p: CloneProgress) => void>()
+const remoteListeners = new Set<(p: RemoteProgress) => void>()
 
 const GITHUB_REPOS: GithubRepo[] = [
   ['dutch', 'Leveret', 'A small, friendly Git client for Windows', false],
@@ -222,6 +257,11 @@ export function reset(options: { empty?: boolean; signedIn?: boolean } = {}): vo
 export function onCloneProgress(handler: (p: CloneProgress) => void): () => void {
   cloneListeners.add(handler)
   return () => cloneListeners.delete(handler)
+}
+
+export function onRemoteProgress(handler: (p: RemoteProgress) => void): () => void {
+  remoteListeners.add(handler)
+  return () => remoteListeners.delete(handler)
 }
 
 function fail(code: string, detail = ''): never {
@@ -349,6 +389,64 @@ function buildGraph(entries: LogEntry[]): void {
   }
 }
 
+/** Adds a commit on top of HEAD and moves the current branch label to it. */
+function addCommit(r: MockRepo, subject: string, body: string, files: CommitFile[]): MockCommit {
+  const commit: MockCommit = {
+    hash: fakeHash(Date.now() % 100000 + r.commits.length),
+    parents: r.commits[0] ? [r.commits[0].hash] : [],
+    authorName: AUTHORS[0][0],
+    authorEmail: AUTHORS[0][1],
+    authorTime: Math.floor(Date.now() / 1000),
+    subject,
+    body,
+    files,
+  }
+  const previous = r.commits[0]?.hash
+  r.commits.unshift(commit)
+  moveBranchLabel(r, previous, commit.hash)
+  r.ahead += 1
+  return commit
+}
+
+/** Moves the "current branch" label from one commit to another. */
+function moveBranchLabel(r: MockRepo, from: string | undefined, to: string | undefined) {
+  if (from) r.refs.set(from, (r.refs.get(from) ?? []).filter((x) => !x.current))
+  if (to && r.branch) r.refs.set(to, [{ name: r.branch, kind: 'branch', current: true }, ...(r.refs.get(to) ?? []).filter((x) => !x.current)])
+}
+
+/** Ends the stopped operation: continue (commit) or abort / skip (drop the conflicted state). */
+function finishOperation(r: MockRepo, commit: boolean) {
+  const op = r.operation
+  if (!op) return
+  if (op.kind === 'rebase') r.branch = op.branch
+  if (commit) addCommit(r, op.kind === 'merge' ? "Merge branch 'feature/rebase'" : 'rebase: 進捗表示を追加', '', [])
+  r.files = r.files.filter((f) => f.kind !== 'conflicted' && f.path !== 'src/git/rebase.rs' && f.path !== 'src/ui/history.rs')
+  r.operation = null
+}
+
+function listBranches(r: MockRepo): Branch[] {
+  const head = r.commits[0]
+  const make = (name: string, kind: Branch['kind'], i: number): Branch => {
+    const c = r.commits[Math.min(r.commits.length - 1, i * 3)] ?? head
+    const current = kind === 'local' && name === r.branch
+    const upstream = kind === 'local' && r.remoteBranches.includes(`origin/${name}`) ? `origin/${name}` : null
+    return {
+      name,
+      fullRef: kind === 'local' ? `refs/heads/${name}` : `refs/remotes/${name}`,
+      kind,
+      current,
+      upstream,
+      upstreamGone: false,
+      ahead: current ? r.ahead : name === 'fix/sjis-diff' ? 2 : 0,
+      behind: current ? r.behind : 0,
+      oid: c?.hash ?? '',
+      time: c?.authorTime ?? 0,
+      subject: c?.subject ?? '',
+    }
+  }
+  return [...r.localBranches.map((b, i) => make(b, 'local', i)), ...r.remoteBranches.map((b, i) => make(b, 'remote', i))]
+}
+
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export async function handle(cmd: string, args: Record<string, unknown>): Promise<unknown> {
@@ -361,7 +459,7 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       if (repos.some((r) => r.entry.path.toLowerCase() === path.toLowerCase())) fail('repoAlreadyAdded', path)
       const name = path.split(/[\\/]/).pop() || path
       const history = makeHistory(repos.length + 10, 20, 'main')
-      repos.push({ entry: { name, path }, branch: 'main', upstream: null, ahead: 0, behind: 0, files: [], ...history })
+      repos.push({ entry: { name, path }, branch: 'main', upstream: null, ahead: 0, behind: 0, files: [], ...history, ...extras('main', false) })
       repos.sort((a, b) => a.entry.name.toLowerCase().localeCompare(b.entry.name.toLowerCase()))
       selected = path
       return { name, path }
@@ -381,7 +479,9 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
         upstream: r.upstream,
         ahead: r.ahead,
         behind: r.behind,
-        merging: false,
+        operation: r.operation,
+        hasRemote: r.remoteBranches.length > 0,
+        lastFetched: r.lastFetched,
         files: r.files.map((f) => ({ ...f })),
       } satisfies RepoStatus
     }
@@ -394,25 +494,20 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       const r = find(args.repo)
       const req = args.request as CommitRequest
       if (!req.summary.trim()) fail('emptySummary')
-      if (!req.paths.length) fail('nothingSelected')
+      if (!req.paths.length && !req.amend) fail('nothingSelected')
       const committed = r.files.filter((f) => req.paths.includes(f.path))
       r.files = r.files.filter((f) => !req.paths.includes(f.path))
-      const commit: MockCommit = {
-        hash: fakeHash(Date.now() % 100000),
-        parents: r.commits[0] ? [r.commits[0].hash] : [],
-        authorName: AUTHORS[0][0],
-        authorEmail: AUTHORS[0][1],
-        authorTime: Math.floor(Date.now() / 1000),
-        subject: req.summary.trim(),
-        body: req.description.trim(),
-        files: committed.map((f) => ({ path: f.path, origPath: f.origPath, kind: f.kind === 'untracked' ? 'added' : f.kind })),
+      const files = committed.map((f) => ({ path: f.path, origPath: f.origPath, kind: f.kind === 'untracked' ? ('added' as const) : f.kind }))
+      if (req.amend && r.commits[0]) {
+        const head = r.commits[0]
+        head.subject = req.summary.trim()
+        head.body = req.description.trim()
+        head.files = [...head.files, ...files]
+        return head.hash
       }
-      const head = r.refs.get(r.commits[0]?.hash ?? '')?.filter((x) => !x.current) ?? []
-      if (r.commits[0]) r.refs.set(r.commits[0].hash, head)
-      r.refs.set(commit.hash, [{ name: r.branch, kind: 'branch', current: true }])
-      r.commits.unshift(commit)
-      r.ahead += 1
-      return commit.hash
+      const hash = addCommit(r, req.summary.trim(), req.description.trim(), files).hash
+      if (r.operation?.kind === 'merge') r.operation = null
+      return hash
     }
     case 'get_log': {
       const r = find(args.repo)
@@ -453,6 +548,165 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       const c = r.commits.find((x) => x.hash === args.hash)
       const f = c?.files.find((x) => x.path === args.path)
       return sampleDiff(f?.kind ?? 'modified', String(args.path))
+    }
+    case 'discard_changes': {
+      const r = find(args.repo)
+      const paths = args.paths as string[]
+      r.files = r.files.filter((f) => !paths.includes(f.path))
+      return null
+    }
+    case 'mark_resolved': {
+      const r = find(args.repo)
+      const paths = args.paths as string[]
+      r.files = r.files.map((f) => (paths.includes(f.path) && f.kind === 'conflicted' ? { ...f, kind: 'modified' } : f))
+      return null
+    }
+    case 'ignore_path': {
+      const r = find(args.repo)
+      r.files = r.files.filter((f) => f.path !== args.path)
+      if (!r.files.some((f) => f.path === '.gitignore')) r.files.push({ path: '.gitignore', origPath: null, kind: 'modified' })
+      return null
+    }
+    case 'show_in_explorer':
+      console.info(`mock: would open ${String(args.repo)} ${String(args.path ?? '')}`)
+      return null
+    case 'undo_last_commit': {
+      const r = find(args.repo)
+      if (r.upstream && r.ahead === 0) fail('alreadyPushed')
+      const head = r.commits.shift()
+      if (!head) fail('noChanges')
+      r.ahead = Math.max(0, r.ahead - 1)
+      moveBranchLabel(r, head.hash, r.commits[0]?.hash)
+      for (const f of head.files) {
+        if (!r.files.some((x) => x.path === f.path)) r.files.push({ path: f.path, origPath: f.origPath, kind: f.kind })
+      }
+      r.files.sort((x, y) => x.path.localeCompare(y.path))
+      return head.body ? `${head.subject}\n\n${head.body}` : head.subject
+    }
+    case 'revert_commit':
+    case 'cherry_pick': {
+      const r = find(args.repo)
+      const c = r.commits.find((x) => x.hash === args.hash)
+      if (!c) fail('gitFailed', `bad revision '${String(args.hash)}'`)
+      if (r.operation) fail('gitFailed', 'another operation is in progress')
+      const subject = cmd === 'revert_commit' ? `Revert "${c.subject}"` : c.subject
+      addCommit(r, subject, cmd === 'revert_commit' ? `This reverts commit ${c.hash}.` : c.body, c.files)
+      return 'done' satisfies Outcome
+    }
+    case 'merge_branch':
+    case 'rebase_branch': {
+      const r = find(args.repo)
+      const ref = String(args.branch ?? args.onto)
+      if (r.operation) fail('gitFailed', 'another operation is in progress')
+      // feature/rebase touches the same lines as main: show the conflict flow.
+      if (ref.endsWith('/feature/rebase')) {
+        const isRebase = cmd === 'rebase_branch'
+        r.operation = { kind: isRebase ? 'rebase' : 'merge', branch: isRebase ? r.branch : null, step: isRebase ? 1 : null, total: isRebase ? 3 : null }
+        if (isRebase) r.branch = null
+        r.files = [
+          { path: 'src/git/rebase.rs', origPath: null, kind: 'conflicted' },
+          { path: 'src/ui/history.rs', origPath: null, kind: 'conflicted' },
+          { path: 'Cargo.toml', origPath: null, kind: 'modified' },
+        ]
+        return 'conflicts' satisfies Outcome
+      }
+      if (cmd === 'merge_branch') addCommit(r, `Merge branch '${ref.replace(/^refs\/(heads|remotes)\//, '')}'`, '', [])
+      return 'done' satisfies Outcome
+    }
+    case 'continue_operation': {
+      const r = find(args.repo)
+      if (!r.operation) fail('noOperation')
+      if (r.files.some((f) => f.kind === 'conflicted')) fail('conflictsRemain')
+      finishOperation(r, true)
+      return 'done' satisfies Outcome
+    }
+    case 'skip_operation':
+    case 'abort_operation': {
+      const r = find(args.repo)
+      if (!r.operation) fail('noOperation')
+      finishOperation(r, false)
+      return cmd === 'skip_operation' ? ('done' satisfies Outcome) : null
+    }
+    case 'list_branches':
+      return listBranches(find(args.repo))
+    case 'create_branch': {
+      const r = find(args.repo)
+      const name = String(args.name)
+      if (r.localBranches.includes(name)) fail('branchExists', name)
+      r.localBranches.push(name)
+      if (args.checkout) {
+        r.branch = name
+        r.upstream = null
+        r.ahead = 0
+        r.behind = 0
+      }
+      return null
+    }
+    case 'switch_branch': {
+      const r = find(args.repo)
+      const ref = String(args.branch)
+      const name = ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) : ref.replace(/^refs\/remotes\/[^/]+\//, '')
+      if (!r.localBranches.includes(name)) r.localBranches.push(name)
+      const tracked = r.remoteBranches.includes(`origin/${name}`)
+      Object.assign(r, { branch: name, upstream: tracked ? `origin/${name}` : null, ahead: 0, behind: 0 })
+      moveBranchLabel(r, r.commits[0]?.hash, r.commits[0]?.hash)
+      return null
+    }
+    case 'checkout_commit': {
+      const r = find(args.repo)
+      Object.assign(r, { branch: null, upstream: null, ahead: 0, behind: 0 })
+      return null
+    }
+    case 'delete_branch': {
+      const r = find(args.repo)
+      const name = String(args.name)
+      if (r.unmerged.includes(name) && !args.force) fail('branchNotMerged', name)
+      r.localBranches = r.localBranches.filter((b) => b !== name)
+      return null
+    }
+    case 'list_stashes':
+      return find(args.repo).stashes
+    case 'stash_save': {
+      const r = find(args.repo)
+      if (!r.files.length) fail('noChanges')
+      const message = String(args.message).trim() || `WIP on ${r.branch ?? '(no branch)'}: ${r.commits[0]?.subject ?? ''}`
+      r.stashes = [{ index: 0, message: `On ${r.branch ?? '(no branch)'}: ${message}`, time: Math.floor(Date.now() / 1000) }, ...r.stashes].map((x, i) => ({ ...x, index: i }))
+      r.files = []
+      return null
+    }
+    case 'stash_pop':
+    case 'stash_drop': {
+      const r = find(args.repo)
+      const index = Number(args.index)
+      if (!r.stashes[index]) fail('gitFailed', `stash@{${index}} is not a valid reference`)
+      if (cmd === 'stash_pop') r.files.push({ path: 'src/ui/diff.css', origPath: null, kind: 'modified' })
+      r.stashes = r.stashes.filter((x) => x.index !== index).map((x, i) => ({ ...x, index: i }))
+      return cmd === 'stash_pop' ? ('done' satisfies Outcome) : null
+    }
+    case 'remote': {
+      const r = find(args.repo)
+      const op = args.operation as RemoteOp
+      if (!r.remoteBranches.length) fail('noRemote')
+      if (op !== 'fetch' && !r.branch) fail('detachedHead')
+      if (op === 'pull' && !r.upstream) fail('noUpstream')
+      const phases: [string, number][] =
+        op === 'push'
+          ? [['Counting objects', 10], ['Writing objects', 45], ['Writing objects', 100]]
+          : [['Receiving objects', 30], ['Receiving objects', 70], ['Resolving deltas', 100]]
+      for (const [phase, percent] of phases) {
+        await delay(300)
+        for (const l of remoteListeners) l({ repo: r.entry.path, operation: op, phase, percent })
+      }
+      r.lastFetched = Math.floor(Date.now() / 1000)
+      if (op === 'pull' || op === 'sync') r.behind = 0
+      if (op === 'push' || op === 'sync') {
+        r.ahead = 0
+        if (!r.upstream && r.branch) {
+          r.upstream = `origin/${r.branch}`
+          if (!r.remoteBranches.includes(r.upstream)) r.remoteBranches.push(r.upstream)
+        }
+      }
+      return 'done' satisfies Outcome
     }
     case 'github_state':
       return { account, deviceFlow: true } satisfies GithubState

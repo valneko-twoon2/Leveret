@@ -51,10 +51,18 @@ fn history_with_merge_details_and_diffs() {
     assert_eq!(entries.len(), 4);
     assert_eq!(entries[0].subject, "Merge feature");
     assert_eq!(entries[0].parents.len(), 2);
-    assert!(entries[0].refs.iter().any(|r| r.kind == RefKind::Branch && r.current && r.name == "main"));
+    assert!(
+        entries[0]
+            .refs
+            .iter()
+            .any(|r| r.kind == RefKind::Branch && r.current && r.name == "main")
+    );
     assert!(entries[0].refs.iter().any(|r| r.kind == RefKind::Tag && r.name == "v1"));
     assert_eq!(entries[3].subject, "初期コミット");
-    assert!(entries.iter().any(|e| e.graph.col == 1), "side branch should get its own lane");
+    assert!(
+        entries.iter().any(|e| e.graph.col == 1),
+        "side branch should get its own lane"
+    );
 
     let limited = log::get(p, LogScope::All, 2).unwrap();
     assert_eq!(limited.len(), 2);
@@ -66,7 +74,14 @@ fn history_with_merge_details_and_diffs() {
     assert_eq!(detail.files.len(), 1);
     assert_eq!(detail.files[0].path, "日本語.txt");
     assert_eq!(detail.files[0].kind, ChangeKind::Added);
-    let d = diff::commit_file(p, &detail.hash, detail.parents.first().map(String::as_str), "日本語.txt", None).unwrap();
+    let d = diff::commit_file(
+        p,
+        &detail.hash,
+        detail.parents.first().map(String::as_str),
+        "日本語.txt",
+        None,
+    )
+    .unwrap();
     assert_eq!(d.hunks[0].lines[0].text, "こんにちは");
 
     // Root commit diff (against the empty tree).

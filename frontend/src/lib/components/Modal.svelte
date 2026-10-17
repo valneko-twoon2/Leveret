@@ -22,7 +22,16 @@
   })
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose?.()} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented || !onclose) return
+    // Only the topmost dialog closes (dialogs can be stacked).
+    const dialogs = document.querySelectorAll('[role="dialog"]')
+    if (dialogs[dialogs.length - 1] !== dialog) return
+    e.preventDefault()
+    onclose()
+  }}
+/>
 
 <div class="backdrop" role="presentation" onmousedown={() => onclose?.()}>
   <div

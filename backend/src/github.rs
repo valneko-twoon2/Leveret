@@ -117,7 +117,9 @@ fn load_token() -> Result<Option<String>> {
 }
 
 fn save_token(token: &str) -> Result<()> {
-    entry()?.set_password(token).map_err(|e| AppError::Credential(e.to_string()))
+    entry()?
+        .set_password(token)
+        .map_err(|e| AppError::Credential(e.to_string()))
 }
 
 fn delete_token() -> Result<()> {
@@ -148,7 +150,12 @@ fn fetch_account(token: &str) -> Result<Account> {
     let field = |k: &str| user.get(k).and_then(Value::as_str).map(String::from);
     let login = field("login").ok_or_else(|| AppError::GithubApi("missing login".into()))?;
     let avatar = field("avatar_url").and_then(|url| fetch_avatar(&url));
-    Ok(Account { login, name: field("name"), html_url: field("html_url").unwrap_or_default(), avatar })
+    Ok(Account {
+        login,
+        name: field("name"),
+        html_url: field("html_url").unwrap_or_default(),
+        avatar,
+    })
 }
 
 /// Downloads a small avatar and returns it as a data URL (best effort).
@@ -164,9 +171,11 @@ fn fetch_avatar(url: &str) -> Option<String> {
     };
     let mut bytes = Vec::new();
     resp.into_reader().take(512 * 1024).read_to_end(&mut bytes).ok()?;
-    Some(format!("data:{mime};base64,{}", base64::engine::general_purpose::STANDARD.encode(bytes)))
+    Some(format!(
+        "data:{mime};base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(bytes)
+    ))
 }
-
 
 /// The signed-in account, or `None`. A token GitHub no longer accepts is discarded.
 pub fn account() -> Result<Option<Account>> {
@@ -231,7 +240,9 @@ pub fn poll_device_flow(device_code: &str) -> Result<PollResult> {
     }
     match v.get("error").and_then(Value::as_str) {
         Some("authorization_pending") => Ok(PollResult::Pending),
-        Some("slow_down") => Ok(PollResult::SlowDown { interval: v.get("interval").and_then(Value::as_u64).unwrap_or(10) }),
+        Some("slow_down") => Ok(PollResult::SlowDown {
+            interval: v.get("interval").and_then(Value::as_u64).unwrap_or(10),
+        }),
         Some("expired_token") => Ok(PollResult::Expired),
         Some("access_denied") => Ok(PollResult::Denied),
         Some(other) => {
@@ -282,7 +293,9 @@ pub fn git_auth_env(url: &str) -> Vec<(String, String)> {
     if !url.starts_with("https://github.com/") {
         return Vec::new();
     }
-    let Ok(Some(token)) = load_token() else { return Vec::new() };
+    let Ok(Some(token)) = load_token() else {
+        return Vec::new();
+    };
     let basic = base64::engine::general_purpose::STANDARD.encode(format!("x-access-token:{token}"));
     vec![
         ("GIT_CONFIG_COUNT".into(), "1".into()),

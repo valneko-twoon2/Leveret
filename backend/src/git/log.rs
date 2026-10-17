@@ -104,7 +104,9 @@ fn parse_entry(record: &str) -> Option<LogEntry> {
         return None;
     }
     let f: Vec<&str> = record.splitn(7, FIELD).collect();
-    let [hash, parents, an, ae, at, refs, subject] = f[..] else { return None };
+    let [hash, parents, an, ae, at, refs, subject] = f[..] else {
+        return None;
+    };
     Some(LogEntry {
         hash: hash.into(),
         parents: parents.split_whitespace().map(String::from).collect(),
@@ -127,16 +129,32 @@ fn parse_refs(text: &str) -> Vec<RefLabel> {
         };
         let name = name.strip_prefix("tag: ").unwrap_or(name);
         let label = if name == "HEAD" {
-            RefLabel { name: "HEAD".into(), kind: RefKind::Head, current: true }
+            RefLabel {
+                name: "HEAD".into(),
+                kind: RefKind::Head,
+                current: true,
+            }
         } else if let Some(n) = name.strip_prefix("refs/heads/") {
-            RefLabel { name: n.into(), kind: RefKind::Branch, current }
+            RefLabel {
+                name: n.into(),
+                kind: RefKind::Branch,
+                current,
+            }
         } else if let Some(n) = name.strip_prefix("refs/remotes/") {
             if n.ends_with("/HEAD") {
                 continue;
             }
-            RefLabel { name: n.into(), kind: RefKind::Remote, current: false }
+            RefLabel {
+                name: n.into(),
+                kind: RefKind::Remote,
+                current: false,
+            }
         } else if let Some(n) = name.strip_prefix("refs/tags/") {
-            RefLabel { name: n.into(), kind: RefKind::Tag, current: false }
+            RefLabel {
+                name: n.into(),
+                kind: RefKind::Tag,
+                current: false,
+            }
         } else {
             continue;
         };
@@ -189,11 +207,21 @@ fn build_graph(entries: &mut [LogEntry]) {
             let Some((hash, c)) = lane else { continue };
             if *hash == entry.hash {
                 if existing.is_some() {
-                    edges.push(Edge { from: i as u16, to: col as u16, kind: EdgeKind::Up, color: *c });
+                    edges.push(Edge {
+                        from: i as u16,
+                        to: col as u16,
+                        kind: EdgeKind::Up,
+                        color: *c,
+                    });
                 }
             } else {
                 through.push((i, *c));
-                edges.push(Edge { from: i as u16, to: i as u16, kind: EdgeKind::Up, color: *c });
+                edges.push(Edge {
+                    from: i as u16,
+                    to: i as u16,
+                    kind: EdgeKind::Up,
+                    color: *c,
+                });
             }
         }
         for lane in lanes.iter_mut() {
@@ -220,14 +248,35 @@ fn build_graph(entries: &mut [LogEntry]) {
                     (j, c)
                 }
             };
-            edges.push(Edge { from: col as u16, to: j as u16, kind: EdgeKind::Down, color: c });
+            edges.push(Edge {
+                from: col as u16,
+                to: j as u16,
+                kind: EdgeKind::Down,
+                color: c,
+            });
         }
         for (i, c) in through {
-            edges.push(Edge { from: i as u16, to: i as u16, kind: EdgeKind::Down, color: c });
+            edges.push(Edge {
+                from: i as u16,
+                to: i as u16,
+                kind: EdgeKind::Down,
+                color: c,
+            });
         }
 
-        let width = edges.iter().map(|e| e.from.max(e.to)).chain([col as u16]).max().unwrap_or(0) + 1;
-        entry.graph = GraphRow { col: col as u16, color, width, edges };
+        let width = edges
+            .iter()
+            .map(|e| e.from.max(e.to))
+            .chain([col as u16])
+            .max()
+            .unwrap_or(0)
+            + 1;
+        entry.graph = GraphRow {
+            col: col as u16,
+            color,
+            width,
+            edges,
+        };
 
         while matches!(lanes.last(), Some(None)) {
             lanes.pop();
@@ -260,10 +309,17 @@ pub struct CommitDetail {
 
 pub fn detail(repo: &Path, hash: &str) -> Result<CommitDetail> {
     let format = format!("--format=%H{FIELD}%P{FIELD}%an{FIELD}%ae{FIELD}%at{FIELD}%cn{FIELD}%ce{FIELD}%ct{FIELD}%B");
-    let text = Git::new(repo).args(["show", "-s", "--no-color"]).arg(format).arg(hash).arg("--").run_string()?;
+    let text = Git::new(repo)
+        .args(["show", "-s", "--no-color"])
+        .arg(format)
+        .arg(hash)
+        .arg("--")
+        .run_string()?;
     let f: Vec<&str> = text.splitn(9, FIELD).collect();
     let [h, parents, an, ae, at, cn, ce, ct, body] = f[..] else {
-        return Err(crate::error::AppError::Other(format!("unexpected git show output for {hash}")));
+        return Err(crate::error::AppError::Other(format!(
+            "unexpected git show output for {hash}"
+        )));
     };
     let parents: Vec<String> = parents.split_whitespace().map(String::from).collect();
 
@@ -334,21 +390,34 @@ mod tests {
     #[test]
     fn graph_for_merge() {
         // m merges a (first parent) and b; both come from root r.
-        let mut e = vec![entry("m", &["a", "b"]), entry("b", &["r"]), entry("a", &["r"]), entry("r", &[])];
+        let mut e = vec![
+            entry("m", &["a", "b"]),
+            entry("b", &["r"]),
+            entry("a", &["r"]),
+            entry("r", &[]),
+        ];
         build_graph(&mut e);
         assert_eq!(e[0].graph.col, 0);
         assert_eq!(e[1].graph.col, 1);
         assert_eq!(e[2].graph.col, 0);
         assert_eq!(e[3].graph.col, 0);
         // r receives lines from both lanes.
-        let ups: Vec<_> = e[3].graph.edges.iter().filter(|x| x.kind == EdgeKind::Up).map(|x| x.from).collect();
+        let ups: Vec<_> = e[3]
+            .graph
+            .edges
+            .iter()
+            .filter(|x| x.kind == EdgeKind::Up)
+            .map(|x| x.from)
+            .collect();
         assert_eq!(ups, vec![0, 1]);
         assert_eq!(e[0].graph.width, 2);
     }
 
     #[test]
     fn parses_decorations() {
-        let refs = parse_refs("HEAD -> refs/heads/main, refs/remotes/origin/main, refs/remotes/origin/HEAD, tag: refs/tags/v1");
+        let refs = parse_refs(
+            "HEAD -> refs/heads/main, refs/remotes/origin/main, refs/remotes/origin/HEAD, tag: refs/tags/v1",
+        );
         assert_eq!(refs.len(), 3);
         assert!(refs[0].current && refs[0].kind == RefKind::Branch && refs[0].name == "main");
         assert_eq!(refs[1].kind, RefKind::Remote);

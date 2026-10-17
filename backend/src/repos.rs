@@ -2,7 +2,7 @@
 //! app config directory.
 
 use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 use serde::{Deserialize, Serialize};
 
@@ -32,17 +32,31 @@ pub struct RepoStore {
 impl RepoStore {
     pub fn load(config_dir: &Path) -> Self {
         let file = config_dir.join("repos.json");
-        let data = std::fs::read(&file)
-            .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or_default();
-        RepoStore { file, data: Mutex::new(data) }
+        let data = match std::fs::read(&file) {
+            Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_else(|e| {
+                // Keep the unreadable file for the user instead of overwriting it on the next save.
+                log::warn!("repos.json is unreadable ({e}); starting with an empty list");
+                let _ = std::fs::rename(&file, file.with_extension("json.bak"));
+                RepoList::default()
+            }),
+            Err(_) => RepoList::default(),
+        };
+        RepoStore {
+            file,
+            data: Mutex::new(data),
+        }
+    }
+
+    /// Locks the list. A panic while holding the lock can't leave it half-updated
+    /// (every change is a single assignment or push), so a poisoned lock is reused.
+    fn data(&self) -> MutexGuard<'_, RepoList> {
+        self.data.lock().unwrap_or_else(|e| e.into_inner())
     }
 
     /// Returns the path if it is a registered repository. Commands only operate
     /// on registered repositories, never on arbitrary paths from the webview.
     pub fn require(&self, path: &str) -> Result<PathBuf> {
-        let data = self.data.lock().unwrap();
+        let data = self.data();
         data.repos
             .iter()
             .find(|r| same_path(&r.path, path))
@@ -51,12 +65,12 @@ impl RepoStore {
     }
 
     pub fn list(&self) -> RepoList {
-        self.data.lock().unwrap().clone()
+        self.data().clone()
     }
 
     pub fn add(&self, path: &Path) -> Result<RepoEntry> {
         let top = git::toplevel(path)?;
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data();
         if data.repos.iter().any(|r| same_path(&r.path, &top)) {
             return Err(AppError::RepoAlreadyAdded(top));
         }
@@ -73,7 +87,7 @@ impl RepoStore {
     }
 
     pub fn remove(&self, path: &str) -> Result<()> {
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data();
         data.repos.retain(|r| !same_path(&r.path, path));
         if data.selected.as_deref().is_some_and(|s| same_path(s, path)) {
             data.selected = None;
@@ -85,7 +99,7 @@ impl RepoStore {
         if let Some(p) = &path {
             self.require(p)?;
         }
-        let mut data = self.data.lock().unwrap();
+        let mut data = self.data();
         data.selected = path;
         self.save(&data)
     }
@@ -95,11 +109,19 @@ impl RepoStore {
             std::fs::create_dir_all(dir)?;
         }
         let json = serde_json::to_vec_pretty(data).map_err(|e| AppError::Other(e.to_string()))?;
-        std::fs::write(&self.file, json)?;
+        // Write to a temporary file and rename it, so a crash or full disk never
+        // leaves a truncated list behind.
+        let tmp = self.file.with_extension("json.tmp");
+        std::fs::write(&tmp, json)?;
+        std::fs::rename(&tmp, &self.file)?;
         Ok(())
     }
 }
 
 fn same_path(a: &str, b: &str) -> bool {
-    if cfg!(windows) { a.eq_ignore_ascii_case(b) } else { a == b }
+    if cfg!(windows) {
+        a.eq_ignore_ascii_case(b)
+    } else {
+        a == b
+    }
 }

@@ -4,27 +4,51 @@
   import { api, inTauri, useMockBackend } from './lib/api'
   import { runCaptureRequest, runUrlScene } from './lib/capture'
   import { github } from './lib/github.svelte'
-  import CloneDialog from './lib/components/CloneDialog.svelte'
-  import SignInDialog from './lib/components/SignInDialog.svelte'
   import { t } from './lib/i18n/index.svelte'
+  import { layout } from './lib/layout.svelte'
+  import { menu } from './lib/menu.svelte'
   import { app, describeError } from './lib/state.svelte'
+  import BranchesDialog from './lib/components/BranchesDialog.svelte'
   import ChangesPane from './lib/components/ChangesPane.svelte'
+  import CloneDialog from './lib/components/CloneDialog.svelte'
   import CommitView from './lib/components/CommitView.svelte'
+  import ContextMenu from './lib/components/ContextMenu.svelte'
   import DiffView from './lib/components/DiffView.svelte'
   import ErrorDialog from './lib/components/ErrorDialog.svelte'
   import FileRow from './lib/components/FileRow.svelte'
   import HistoryPane from './lib/components/HistoryPane.svelte'
   import Icon from './lib/components/Icon.svelte'
+  import NewBranchDialog from './lib/components/NewBranchDialog.svelte'
+  import OperationBanner from './lib/components/OperationBanner.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
+  import SignInDialog from './lib/components/SignInDialog.svelte'
+  import Splitter from './lib/components/Splitter.svelte'
   import Toasts from './lib/components/Toasts.svelte'
   import Welcome from './lib/components/Welcome.svelte'
 
   let dragging = $state(false)
   let lastFocusRefresh = 0
+  let lastUnexpected = 0
+
+  /** Last line of defence: an unexpected error becomes a toast instead of a broken screen. */
+  function reportUnexpected(error: unknown) {
+    console.error(error)
+    const now = Date.now()
+    if (now - lastUnexpected < 2000) return
+    lastUnexpected = now
+    app.toast(describeError(error).message, 'error')
+  }
 
   onMount(() => {
     let unlistenDrop: (() => void) | undefined
+    const onError = (e: ErrorEvent) => reportUnexpected(e.error ?? e.message)
+    const onRejection = (e: PromiseRejectionEvent) => {
+      e.preventDefault()
+      reportUnexpected(e.reason)
+    }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
 
     void (async () => {
       const options = await api.startupOptions()
@@ -40,7 +64,11 @@
       void github.load()
       await app.init()
       const scene = params.get('scene')
-      if (scene) await runUrlScene(scene)
+      if (scene) {
+        await runUrlScene(scene)
+        return
+      }
+      app.startAutoFetch()
 
       if (inTauri) {
         unlistenDrop = await getCurrentWebview().onDragDropEvent(async (event) => {
@@ -53,9 +81,13 @@
           }
         })
       }
-    })()
+    })().catch(reportUnexpected)
 
-    return () => unlistenDrop?.()
+    return () => {
+      unlistenDrop?.()
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
   })
 
   async function saveScreenshot() {
@@ -67,20 +99,50 @@
     }
   }
 
+  /** Whether a dialog (or menu) is open, so global shortcuts stay out of its way. */
+  function overlayOpen(): boolean {
+    return menu.current !== null || document.querySelector('[role="dialog"]') !== null
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'F5') {
       e.preventDefault()
       void app.refresh()
-    } else if (inTauri && e.ctrlKey && e.shiftKey && e.code === 'KeyS') {
+      return
+    }
+    if (inTauri && e.ctrlKey && e.shiftKey && e.code === 'KeyS') {
       e.preventDefault()
       void saveScreenshot()
+      return
+    }
+    if (!e.ctrlKey || e.altKey || !app.repo || overlayOpen()) return
+    const shortcuts: Record<string, () => unknown> = e.shiftKey
+      ? {
+          KeyN: () => app.status?.headOid && app.openNewBranch(),
+          KeyF: () => app.status?.hasRemote && app.remote('fetch'),
+          KeyL: () => app.status?.upstream && app.remote('pull'),
+          KeyP: () => app.status?.hasRemote && app.status.branch && app.remote('push'),
+        }
+      : {
+          Digit1: () => app.setTab('changes'),
+          Digit2: () => app.setTab('history'),
+          KeyB: () => app.openBranches(),
+          KeyF: async () => {
+            await app.setTab('history')
+            document.getElementById('history-search')?.focus()
+          },
+        }
+    const run = shortcuts[e.code]
+    if (run) {
+      e.preventDefault()
+      void run()
     }
   }
 
   // Pick up changes made outside Leveret when the window is focused again.
   function onfocus() {
     const now = Date.now()
-    if (app.selectedPath && now - lastFocusRefresh > 1000) {
+    if (app.selectedPath && app.busy === null && now - lastFocusRefresh > 1000) {
       lastFocusRefresh = now
       void app.refresh()
     }
@@ -89,53 +151,88 @@
 
 <svelte:window {onkeydown} {onfocus} />
 
+{#snippet crashed(error: unknown, reset: () => void)}
+  <div class="crashed">
+    <Icon name="alert" size={32} />
+    <strong>{t('crash.title')}</strong>
+    <span>{t('crash.body')}</span>
+    <code>{describeError(error).detail}</code>
+    <button
+      class="btn primary"
+      onclick={() => {
+        reset()
+        void app.refresh()
+      }}>{t('crash.retry')}</button
+    >
+  </div>
+{/snippet}
+
 <div class="layout">
-  <RepoSidebar />
+  <div class="sidebar" style:width="{layout.sizes.sidebar}px">
+    <RepoSidebar />
+  </div>
+  <Splitter pane="sidebar" />
 
   <main>
-    {#if app.loaded && !app.repo}
-      <Welcome />
-    {:else if app.repo}
-      <RepoHeader />
-      <div class="body">
-        <section class="column">
-          <div class="tabs" role="tablist">
-            <button role="tab" class:active={app.tab === 'changes'} aria-selected={app.tab === 'changes'} onclick={() => app.setTab('changes')}>
-              {t('tabs.changes')}
-              {#if app.files.length}<span class="count">{app.files.length}</span>{/if}
-            </button>
-            <button role="tab" class:active={app.tab === 'history'} aria-selected={app.tab === 'history'} onclick={() => app.setTab('history')}>
-              {t('tabs.history')}
-            </button>
-          </div>
-          <div class="column-body">
-            {#if app.tab === 'changes'}
-              <ChangesPane />
-            {:else}
-              <HistoryPane />
-            {/if}
-          </div>
-        </section>
+    <svelte:boundary onerror={(e) => console.error(e)} failed={crashed}>
+      {#if app.loaded && !app.repo}
+        <Welcome />
+      {:else if app.repo}
+        <RepoHeader />
+        <OperationBanner />
+        <div class="body">
+          <section class="column" style:width="{layout.sizes.column}px">
+            <div class="tabs" role="tablist">
+              <button
+                role="tab"
+                class:active={app.tab === 'changes'}
+                aria-selected={app.tab === 'changes'}
+                title={t('shortcuts.changes')}
+                onclick={() => app.setTab('changes')}
+              >
+                {t('tabs.changes')}
+                {#if app.files.length}<span class="count">{app.files.length}</span>{/if}
+              </button>
+              <button
+                role="tab"
+                class:active={app.tab === 'history'}
+                aria-selected={app.tab === 'history'}
+                title={t('shortcuts.history')}
+                onclick={() => app.setTab('history')}
+              >
+                {t('tabs.history')}
+              </button>
+            </div>
+            <div class="column-body">
+              {#if app.tab === 'changes'}
+                <ChangesPane />
+              {:else}
+                <HistoryPane />
+              {/if}
+            </div>
+          </section>
+          <Splitter pane="column" />
 
-        <section class="main">
-          {#if app.tab === 'changes'}
-            {#if app.selectedChange}
-              <div class="file-header">
-                <FileRow path={app.selectedChange.path} origPath={app.selectedChange.origPath} kind={app.selectedChange.kind} />
-              </div>
-              <div class="main-body"><DiffView diff={app.workingDiff} /></div>
-            {:else if app.status}
-              <div class="empty">
-                <Icon name="file" size={32} />
-                {app.files.length ? t('changes.selectFile') : t('changes.noneBody')}
-              </div>
+          <section class="main">
+            {#if app.tab === 'changes'}
+              {#if app.selectedChange}
+                <div class="file-header">
+                  <FileRow path={app.selectedChange.path} origPath={app.selectedChange.origPath} kind={app.selectedChange.kind} />
+                </div>
+                <div class="main-body"><DiffView diff={app.workingDiff} /></div>
+              {:else if app.status}
+                <div class="empty">
+                  <Icon name="file" size={32} />
+                  {app.files.length ? t('changes.selectFile') : t('changes.noneBody')}
+                </div>
+              {/if}
+            {:else}
+              <CommitView />
             {/if}
-          {:else}
-            <CommitView />
-          {/if}
-        </section>
-      </div>
-    {/if}
+          </section>
+        </div>
+      {/if}
+    </svelte:boundary>
   </main>
 </div>
 
@@ -143,6 +240,12 @@
   <div class="drop"><div>{t('repos.dropHint')}</div></div>
 {/if}
 
+{#if app.branchesOpen}
+  <BranchesDialog />
+{/if}
+{#if app.newBranch}
+  <NewBranchDialog />
+{/if}
 {#if github.cloneOpen}
   <CloneDialog />
 {/if}
@@ -150,16 +253,23 @@
   <SignInDialog />
 {/if}
 <ErrorDialog />
+<ContextMenu />
 <Toasts />
 
 <style>
   .layout {
-    display: grid;
-    grid-template-columns: 220px 1fr;
+    display: flex;
     height: 100%;
   }
 
+  .sidebar {
+    flex: none;
+    min-width: 0;
+    min-height: 0;
+  }
+
   main {
+    flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
@@ -175,9 +285,8 @@
   .column {
     display: flex;
     flex-direction: column;
-    width: 340px;
     flex: none;
-    border-right: 1px solid var(--border);
+    min-width: 0;
   }
 
   .tabs {
@@ -240,6 +349,32 @@
   .main-body {
     flex: 1;
     min-height: 0;
+  }
+
+  .crashed {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 24px;
+    color: var(--fg-muted);
+    text-align: center;
+  }
+
+  .crashed strong {
+    color: var(--fg);
+    font-size: 15px;
+  }
+
+  .crashed code {
+    max-width: 640px;
+    max-height: 120px;
+    overflow: auto;
+    font-size: 12px;
+    color: var(--fg-subtle);
+    white-space: pre-wrap;
   }
 
   .drop {

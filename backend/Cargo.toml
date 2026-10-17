@@ -30,15 +30,16 @@ ureq = { version = "2.12", features = ["json"] }
 keyring = { version = "3", features = ["windows-native"] }
 base64 = "0.22"
 tauri-plugin-opener = "2"
+trash = "5"
 
 [target.'cfg(windows)'.dependencies]
 # Must match the versions used by tauri/wry (used for WebView2 screen capture).
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_System_Com", "Win32_UI_Shell"] }
+windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
-# Smaller binary; panics abort instead of unwinding across the WebView boundary.
+# Panics keep the default unwinding: a panic inside a command becomes an error
+# for that command instead of taking the whole app down.
 lto = true
 codegen-units = 1
-panic = "abort"
 strip = true

@@ -12,6 +12,8 @@
     selectable?: boolean
     onselect?: (index: number) => void
     onreachend?: () => void
+    /** Right click or the context menu key on a row (the row is selected first). */
+    oncontext?: (index: number, e: MouseEvent | KeyboardEvent) => void
     row: Snippet<[T, number]>
     footer?: Snippet
   }
@@ -25,6 +27,7 @@
     selectable = true,
     onselect,
     onreachend,
+    oncontext,
     row,
     footer,
   }: Props = $props()
@@ -50,6 +53,12 @@
   }
 
   function onkeydown(e: KeyboardEvent) {
+    if (oncontext && selectedIndex >= 0 && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+      e.preventDefault()
+      const rowEl = viewport.querySelector<HTMLElement>('.row.selected')
+      oncontext(selectedIndex, rowEl ? new MouseEvent('contextmenu', rowCenter(rowEl)) : e)
+      return
+    }
     if (!selectable || !onselect || items.length === 0) return
     const page = Math.max(1, Math.floor(height / rowHeight) - 1)
     const moves: Record<string, number> = {
@@ -65,6 +74,11 @@
     const next = Math.min(items.length - 1, Math.max(0, moves[e.key]))
     if (next !== selectedIndex) onselect(next)
     ensureVisible(next)
+  }
+
+  function rowCenter(el: HTMLElement): MouseEventInit {
+    const r = el.getBoundingClientRect()
+    return { clientX: r.left + 24, clientY: r.top + r.height / 2 }
   }
 
   // Reset scroll when the list is replaced by a shorter one (e.g. another repository).
@@ -97,7 +111,12 @@
         role="option"
         aria-selected={index === selectedIndex}
         tabindex="-1"
-        onmousedown={() => selectable && onselect?.(index)}
+        onmousedown={(e) => e.button === 0 && selectable && onselect?.(index)}
+        oncontextmenu={(e) => {
+          if (!oncontext) return
+          if (selectable && index !== selectedIndex) onselect?.(index)
+          oncontext(index, e)
+        }}
       >
         {@render row(item, index)}
       </div>

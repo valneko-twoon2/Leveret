@@ -18,14 +18,63 @@ export interface FileChange {
   kind: ChangeKind
 }
 
+export type OperationKind = 'merge' | 'rebase' | 'revert' | 'cherryPick'
+
+/** A merge, rebase, revert or cherry-pick that stopped (usually on conflicts). */
+export interface Operation {
+  kind: OperationKind
+  /** Rebase: the branch being rebased. */
+  branch: string | null
+  /** Rebase: current step / number of steps. */
+  step: number | null
+  total: number | null
+}
+
+/** Result of a command that may stop on conflicts. */
+export type Outcome = 'done' | 'conflicts'
+
 export interface RepoStatus {
   branch: string | null
   headOid: string | null
   upstream: string | null
   ahead: number
   behind: number
-  merging: boolean
+  operation: Operation | null
+  hasRemote: boolean
+  /** Unix seconds of the last fetch. */
+  lastFetched: number | null
   files: FileChange[]
+}
+
+export interface Branch {
+  /** `main`, `origin/main` */
+  name: string
+  /** `refs/heads/main`, `refs/remotes/origin/main` */
+  fullRef: string
+  kind: 'local' | 'remote'
+  current: boolean
+  upstream: string | null
+  upstreamGone: boolean
+  ahead: number
+  behind: number
+  oid: string
+  time: number
+  subject: string
+}
+
+export interface StashEntry {
+  index: number
+  message: string
+  time: number
+}
+
+export type RemoteOp = 'fetch' | 'pull' | 'push' | 'sync'
+
+export interface RemoteProgress {
+  repo: string
+  operation: RemoteOp
+  phase: string
+  percent: number
 }
 
 export interface RepoEntry {
@@ -117,6 +166,8 @@ export interface CommitRequest {
   summary: string
   description: string
   paths: string[]
+  /** Replace the last commit. */
+  amend?: boolean
 }
 
 export interface CaptureRequest {
@@ -221,6 +272,40 @@ export const api = {
       untracked: file.kind === 'untracked',
     }),
   commit: (repo: string, request: CommitRequest) => call<string>('commit', { repo, request }),
+
+  discardChanges: (repo: string, paths: string[]) => call<void>('discard_changes', { repo, paths }),
+  markResolved: (repo: string, paths: string[]) => call<void>('mark_resolved', { repo, paths }),
+  ignorePath: (repo: string, path: string, byExtension: boolean) => call<void>('ignore_path', { repo, path, byExtension }),
+  showInExplorer: (repo: string, path?: string) => call<void>('show_in_explorer', { repo, path: path ?? null }),
+  undoLastCommit: (repo: string) => call<string>('undo_last_commit', { repo }),
+
+  revertCommit: (repo: string, hash: string) => call<Outcome>('revert_commit', { repo, hash }),
+  cherryPick: (repo: string, hash: string) => call<Outcome>('cherry_pick', { repo, hash }),
+  rebaseBranch: (repo: string, onto: string) => call<Outcome>('rebase_branch', { repo, onto }),
+  mergeBranch: (repo: string, branch: string) => call<Outcome>('merge_branch', { repo, branch }),
+  continueOperation: (repo: string) => call<Outcome>('continue_operation', { repo }),
+  skipOperation: (repo: string) => call<Outcome>('skip_operation', { repo }),
+  abortOperation: (repo: string) => call<void>('abort_operation', { repo }),
+
+  listBranches: (repo: string) => call<Branch[]>('list_branches', { repo }),
+  createBranch: (repo: string, name: string, start: string | null, checkout: boolean) =>
+    call<void>('create_branch', { repo, name, start, checkout }),
+  switchBranch: (repo: string, branch: string) => call<void>('switch_branch', { repo, branch }),
+  checkoutCommit: (repo: string, hash: string) => call<void>('checkout_commit', { repo, hash }),
+  deleteBranch: (repo: string, name: string, force: boolean) => call<void>('delete_branch', { repo, name, force }),
+
+  listStashes: (repo: string) => call<StashEntry[]>('list_stashes', { repo }),
+  stashSave: (repo: string, message: string) => call<void>('stash_save', { repo, message }),
+  stashPop: (repo: string, index: number) => call<Outcome>('stash_pop', { repo, index }),
+  stashDrop: (repo: string, index: number) => call<void>('stash_drop', { repo, index }),
+
+  remote: (repo: string, operation: RemoteOp) => call<Outcome>('remote', { repo, operation }),
+  /** Subscribes to fetch / pull / push progress. Returns an unsubscribe function. */
+  onRemoteProgress: async (handler: (p: RemoteProgress) => void): Promise<() => void> => {
+    if (mock) return mock.onRemoteProgress(handler)
+    const { listen } = await import('@tauri-apps/api/event')
+    return listen<RemoteProgress>('remote-progress', (e) => handler(e.payload))
+  },
 
   getLog: (repo: string, scope: LogScope, limit: number) => call<LogEntry[]>('get_log', { repo, scope, limit }),
   getCommit: (repo: string, hash: string) => call<CommitDetail>('get_commit', { repo, hash }),

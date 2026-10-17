@@ -4,10 +4,15 @@
 //! user's config, credential helpers, SSH setup and hooks all behave exactly
 //! as they do on the command line.
 
+pub mod branch;
 pub mod clone;
 pub mod commit;
 pub mod diff;
+pub mod discard;
 pub mod log;
+pub mod operation;
+pub mod remote;
+pub mod stash;
 pub mod status;
 
 #[cfg(test)]
@@ -15,8 +20,10 @@ mod integration_tests;
 
 use std::ffi::OsString;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+
+use serde::Serialize;
 
 use crate::error::{AppError, Result};
 
@@ -35,7 +42,13 @@ pub struct GitOutput {
 
 impl<'a> Git<'a> {
     pub fn new(repo: &'a Path) -> Self {
-        Git { repo, args: Vec::new(), envs: Vec::new(), stdin: None, ok_codes: &[0] }
+        Git {
+            repo,
+            args: Vec::new(),
+            envs: Vec::new(),
+            stdin: None,
+            ok_codes: &[0],
+        }
     }
 
     pub fn arg(mut self, arg: impl Into<OsString>) -> Self {
@@ -72,13 +85,23 @@ impl<'a> Git<'a> {
         let mut cmd = Command::new("git");
         cmd.current_dir(self.repo)
             // Never let a repository-controlled config turn on risky transports.
-            .args(["-c", "core.quotepath=false", "-c", "color.ui=never", "-c", "protocol.ext.allow=never"])
+            .args([
+                "-c",
+                "core.quotepath=false",
+                "-c",
+                "color.ui=never",
+                "-c",
+                "protocol.ext.allow=never",
+            ])
             .args(["-c", "protocol.file.allow=user"])
             .args(&self.args)
-            .envs(self.envs.iter().map(|(k, v)| (k.as_str(), v.as_str())))
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_OPTIONAL_LOCKS", "0")
             .env("GIT_LITERAL_PATHSPECS", "1")
+            // Untranslated messages, so errors such as conflicts can be recognized.
+            .env("LC_ALL", "C")
+            // Applied last so a command can override a default when it has to.
+            .envs(self.envs.iter().map(|(k, v)| (k.as_str(), v.as_str())))
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
@@ -100,7 +123,11 @@ impl<'a> Git<'a> {
 
     pub fn run(self) -> Result<GitOutput> {
         let mut cmd = self.command();
-        cmd.stdin(if self.stdin.is_some() { Stdio::piped() } else { Stdio::null() });
+        cmd.stdin(if self.stdin.is_some() {
+            Stdio::piped()
+        } else {
+            Stdio::null()
+        });
         let mut child = Self::spawn(&mut cmd)?;
 
         // Write stdin on a separate thread so a large stdout can't deadlock us.
@@ -118,10 +145,17 @@ impl<'a> Git<'a> {
         let code = output.status.code().unwrap_or(-1);
         if !self.ok_codes.contains(&code) {
             let stderr = decode(&output.stderr).trim().to_string();
-            let detail = if stderr.is_empty() { decode(&output.stdout).trim().to_string() } else { stderr };
+            let detail = if stderr.is_empty() {
+                decode(&output.stdout).trim().to_string()
+            } else {
+                stderr
+            };
             return Err(AppError::GitFailed(detail));
         }
-        Ok(GitOutput { stdout: output.stdout, code })
+        Ok(GitOutput {
+            stdout: output.stdout,
+            code,
+        })
     }
 
     /// Runs git and reports each stderr line (split on `\r` and `\n`, as progress
@@ -130,7 +164,9 @@ impl<'a> Git<'a> {
         let mut cmd = self.command();
         cmd.stdin(Stdio::null()).stdout(Stdio::null());
         let mut child = Self::spawn(&mut cmd)?;
-        let mut stderr = child.stderr.take().expect("stderr is piped");
+        let Some(mut stderr) = child.stderr.take() else {
+            return Err(AppError::Other("git stderr is not available".into()));
+        };
 
         let mut tail: Vec<String> = Vec::new();
         let mut pending = Vec::new();
@@ -219,8 +255,76 @@ pub fn empty_tree(repo: &Path) -> Result<String> {
         .to_string())
 }
 
-/// Whether a file under `.git` (e.g. `MERGE_HEAD`) exists.
-pub fn git_path_exists(repo: &Path, name: &str) -> Result<bool> {
-    let p = Git::new(repo).args(["rev-parse", "--git-path", name]).run_string()?;
-    Ok(repo.join(p.trim()).exists())
+/// Absolute path of the repository's git directory (`.git`, or the worktree's own
+/// directory for linked worktrees).
+pub fn git_dir(repo: &Path) -> Result<PathBuf> {
+    let p = Git::new(repo).args(["rev-parse", "--absolute-git-dir"]).run_string()?;
+    Ok(PathBuf::from(p.trim()))
+}
+
+/// Writes `paths` NUL-separated to a temporary file for `--pathspec-from-file`,
+/// so long selections don't hit the command line length limit.
+pub struct PathspecFile {
+    file: tempfile::NamedTempFile,
+}
+
+impl PathspecFile {
+    pub fn new<S: AsRef<str>>(paths: &[S]) -> Result<Self> {
+        let mut file = tempfile::NamedTempFile::new()?;
+        for p in paths {
+            file.write_all(p.as_ref().as_bytes())?;
+            file.write_all(b"\0")?;
+        }
+        file.flush()?;
+        Ok(PathspecFile { file })
+    }
+
+    /// `--pathspec-from-file=<file>` and `--pathspec-file-nul`.
+    pub fn args(&self) -> [OsString; 2] {
+        let mut a = OsString::from("--pathspec-from-file=");
+        a.push(self.file.path());
+        [a, OsString::from("--pathspec-file-nul")]
+    }
+}
+
+/// Progress of a long-running git command (clone, fetch, push).
+#[derive(Debug, Clone, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Progress {
+    /// Git's phase name, e.g. "Receiving objects".
+    pub phase: String,
+    /// Overall progress across all phases, 0-100.
+    pub percent: u8,
+}
+
+/// Weight of each phase in the overall progress: (phase prefix, start, end).
+pub type Phases = [(&'static str, u8, u8)];
+
+/// Parses a progress line such as `Receiving objects:  45% (450/1000), 1.2 MiB | 1 MiB/s`.
+pub fn parse_progress(line: &str, phases: &Phases) -> Option<Progress> {
+    let line = line.trim_start_matches("remote: ").trim();
+    let (phase, rest) = line.split_once(':')?;
+    let percent: u8 = rest.trim_start().split('%').next()?.trim().parse().ok()?;
+    let (start, end) = phases
+        .iter()
+        .find(|(p, ..)| phase.starts_with(p))
+        .map(|&(_, s, e)| (s, e))?;
+    let overall = start as u32 + (end - start) as u32 * percent.min(100) as u32 / 100;
+    Some(Progress {
+        phase: phase.to_string(),
+        percent: overall as u8,
+    })
+}
+
+/// Calls `on_progress` for each parsed progress line that differs from the previous one.
+pub fn progress_reporter<'a>(phases: &'a Phases, mut on_progress: impl FnMut(Progress) + 'a) -> impl FnMut(&str) + 'a {
+    let mut last: Option<Progress> = None;
+    move |line| {
+        if let Some(p) = parse_progress(line, phases)
+            && last.as_ref() != Some(&p)
+        {
+            on_progress(p.clone());
+            last = Some(p);
+        }
+    }
 }

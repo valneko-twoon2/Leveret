@@ -43,14 +43,19 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> StartupOptions {
             "--mock" => mock = true,
             "--theme" => theme = args.next().filter(|t| t == "light" || t == "dark"),
             "--scenes" => {
-                scenes = args.next().map(|s| s.split(',').map(|x| x.trim().to_string()).collect());
+                scenes = args
+                    .next()
+                    .map(|s| s.split(',').map(|x| x.trim().to_string()).collect());
             }
             _ => {}
         }
     }
     let capture = dir.map(|dir| {
         let dir = std::path::absolute(&dir).unwrap_or_else(|_| PathBuf::from(&dir));
-        CaptureRequest { dir: dir.display().to_string(), scenes }
+        CaptureRequest {
+            dir: dir.display().to_string(),
+            scenes,
+        }
     });
     StartupOptions { mock, theme, capture }
 }
@@ -120,7 +125,17 @@ mod tests {
 
     #[test]
     fn parses_capture_args() {
-        let args = ["leveret", "--capture", "out", "--mock", "--theme", "dark", "--scenes", "a, b"].map(String::from);
+        let args = [
+            "leveret",
+            "--capture",
+            "out",
+            "--mock",
+            "--theme",
+            "dark",
+            "--scenes",
+            "a, b",
+        ]
+        .map(String::from);
         let opts = parse_args(args);
         assert!(opts.mock);
         assert_eq!(opts.theme.as_deref(), Some("dark"));

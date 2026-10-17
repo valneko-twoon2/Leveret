@@ -21,7 +21,9 @@ pub fn relative_path(path: &str) -> Result<&str> {
     if path.is_empty() || has_control_chars(path) || path.contains(':') || path.starts_with('-') {
         return Err(invalid("path", path));
     }
-    let normal = Path::new(path).components().all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
+    let normal = Path::new(path)
+        .components()
+        .all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
     if !normal {
         return Err(invalid("path", path));
     }
@@ -82,6 +84,50 @@ pub fn folder_name(name: &str) -> Result<&str> {
     Ok(name)
 }
 
+/// A branch name git accepts (the rules of `git check-ref-format --branch`),
+/// which also can't be mistaken for an option.
+pub fn branch_name(name: &str) -> Result<&str> {
+    let bad_char = name
+        .chars()
+        .any(|c| c.is_control() || c.is_whitespace() || "~^:?*[\\".contains(c));
+    let bad_part = name
+        .split('/')
+        .any(|p| p.is_empty() || p.starts_with('.') || p.ends_with(".lock"));
+    if name.is_empty()
+        || name.len() > 255
+        || bad_char
+        || bad_part
+        || name.starts_with('-')
+        || name.ends_with('.')
+        || name.contains("..")
+        || name.contains("@{")
+        || name == "@"
+        || name == "HEAD"
+    {
+        return Err(invalid("branch name", name));
+    }
+    Ok(name)
+}
+
+/// A full local or remote branch ref: `refs/heads/<branch>` or `refs/remotes/<remote>/<branch>`.
+pub fn branch_ref(name: &str) -> Result<&str> {
+    let ok = match (name.strip_prefix("refs/heads/"), name.strip_prefix("refs/remotes/")) {
+        (Some(branch), _) => branch_name(branch).is_ok(),
+        (_, Some(remote)) => remote.contains('/') && branch_name(remote).is_ok(),
+        _ => false,
+    };
+    if ok { Ok(name) } else { Err(invalid("branch", name)) }
+}
+
+/// A start point for a new branch: an object id or a full branch ref.
+pub fn revision(rev: &str) -> Result<&str> {
+    if object_id(rev).is_ok() || branch_ref(rev).is_ok() {
+        Ok(rev)
+    } else {
+        Err(invalid("revision", rev))
+    }
+}
+
 /// Only GitHub pages may be opened in the user's browser from the app.
 pub fn github_web_url(url: &str) -> Result<&str> {
     if (url.starts_with("https://github.com/") || url == "https://github.com") && !has_control_chars(url) {
@@ -100,7 +146,16 @@ mod tests {
         assert!(relative_path("src/main.rs").is_ok());
         assert!(relative_path("日本語/ファイル.txt").is_ok());
         assert!(relative_path("a b/c.txt").is_ok());
-        for bad in ["", "../secret", "a/../../b", "/etc/passwd", "C:\\Windows\\win.ini", "\\\\server\\share", "-x", "a\0b"] {
+        for bad in [
+            "",
+            "../secret",
+            "a/../../b",
+            "/etc/passwd",
+            "C:\\Windows\\win.ini",
+            "\\\\server\\share",
+            "-x",
+            "a\0b",
+        ] {
             assert!(relative_path(bad).is_err(), "{bad:?} should be rejected");
         }
     }
@@ -116,7 +171,11 @@ mod tests {
 
     #[test]
     fn clone_urls() {
-        for ok in ["https://github.com/a/b.git", "ssh://git@github.com/a/b.git", "git@github.com:a/b.git"] {
+        for ok in [
+            "https://github.com/a/b.git",
+            "ssh://git@github.com/a/b.git",
+            "git@github.com:a/b.git",
+        ] {
             assert!(clone_url(ok).is_ok(), "{ok:?} should be accepted");
         }
         for bad in [
@@ -140,6 +199,39 @@ mod tests {
         for bad in ["", ".", "..", "a/b", "a\\b", "con", "NUL.txt", "x:", "trail.", "-rf"] {
             assert!(folder_name(bad).is_err(), "{bad:?} should be rejected");
         }
+    }
+
+    #[test]
+    fn branch_names() {
+        for ok in ["main", "feature/login", "機能/ログイン", "fix-1.2", "user@host"] {
+            assert!(branch_name(ok).is_ok(), "{ok:?} should be accepted");
+        }
+        for bad in [
+            "", "-f", "--force", "a b", "a..b", "a~1", "a^", "a:b", "a?", "a*", "a[", "a\\b", "/a", "a/", "a//b",
+            ".hidden", "a/.b", "a.lock", "a.", "@", "a@{1}", "HEAD", "a\tb", "a\0b",
+        ] {
+            assert!(branch_name(bad).is_err(), "{bad:?} should be rejected");
+        }
+    }
+
+    #[test]
+    fn branch_refs_and_revisions() {
+        assert!(branch_ref("refs/heads/main").is_ok());
+        assert!(branch_ref("refs/remotes/origin/feature/x").is_ok());
+        for bad in [
+            "main",
+            "refs/tags/v1",
+            "refs/remotes/origin",
+            "refs/heads/-x",
+            "refs/heads/../x",
+            "--all",
+        ] {
+            assert!(branch_ref(bad).is_err(), "{bad:?} should be rejected");
+        }
+        assert!(revision("abc1234").is_ok());
+        assert!(revision("refs/heads/main").is_ok());
+        assert!(revision("HEAD~1").is_err());
+        assert!(revision("--orphan").is_err());
     }
 
     #[test]

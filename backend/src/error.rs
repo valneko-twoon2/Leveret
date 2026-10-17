@@ -29,6 +29,30 @@ pub enum AppError {
     GitFailed(String),
     #[error("clone target already exists: {0}")]
     CloneTargetExists(String),
+    #[error("the current branch has no upstream branch")]
+    NoUpstream,
+    #[error("the repository has no remote")]
+    NoRemote,
+    #[error("HEAD is detached")]
+    DetachedHead,
+    #[error("push was rejected: {0}")]
+    PushRejected(String),
+    #[error("authentication to the remote failed: {0}")]
+    RemoteAuthFailed(String),
+    #[error("local changes would be overwritten: {0}")]
+    LocalChangesConflict(String),
+    #[error("unresolved conflicts remain")]
+    ConflictsRemain,
+    #[error("no merge, rebase, revert or cherry-pick is in progress")]
+    NoOperation,
+    #[error("branch already exists: {0}")]
+    BranchExists(String),
+    #[error("branch is not fully merged: {0}")]
+    BranchNotMerged(String),
+    #[error("there are no local changes")]
+    NoChanges,
+    #[error("the commit has already been pushed")]
+    AlreadyPushed,
     #[error("GitHub OAuth client id is not configured")]
     GithubClientIdMissing,
     #[error("not signed in to GitHub")]
@@ -62,6 +86,18 @@ impl AppError {
             AppError::IdentityMissing(_) => "identityMissing",
             AppError::GitFailed(_) => "gitFailed",
             AppError::CloneTargetExists(_) => "cloneTargetExists",
+            AppError::NoUpstream => "noUpstream",
+            AppError::NoRemote => "noRemote",
+            AppError::DetachedHead => "detachedHead",
+            AppError::PushRejected(_) => "pushRejected",
+            AppError::RemoteAuthFailed(_) => "remoteAuthFailed",
+            AppError::LocalChangesConflict(_) => "localChangesConflict",
+            AppError::ConflictsRemain => "conflictsRemain",
+            AppError::NoOperation => "noOperation",
+            AppError::BranchExists(_) => "branchExists",
+            AppError::BranchNotMerged(_) => "branchNotMerged",
+            AppError::NoChanges => "noChanges",
+            AppError::AlreadyPushed => "alreadyPushed",
             AppError::GithubClientIdMissing => "githubClientIdMissing",
             AppError::GithubNotSignedIn => "githubNotSignedIn",
             AppError::GithubUnauthorized => "githubUnauthorized",
@@ -83,6 +119,11 @@ impl AppError {
             | AppError::IdentityMissing(s)
             | AppError::GitFailed(s)
             | AppError::CloneTargetExists(s)
+            | AppError::PushRejected(s)
+            | AppError::RemoteAuthFailed(s)
+            | AppError::LocalChangesConflict(s)
+            | AppError::BranchExists(s)
+            | AppError::BranchNotMerged(s)
             | AppError::GithubAuthFailed(s)
             | AppError::GithubApi(s)
             | AppError::Network(s)
@@ -92,6 +133,13 @@ impl AppError {
             AppError::GitNotFound
             | AppError::EmptySummary
             | AppError::NothingSelected
+            | AppError::NoUpstream
+            | AppError::NoRemote
+            | AppError::DetachedHead
+            | AppError::ConflictsRemain
+            | AppError::NoOperation
+            | AppError::NoChanges
+            | AppError::AlreadyPushed
             | AppError::GithubClientIdMissing
             | AppError::GithubNotSignedIn
             | AppError::GithubUnauthorized => String::new(),
@@ -109,3 +157,61 @@ impl Serialize for AppError {
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;
+
+impl AppError {
+    /// Turns a failed git command into a more specific error when its output
+    /// shows a well-known cause (git runs with `LC_ALL=C`, so messages are English).
+    pub fn classify_git(self) -> AppError {
+        let AppError::GitFailed(msg) = self else { return self };
+        let has = |needle: &str| msg.contains(needle);
+        if has("would be overwritten by") || has("Please commit your changes or stash them") {
+            AppError::LocalChangesConflict(msg)
+        } else if has("[rejected]") || has("non-fast-forward") || has("fetch first") || has("[remote rejected]") {
+            AppError::PushRejected(msg)
+        } else if has("Authentication failed")
+            || has("could not read Username")
+            || has("could not read Password")
+            || has("Permission denied (publickey")
+            || has("The requested URL returned error: 403")
+            || has("The requested URL returned error: 401")
+        {
+            AppError::RemoteAuthFailed(msg)
+        } else if has("Could not resolve host")
+            || has("Failed to connect to")
+            || has("Connection timed out")
+            || has("Could not read from remote repository")
+            || has("unable to access")
+        {
+            AppError::Network(msg)
+        } else if has("user.email") || has("user.name") || has("Please tell me who you are") {
+            AppError::IdentityMissing(msg)
+        } else {
+            AppError::GitFailed(msg)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classifies_git_errors() {
+        let c = |m: &str| AppError::GitFailed(m.into()).classify_git().code();
+        assert_eq!(c(" ! [rejected]        main -> main (fetch first)"), "pushRejected");
+        assert_eq!(
+            c("fatal: Authentication failed for 'https://github.com/a/b.git/'"),
+            "remoteAuthFailed"
+        );
+        assert_eq!(
+            c("fatal: unable to access 'https://x/': Could not resolve host: x"),
+            "network"
+        );
+        assert_eq!(
+            c("error: Your local changes to the following files would be overwritten by checkout:"),
+            "localChangesConflict"
+        );
+        assert_eq!(c("fatal: something else"), "gitFailed");
+        assert_eq!(AppError::NoRemote.classify_git().code(), "noRemote");
+    }
+}

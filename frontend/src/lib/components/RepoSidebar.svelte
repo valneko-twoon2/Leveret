@@ -1,6 +1,7 @@
 <script lang="ts">
   import { confirmDialog, pickFolder } from '../dialogs'
   import { t } from '../i18n/index.svelte'
+  import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
   import type { RepoEntry } from '../api'
   import AccountBox from './AccountBox.svelte'
@@ -12,11 +13,25 @@
     if (path) await app.addRepo(path)
   }
 
-  async function remove(repo: RepoEntry, e: MouseEvent) {
-    e.stopPropagation()
+  async function remove(repo: RepoEntry, e?: MouseEvent) {
+    e?.stopPropagation()
     if (await confirmDialog(t('repos.removeConfirm', { name: repo.name }), t('repos.remove'))) {
       await app.removeRepo(repo.path)
     }
+  }
+
+  async function repoMenu(repo: RepoEntry, e: MouseEvent) {
+    menu.open(e, [
+      { label: t('common.openInExplorer'), action: () => openInExplorer(repo) },
+      { label: t('common.copyPath'), action: () => app.copy(repo.path) },
+      'separator',
+      { label: t('repos.remove'), action: () => remove(repo), danger: true },
+    ])
+  }
+
+  async function openInExplorer(repo: RepoEntry) {
+    if (repo.path !== app.selectedPath) await app.selectRepo(repo.path)
+    await app.showInExplorer()
   }
 </script>
 
@@ -32,7 +47,7 @@
   <ul>
     {#each app.repos as repo (repo.path)}
       <li class:selected={repo.path === app.selectedPath}>
-        <button class="repo" title={repo.path} onclick={() => app.selectRepo(repo.path)}>
+        <button class="repo" title={repo.path} onclick={() => app.selectRepo(repo.path)} oncontextmenu={(e) => repoMenu(repo, e)}>
           <Icon name="repo" size={15} />
           <span class="name">{repo.name}</span>
         </button>
@@ -54,9 +69,9 @@
   .sidebar {
     display: flex;
     flex-direction: column;
+    height: 100%;
     min-height: 0;
     background: var(--bg-sidebar);
-    border-right: 1px solid var(--border);
   }
 
   header {

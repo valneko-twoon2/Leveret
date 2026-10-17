@@ -3,10 +3,16 @@
   import { app } from '../state.svelte'
 
   const label = $derived.by(() => {
-    if (app.committing) return t('commit.committing')
+    if (app.busy === 'commit') return t('commit.committing')
+    if (app.amend) return t('commit.amendButton')
+    if (app.operation?.kind === 'merge') return t('commit.mergeButton')
     const branch = app.status?.branch
     return branch ? t('commit.button', { branch }) : t('commit.buttonDetached')
   })
+
+  const amendTitle = $derived(
+    app.status?.upstream && app.status.ahead === 0 && app.status.headOid ? t('commit.amendPushed') : t('commit.amendHint'),
+  )
 
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && e.ctrlKey) {
@@ -23,9 +29,34 @@
     void app.commit()
   }}
 >
-  <input type="text" placeholder={t('commit.summary')} bind:value={app.summary} {onkeydown} aria-label={t('commit.summary')} />
-  <textarea rows="4" placeholder={t('commit.description')} bind:value={app.description} {onkeydown} aria-label={t('commit.description')}
+  {#if app.commitBlocked}
+    <p class="blocked">{t('commit.blockedByOperation', { operation: app.operationName() })}</p>
+  {/if}
+  <input
+    type="text"
+    placeholder={t('commit.summary')}
+    bind:value={app.summary}
+    {onkeydown}
+    aria-label={t('commit.summary')}
+    disabled={app.commitBlocked}
+  />
+  <textarea
+    rows="4"
+    placeholder={t('commit.description')}
+    bind:value={app.description}
+    {onkeydown}
+    aria-label={t('commit.description')}
+    disabled={app.commitBlocked}
   ></textarea>
+  <label class="amend" title={amendTitle}>
+    <input
+      type="checkbox"
+      checked={app.amend}
+      disabled={!app.canRewriteHead || app.busy !== null}
+      onchange={(e) => app.setAmend(e.currentTarget.checked)}
+    />
+    {t('commit.amend')}
+  </label>
   <button class="btn primary" type="submit" disabled={!app.canCommit} title={t('commit.shortcut')}>
     <span class="label">{label}</span>
   </button>
@@ -44,6 +75,25 @@
 
   textarea {
     resize: none;
+  }
+
+  input:disabled,
+  textarea:disabled {
+    opacity: 0.6;
+  }
+
+  .blocked {
+    margin: 0;
+    color: var(--attention);
+    font-size: 12px;
+  }
+
+  .amend {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--fg-muted);
+    font-size: 12px;
   }
 
   .btn {
