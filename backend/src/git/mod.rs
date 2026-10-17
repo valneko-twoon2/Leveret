@@ -13,6 +13,7 @@ pub mod discard;
 pub mod log;
 pub mod operation;
 pub mod remote;
+pub mod resolve;
 pub mod stash;
 pub mod status;
 pub mod tag;

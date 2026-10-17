@@ -35,7 +35,11 @@
       items.push({ label: t(merge ? 'diff.mergeInTool' : 'diff.openInTool'), action: () => diffTool.openWorking(file) }, 'separator')
     }
     if (file.kind === 'conflicted') {
-      items.push({ label: t('discard.markResolved'), action: () => changes.markResolved([file.path]), disabled: !idle })
+      items.push(
+        { label: t('discard.markResolved'), action: () => changes.markResolved([file.path]), disabled: !idle },
+        { label: t('discard.useOurs'), action: () => changes.takeSide([file.path], 'ours'), disabled: !idle, danger: true },
+        { label: t('discard.useTheirs'), action: () => changes.takeSide([file.path], 'theirs'), disabled: !idle, danger: true },
+      )
     } else {
       items.push({ label: t('discard.one'), action: () => changes.discard([file.path]), disabled: !idle, danger: true })
       if (checked.length > 1) {

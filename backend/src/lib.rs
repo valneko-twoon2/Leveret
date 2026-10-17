@@ -111,6 +111,7 @@ pub fn run() {
             commands::operations::rebase_branch,
             commands::operations::merge_branch,
             commands::operations::mark_resolved,
+            commands::operations::resolve_conflict,
             commands::operations::continue_operation,
             commands::operations::skip_operation,
             commands::operations::abort_operation,

@@ -2,12 +2,12 @@
 // discard / resolve / ignore and stashes. Builds on `app` (state.svelte.ts),
 // which loads the status these act on.
 import { SvelteSet } from 'svelte/reactivity'
-import { api, type FileChange, type FileDiff, type RepoStatus, type StashEntry } from './api'
+import { api, isAppError, type FileChange, type FileDiff, type RepoStatus, type StashEntry } from './api'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
 import { perf } from './perf'
 import { prefs } from './prefs.svelte'
-import { app } from './state.svelte'
+import { app, describeError } from './state.svelte'
 
 class ChangesState {
   /** Paths unchecked by the user; everything else is included in the commit. */
@@ -151,9 +151,34 @@ class ChangesState {
     await app.loadStatus()
   }
 
+  /** Marks files as resolved, asking first when conflict markers are still in them. */
   async markResolved(paths: string[]) {
+    const repo = app.selectedPath
+    if (paths.length === 0 || !repo || app.busy !== null) return
+    app.busy = 'operation'
+    try {
+      try {
+        await app.track(api.markResolved(repo, paths, false))
+      } catch (e) {
+        if (!isAppError(e) || e.code !== 'conflictMarkersRemain') throw e
+        if (!(await confirmDialog(t('discard.markersConfirm', { files: e.detail }), t('discard.markResolved')))) return
+        await app.track(api.markResolved(repo, paths, true))
+      }
+      app.toast(t('discard.resolvedDone', { count: paths.length }))
+    } catch (e) {
+      app.error = describeError(e)
+    } finally {
+      app.busy = null
+    }
+    await app.loadStatus()
+  }
+
+  /** Resolves conflicted files with one side's version (current files go to the Recycle Bin). */
+  async takeSide(paths: string[], side: 'ours' | 'theirs') {
     if (paths.length === 0) return
-    const done = await app.run('operation', (repo) => api.markResolved(repo, paths))
+    const message = t(side === 'ours' ? 'discard.useOursConfirm' : 'discard.useTheirsConfirm', { count: paths.length })
+    if (!(await confirmDialog(message, t(side === 'ours' ? 'discard.useOurs' : 'discard.useTheirs')))) return
+    const done = await app.run('operation', (repo) => api.resolveConflict(repo, paths, side))
     if (done === undefined) return
     app.toast(t('discard.resolvedDone', { count: paths.length }))
     await app.loadStatus()

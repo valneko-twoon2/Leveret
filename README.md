@@ -32,7 +32,7 @@ Pick a repository from your list, review the changes, commit. That's it.
 | **Fetch, pull, push** | One toolbar button that does the right thing (pull, push, publish, sync) with progress; fetches in the background every 10 minutes. |
 | **Branches & tags** | Switch, create, merge, rebase and delete from one dialog; remote branches become tracking branches. Create tags (lightweight or annotated) from the history, push or delete them. |
 | **Undo-friendly** | Discarded changes go to the Recycle Bin; amend or undo the last commit; revert or cherry-pick any commit. |
-| **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. |
+| **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. Take one side's version of a file, or merge it in WinMerge; leftover conflict markers are caught before marking a file resolved. |
 | **Stash** | Put work aside and bring it back later. |
 | **Issues** | GitHub issues and local issues side by side: jot an issue down locally, publish it to GitHub when you want (optional). |
 | **Settings** | Theme, git identity and pull behaviour, diff options, background fetch, clone folder, agent access, and the licenses of Leveret and every bundled open source package (`Ctrl+,`). |
@@ -190,7 +190,7 @@ args = ["--mcp"]
 | **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash, create / edit / comment on / publish issues |
 | Full | also discard changes, delete branches, abort / skip operations, drop stashes, delete local issues |
 
-- **43 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
+- **44 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
   repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
   revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
 - **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.

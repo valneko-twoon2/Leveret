@@ -121,6 +121,7 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       r.files = r.files.filter((f) => !paths.includes(f.path))
       return null
     }
+    case 'resolve_conflict':
     case 'mark_resolved': {
       const r = find(args.repo)
       const paths = args.paths as string[]

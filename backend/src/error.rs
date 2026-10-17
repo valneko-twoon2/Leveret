@@ -43,6 +43,8 @@ pub enum AppError {
     LocalChangesConflict(String),
     #[error("unresolved conflicts remain")]
     ConflictsRemain,
+    #[error("conflict markers remain in: {0}")]
+    ConflictMarkersRemain(String),
     #[error("no merge, rebase, revert or cherry-pick is in progress")]
     NoOperation,
     #[error("branch already exists: {0}")]
@@ -101,6 +103,7 @@ impl AppError {
             AppError::RemoteAuthFailed(_) => "remoteAuthFailed",
             AppError::LocalChangesConflict(_) => "localChangesConflict",
             AppError::ConflictsRemain => "conflictsRemain",
+            AppError::ConflictMarkersRemain(_) => "conflictMarkersRemain",
             AppError::NoOperation => "noOperation",
             AppError::BranchExists(_) => "branchExists",
             AppError::BranchNotMerged(_) => "branchNotMerged",
@@ -137,6 +140,7 @@ impl AppError {
             | AppError::BranchExists(s)
             | AppError::BranchNotMerged(s)
             | AppError::TagExists(s)
+            | AppError::ConflictMarkersRemain(s)
             | AppError::GithubAuthFailed(s)
             | AppError::GithubApi(s)
             | AppError::Network(s)

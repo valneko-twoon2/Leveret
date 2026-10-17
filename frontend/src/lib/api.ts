@@ -367,7 +367,8 @@ export const api = {
   commit: (repo: string, request: CommitRequest) => call<string>('commit', { repo, request }),
 
   discardChanges: (repo: string, paths: string[]) => call<void>('discard_changes', { repo, paths }),
-  markResolved: (repo: string, paths: string[]) => call<void>('mark_resolved', { repo, paths }),
+  markResolved: (repo: string, paths: string[], force: boolean) => call<void>('mark_resolved', { repo, paths, force }),
+  resolveConflict: (repo: string, paths: string[], side: 'ours' | 'theirs') => call<void>('resolve_conflict', { repo, paths, side }),
   ignorePath: (repo: string, path: string, byExtension: boolean) => call<void>('ignore_path', { repo, path, byExtension }),
   showInExplorer: (repo: string, path?: string) => call<void>('show_in_explorer', { repo, path: path ?? null }),
   getDiffTool: () => call<boolean>('get_diff_tool'),

@@ -31,6 +31,7 @@ export default {
     remoteAuthFailed: 'リモートへの認証に失敗しました。GitHub へのサインインや資格情報を確認してください。',
     localChangesConflict: '未コミットの変更が上書きされるため実行できません。変更をコミットするかスタッシュしてください。',
     conflictsRemain: 'まだ解決されていない競合があります。',
+    conflictMarkersRemain: '競合マーカーが残っているファイルがあります:\n{detail}',
     noOperation: '進行中のマージやリベースはありません。',
     branchExists: '同じ名前のブランチがすでにあります: {detail}',
     branchNotMerged: 'ブランチ「{detail}」はマージされていません。',

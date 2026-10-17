@@ -3,12 +3,12 @@
 
 use serde_json::{Value, json};
 
-use super::args::{path_list, repo, resolve_branch, resolve_commit, str_arg};
+use super::args::{opt_bool, path_list, repo, resolve_branch, resolve_commit, str_arg};
 use super::render::outcome;
-use super::schema::{object, paths, repo_only, repo_prop, string, tool};
+use super::schema::{boolean, object, paths, repo_only, repo_prop, string, tool};
 use super::{Context, Output, Tool, no_handler};
 use crate::agent::Level;
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::git;
 use crate::git::operation::Outcome;
 
@@ -64,10 +64,29 @@ pub(super) fn tools() -> Vec<Tool> {
             "Mark resolved",
             Write,
             false,
-            "Marks conflicted files as resolved after their conflict markers have been fixed.",
+            "Marks conflicted files as resolved after their conflict markers have been fixed. Files that still contain conflict markers are refused unless `force` is set.",
             object(
-                json!({ "repo": repo_prop(), "paths": paths("Files to mark as resolved.") }),
+                json!({
+                    "repo": repo_prop(),
+                    "paths": paths("Files to mark as resolved."),
+                    "force": boolean("Mark them even if conflict markers (<<<<<<< / >>>>>>>) remain."),
+                }),
                 &["repo", "paths"],
+            ),
+        ),
+        tool(
+            "resolve_conflict",
+            "Resolve with one side",
+            Destructive,
+            false,
+            "Resolves conflicted files by taking one side's whole version: `ours` (HEAD; during a rebase, the branch being rebased onto) or `theirs` (the commit being merged, cherry-picked, reverted or replayed). The current files, including any manual edits, are moved to the Recycle Bin; a file that side deleted is deleted. Then call continue_operation.",
+            object(
+                json!({
+                    "repo": repo_prop(),
+                    "paths": paths("Conflicted files to resolve."),
+                    "side": { "type": "string", "enum": ["ours", "theirs"], "description": "Which version to keep." },
+                }),
+                &["repo", "paths", "side"],
             ),
         ),
         tool(
@@ -125,10 +144,32 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
         "mark_resolved" => {
             let repo = repo(ctx, args)?;
             let paths = path_list(args, "paths")?.unwrap_or_default();
+            let left = git::resolve::files_with_markers(&repo, &paths);
+            if !opt_bool(args, "force")?.unwrap_or(false) && !left.is_empty() {
+                return Err(AppError::ConflictMarkersRemain(left.join(", ")));
+            }
             git::operation::mark_resolved(&repo, &paths)?;
             let remaining = git::operation::conflicted_paths(&repo)?;
             Ok(Output::Json(
                 json!({ "message": "resolved", "remainingConflicts": remaining }),
+            ))
+        }
+        "resolve_conflict" => {
+            let repo = repo(ctx, args)?;
+            let paths = path_list(args, "paths")?.unwrap_or_default();
+            let side = match str_arg(args, "side")? {
+                "ours" => git::resolve::Side::Ours,
+                "theirs" => git::resolve::Side::Theirs,
+                other => {
+                    return Err(AppError::InvalidInput(format!(
+                        "side must be ours or theirs, not {other:?}"
+                    )));
+                }
+            };
+            git::resolve::take_side(&repo, &paths, side)?;
+            let remaining = git::operation::conflicted_paths(&repo)?;
+            Ok(Output::Json(
+                json!({ "message": "resolved", "remainingConflicts": remaining, "next": "continue_operation when none remain" }),
             ))
         }
         "continue_operation" => {

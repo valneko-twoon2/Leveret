@@ -4,7 +4,7 @@
 use tauri::State;
 
 use super::blocking;
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::git::operation::Outcome;
 use crate::repos::RepoStore;
 use crate::{git, security};
@@ -35,12 +35,37 @@ pub async fn merge_branch(store: State<'_, RepoStore>, repo: String, branch: Str
 }
 
 #[tauri::command]
-pub async fn mark_resolved(store: State<'_, RepoStore>, repo: String, paths: Vec<String>) -> Result<()> {
+/// Marks files as resolved. Unless `force` is set, files that still contain
+/// conflict markers are refused (`conflictMarkersRemain`, listing them).
+pub async fn mark_resolved(store: State<'_, RepoStore>, repo: String, paths: Vec<String>, force: bool) -> Result<()> {
     let repo = store.require(&repo)?;
     for p in &paths {
         security::relative_path(p)?;
     }
-    blocking(move || git::operation::mark_resolved(&repo, &paths)).await
+    blocking(move || {
+        let left = git::resolve::files_with_markers(&repo, &paths);
+        if !force && !left.is_empty() {
+            return Err(AppError::ConflictMarkersRemain(left.join("\n")));
+        }
+        git::operation::mark_resolved(&repo, &paths)
+    })
+    .await
+}
+
+/// Resolves conflicted files with one side's version (the current files go to
+/// the Recycle Bin).
+#[tauri::command]
+pub async fn resolve_conflict(
+    store: State<'_, RepoStore>,
+    repo: String,
+    paths: Vec<String>,
+    side: git::resolve::Side,
+) -> Result<()> {
+    let repo = store.require(&repo)?;
+    for p in &paths {
+        security::relative_path(p)?;
+    }
+    blocking(move || git::resolve::take_side(&repo, &paths, side)).await
 }
 
 #[tauri::command]

@@ -162,6 +162,7 @@ const ORDER: &[&str] = &[
     // destructive
     "discard_changes",
     "delete_branch",
+    "resolve_conflict",
     "abort_operation",
     "skip_operation",
     "stash_drop",
