@@ -1,16 +1,19 @@
 <#
 .SYNOPSIS
-  Runs tests and static checks (svelte-check, frontend build, cargo test, cargo clippy).
+  Runs tests and static checks (file sizes, svelte-check, frontend build, cargo test, cargo clippy).
 .PARAMETER Fast
   Skip clippy.
 #>
 param([switch]$Fast)
 . "$PSScriptRoot\_common.ps1"
+. "$PSScriptRoot\_size.ps1"
 
 Initialize-Frontend
 
 # Static security rules (offline; the full check with audits is scripts\security.bat).
 & "$PSScriptRoot\security.ps1" -Offline -NoTests
+
+Test-FileSizes
 
 Write-Step 'Type-checking the frontend (svelte-check)'
 Invoke-Native npm @('run', 'check') $Frontend
