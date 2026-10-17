@@ -57,83 +57,37 @@
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/04-history.png">
-        <img alt="ブランチグラフ付きの履歴画面" src="docs/screenshots/light/04-history.png">
+        <img alt="History view with the branch graph" src="docs/screenshots/light/04-history.png">
       </picture>
-      <p align="center"><b>履歴</b> — グラフ、ラベル、コミット詳細</p>
+      <p align="center">履歴 — グラフ、ラベル、コミットの詳細</p>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/03-commit-message.png">
-        <img alt="コミットメッセージの入力" src="docs/screenshots/light/03-commit-message.png">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/19-tags.png">
+        <img alt="Tags tab" src="docs/screenshots/light/19-tags.png">
       </picture>
-      <p align="center"><b>コミット</b> — チェックしたファイルだけ</p>
+      <p align="center">タグ — チェックアウト、プッシュ、削除</p>
     </td>
   </tr>
   <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/10-branches.png">
-        <img alt="ローカルとリモートのブランチ一覧" src="docs/screenshots/light/10-branches.png">
-      </picture>
-      <p align="center"><b>ブランチ</b> — 切り替え、マージ、リベース</p>
-    </td>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/13-rebase-conflict.png">
-        <img alt="競合で止まったリベース" src="docs/screenshots/light/13-rebase-conflict.png">
+        <img alt="A rebase stopped on conflicts" src="docs/screenshots/light/13-rebase-conflict.png">
       </picture>
-      <p align="center"><b>競合</b> — 解決して続行、または中止</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/12-history-menu.png">
-        <img alt="コミットの右クリックメニュー" src="docs/screenshots/light/12-history-menu.png">
-      </picture>
-      <p align="center"><b>右クリック</b> — リバート、チェリーピック、ブランチ作成</p>
+      <p align="center">競合 — 解決、続行、中止</p>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/08-clone.png">
-        <img alt="GitHub のリポジトリをクローン" src="docs/screenshots/light/08-clone.png">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/21-settings.png">
+        <img alt="Settings screen" src="docs/screenshots/light/21-settings.png">
       </picture>
-      <p align="center"><b>クローン</b> — GitHub アカウントから直接</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/07-sign-in.png">
-        <img alt="デバイスコードで GitHub にサインイン" src="docs/screenshots/light/07-sign-in.png">
-      </picture>
-      <p align="center"><b>サインイン</b> — ブラウザで承認するだけ</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/01-welcome.png">
-        <img alt="ようこそ画面" src="docs/screenshots/light/01-welcome.png">
-      </picture>
-      <p align="center"><b>ようこそ</b> — 最初のリポジトリを追加・クローン</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/17-issues.png">
-        <img alt="GitHub とローカルの Issue を表示した Issue タブ" src="docs/screenshots/light/17-issues.png">
-      </picture>
-      <p align="center"><b>Issue</b> — GitHub とローカル。準備ができたら反映</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/16-performance.png">
-        <img alt="処理ごとの時間を表示したパフォーマンスパネル" src="docs/screenshots/light/16-performance.png">
-      </picture>
-      <p align="center"><b>パフォーマンス</b> — すべての処理を計測（Ctrl+Shift+D）</p>
+      <p align="center">設定</p>
     </td>
   </tr>
 </table>
+
+ほかの画面: [全画面のスクリーンショット（ライト / ダーク）](docs/screenshots.ja.md)
 
 ## 仕組み
 
@@ -263,7 +217,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret.exe と Leveret_
 | `scripts\security.bat [-Offline]` | セキュリティの静的チェック、`npm audit`、`cargo audit`、バックエンドのセキュリティテスト |
 | `scripts\publish.bat [-SkipTests]` | リリースビルド。`artifacts\<バージョン>\` に `Leveret.exe` と `Leveret_v<バージョン>.zip` を出力 |
 | `scripts\benchmark.bat [-Runs N] [-Repo <パス>] [-Mock] [-SaveBaseline] [-Strict]` | ベンチマーク。生成した大きなリポジトリで全画面の処理時間を計測し、基準値と比較 |
-| `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | 全画面を `artifacts\screenshots\` に撮影 |
+| `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Size 900x560] [-Open]` | 全画面を `artifacts\screenshots\` に撮影（`-Size` は `-Browser` 時のウィンドウサイズ） |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | バージョンを一括変更（引数なしなら入力を求めます） |
 | `scripts\licenses.bat [-Check]` | 設定画面に表示するサードパーティのライセンス一覧を生成（依存パッケージを変えたら実行） |
 | `scripts\clean.ps1 [-All]` | ビルド成果物を削除 |

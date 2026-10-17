@@ -73,7 +73,8 @@ feat: add fetch, pull and push
   and return compact JSON with next steps on stops such as conflicts. Each area module holds its tools'
   definitions and handlers; add new names to `ORDER` in `tools/mod.rs` (a test checks it).
 - **New screens or states** get a capture scene in `frontend/src/lib/capture.ts`; check them with
-  `scripts\screenshot.bat` (add `-Browser` to skip the Rust build).
+  `scripts\screenshot.bat` (add `-Browser` to skip the Rust build, `-Size 900x560` to check the minimum window).
+  Refreshed screenshots go to `docs/screenshots/` and the gallery pages `docs/screenshots.md` / `.ja.md`.
 - Rust: `cargo fmt` style (`backend/rustfmt.toml`), no clippy warnings. Frontend: `npm run check` must be clean.
 - **Line endings**: LF in every file, `.ps1` and `.bat` included (`.editorconfig`, `.gitattributes`). Scripts that
   write files use `"`n"` and UTF-8 without BOM.
@@ -140,7 +141,7 @@ The webview is treated as untrusted; the Rust backend is the trust boundary.
 | UI only, in a browser | `scripts\preview.bat` |
 | All checks | `scripts\test.bat` |
 | Security check (with dependency audits) | `scripts\security.bat` |
-| Screenshots | `scripts\screenshot.bat [-Browser] [-Theme both]` |
+| Screenshots | `scripts\screenshot.bat [-Browser] [-Theme both] [-Size 900x560]` |
 | Benchmark (timings vs. baseline) | `scripts\benchmark.bat [-Runs N] [-SaveBaseline] [-Strict]` |
 | Release build to `artifacts\` | `scripts\publish.bat` |
 | Bump version | `scripts\version.bat <x.y.z \| major \| minor \| patch>` |

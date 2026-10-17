@@ -59,81 +59,35 @@ Pick a repository from your list, review the changes, commit. That's it.
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/04-history.png">
         <img alt="History view with the branch graph" src="docs/screenshots/light/04-history.png">
       </picture>
-      <p align="center"><b>History</b> — graph, labels, commit details</p>
+      <p align="center">History — graph, labels, commit details</p>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/03-commit-message.png">
-        <img alt="Writing a commit message" src="docs/screenshots/light/03-commit-message.png">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/19-tags.png">
+        <img alt="Tags tab" src="docs/screenshots/light/19-tags.png">
       </picture>
-      <p align="center"><b>Commit</b> — only the checked files</p>
+      <p align="center">Tags — check out, push, delete</p>
     </td>
   </tr>
   <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/10-branches.png">
-        <img alt="Branch dialog with local and remote branches" src="docs/screenshots/light/10-branches.png">
-      </picture>
-      <p align="center"><b>Branches</b> — switch, merge, rebase</p>
-    </td>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/13-rebase-conflict.png">
         <img alt="A rebase stopped on conflicts" src="docs/screenshots/light/13-rebase-conflict.png">
       </picture>
-      <p align="center"><b>Conflicts</b> — resolve, continue or abort</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/12-history-menu.png">
-        <img alt="Context menu on a commit" src="docs/screenshots/light/12-history-menu.png">
-      </picture>
-      <p align="center"><b>Right-click</b> — revert, cherry-pick, branch off</p>
+      <p align="center">Conflicts — resolve, continue or abort</p>
     </td>
     <td width="50%">
       <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/08-clone.png">
-        <img alt="Cloning one of your GitHub repositories" src="docs/screenshots/light/08-clone.png">
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/21-settings.png">
+        <img alt="Settings screen" src="docs/screenshots/light/21-settings.png">
       </picture>
-      <p align="center"><b>Clone</b> — straight from your GitHub account</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/07-sign-in.png">
-        <img alt="Signing in to GitHub with a device code" src="docs/screenshots/light/07-sign-in.png">
-      </picture>
-      <p align="center"><b>Sign in</b> — approve in your browser</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/01-welcome.png">
-        <img alt="Welcome screen" src="docs/screenshots/light/01-welcome.png">
-      </picture>
-      <p align="center"><b>Welcome</b> — add or clone your first repository</p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/17-issues.png">
-        <img alt="Issues tab with GitHub and local issues" src="docs/screenshots/light/17-issues.png">
-      </picture>
-      <p align="center"><b>Issues</b> — GitHub and local, publish when ready</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/16-performance.png">
-        <img alt="Performance panel with timings per step" src="docs/screenshots/light/16-performance.png">
-      </picture>
-      <p align="center"><b>Performance</b> — every step timed (Ctrl+Shift+D)</p>
+      <p align="center">Settings</p>
     </td>
   </tr>
 </table>
+
+More: [every screen in light and dark](docs/screenshots.md).
 
 ## How it works
 
@@ -263,7 +217,7 @@ Every `.bat` works from a terminal or by double-clicking, and forwards its argum
 | `scripts\security.bat [-Offline]` | Static security rules, `npm audit`, `cargo audit`, backend security tests |
 | `scripts\publish.bat [-SkipTests]` | Release build: `artifacts\<version>\Leveret.exe` and `Leveret_v<version>.zip` |
 | `scripts\benchmark.bat [-Runs N] [-Repo <path>] [-Mock] [-SaveBaseline] [-Strict]` | Benchmark: times every screen on a large generated repository and compares with the baseline |
-| `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | Captures every screen into `artifacts\screenshots\` |
+| `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Size 900x560] [-Open]` | Captures every screen into `artifacts\screenshots\` (`-Size`: window size with `-Browser`) |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | Bumps the version everywhere (prompts when run without arguments) |
 | `scripts\licenses.bat [-Check]` | Regenerates the third-party license list shown in the settings (run after changing dependencies) |
 | `scripts\clean.ps1 [-All]` | Removes build outputs |
