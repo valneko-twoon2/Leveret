@@ -60,10 +60,10 @@
             {#snippet row(repo)}
               <div class="repo">
                 <div class="names">
-                  <span class="name"><span class="owner">{repo.owner}/</span>{repo.name}</span>
+                  <span class="name" title={repo.fullName}><span class="owner">{repo.owner}/</span>{repo.name}</span>
                   {#if repo.private}<span class="private" title={t('clone.private')}><Icon name="lock" size={11} /></span>{/if}
                 </div>
-                <div class="meta">
+                <div class="meta" title={repo.description ?? undefined}>
                   {repo.description ?? ''}
                   {#if repo.pushedAt}<span class="when">· {formatRelative(Date.parse(repo.pushedAt) / 1000)}</span>{/if}
                 </div>
@@ -86,7 +86,7 @@
       <input type="text" spellcheck="false" bind:value={github.parentDir} />
       <button class="btn" onclick={browse}><Icon name="folder" size={14} />{t('clone.browse')}</button>
     </div>
-    {#if target}<small class="mono">{target}</small>{/if}
+    {#if target}<small class="mono" title={target}>{target}</small>{/if}
   </label>
 
   {#if github.progress}

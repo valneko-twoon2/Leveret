@@ -88,7 +88,7 @@
 </script>
 
 <header class="repo-header">
-  <div class="cell repo" style:width="{layout.sizes.column}px" title={app.repo?.path}>
+  <div class="cell repo" style:width="{layout.sizes.column + 1}px" title={app.repo?.path}>
     <Icon name="repo" />
     <div class="text">
       <span class="label">{t('repos.title')}</span>
@@ -100,7 +100,7 @@
     <Icon name="branch" />
     <div class="text">
       <span class="label">{t('repo.branch')}</span>
-      <span class="value">{branchLabel}</span>
+      <span class="value" title={branchLabel}>{branchLabel}</span>
     </div>
     {#if app.operation}
       <span class="pill warn">{app.operationName()}</span>

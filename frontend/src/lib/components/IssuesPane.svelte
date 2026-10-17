@@ -87,7 +87,7 @@
             </span>
             <div class="text">
               <div class="title">
-                <span class="summary">{issue.title}</span>
+                <span class="summary" title={issue.title}>{issue.title}</span>
                 <IssueLabels labels={issue.labels} />
               </div>
               <div class="meta" title={formatDateTime(issue.updatedAt)}>

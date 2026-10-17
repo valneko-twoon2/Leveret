@@ -90,7 +90,7 @@
     position: fixed;
     z-index: 99;
     min-width: 200px;
-    max-width: 420px;
+    max-width: min(560px, calc(100vw - 8px));
     padding: 4px;
     border: 1px solid var(--border);
     border-radius: 8px;
@@ -104,8 +104,8 @@
     align-items: center;
     gap: 24px;
     width: 100%;
-    height: 28px;
-    padding: 0 10px;
+    min-height: 28px;
+    padding: 5px 10px;
     border: none;
     border-radius: 4px;
     background: transparent;
@@ -133,11 +133,17 @@
     color: var(--fg-on-accent);
   }
 
+  /* Long labels (branch names, ...) wrap instead of being cut off. */
   .label {
     flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
+  }
+
+  .check {
+    flex: none;
+    display: inline-flex;
+    width: 14px;
+    margin-right: -16px;
   }
 
   .hint {

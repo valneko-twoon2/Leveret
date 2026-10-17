@@ -91,7 +91,7 @@
             <div class="text">
               <div class="subject">
                 {#each c.refs as r (r.kind + r.name)}<RefBadge label={r} />{/each}
-                <span class="summary">{c.subject}</span>
+                <span class="summary" title={c.subject}>{c.subject}</span>
               </div>
               <div class="meta" title={formatDateTime(c.authorTime)}>
                 {c.authorName} · {formatRelative(c.authorTime)}{#if !showGraph} · <span class="mono">{shortHash(c.hash)}</span>{/if}

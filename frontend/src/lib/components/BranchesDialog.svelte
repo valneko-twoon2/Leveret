@@ -50,7 +50,7 @@
   <li class:current={b.current}>
     <button class="row" disabled={app.busy !== null} onclick={() => branches.switchBranch(b)} oncontextmenu={(e) => branchMenu(b, e)}>
       <span class="check">{#if b.current}<Icon name="check" size={14} />{/if}</span>
-      <span class="name">{b.name}</span>
+      <span class="name" title={b.name}>{b.name}</span>
       {#if b.upstreamGone}<span class="tag">{t('branches.gone')}</span>{/if}
       {#if b.ahead || b.behind}
         <span class="counts">

@@ -98,12 +98,16 @@
   }
 
   .btn {
-    height: 32px;
+    height: auto;
+    min-height: 32px;
+    padding-top: 4px;
+    padding-bottom: 4px;
   }
 
+  /* Long branch names wrap instead of being cut off. */
   .label {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .hint {

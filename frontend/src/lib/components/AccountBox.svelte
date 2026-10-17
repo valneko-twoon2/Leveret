@@ -34,7 +34,7 @@
       {:else}
         <span class="avatar"><Icon name="user" size={14} /></span>
       {/if}
-      <span class="login">{github.account.login}</span>
+      <span class="login" title={github.account.login}>{github.account.login}</span>
       <button class="icon-btn" title={t('github.signOut')} aria-label={t('github.signOut')} onclick={signOut}>
         <Icon name="logout" size={14} />
       </button>
