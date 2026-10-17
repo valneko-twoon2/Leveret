@@ -89,6 +89,7 @@ export const scenes: Scene[] = [
       await app.setTab('changes')
       app.error = {
         message: t('errors.identityMissing'),
+        code: 'identityMissing',
         detail: 'Author identity unknown\n\n*** Please tell me who you are.',
       }
     },

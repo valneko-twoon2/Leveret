@@ -8,7 +8,7 @@ export default {
     emptySummary: 'コミットの概要を入力してください。',
     nothingSelected: 'コミットするファイルを選択してください。',
     identityMissing:
-      'Git のユーザー名とメールアドレスが設定されていません。\ngit config --global user.name "名前" と git config --global user.email "メール" を実行してください。',
+      'Git のユーザー名とメールアドレスが設定されていません。\n「Git の設定を開く」から設定できます。',
     gitFailed: 'git コマンドが失敗しました。',
     repoNotRegistered: 'このリポジトリは一覧に登録されていません: {detail}',
     invalidInput: '入力内容が正しくありません。',
