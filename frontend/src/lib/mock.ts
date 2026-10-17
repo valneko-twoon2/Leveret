@@ -112,7 +112,7 @@ const SUBJECTS = [
   'コミットメッセージの検証を追加',
 ]
 const AUTHORS: [string, string][] = [
-  ['dutch', 'dutch@example.com'],
+  ['valneko-twoon2', 'valneko-twoon2@example.com'],
   ['Hana Sato', 'hana@example.com'],
   ['Ken Ito', 'ken@example.com'],
 ]
@@ -177,7 +177,7 @@ function makeRepos(): MockRepo[] {
   const web = makeHistory(3, 80, 'main')
   return [
     {
-      entry: { name: 'dotfiles', path: 'C:\\Users\\dutch\\dotfiles' },
+      entry: { name: 'dotfiles', path: 'C:\\Users\\valneko-twoon2\\dotfiles' },
       branch: 'master',
       upstream: 'origin/master',
       ahead: 0,
@@ -224,7 +224,7 @@ function makeRepos(): MockRepo[] {
 let repos: MockRepo[] = makeRepos()
 let selected: string | null = 'E:\\Code\\Leveret'
 
-const MOCK_ACCOUNT: GithubAccount = { login: 'dutch', name: 'Dutch', htmlUrl: 'https://github.com/dutch', avatar: null }
+const MOCK_ACCOUNT: GithubAccount = { login: 'valneko-twoon2', name: 'valneko-twoon2', htmlUrl: 'https://github.com/valneko-twoon2', avatar: null }
 let account: GithubAccount | null = null
 let pollCount = 0
 const cloneListeners = new Set<(p: CloneProgress) => void>()
@@ -251,10 +251,10 @@ export function onAgentActivity(handler: (entries: AgentActivity[]) => void): ()
 }
 
 const GITHUB_REPOS: GithubRepo[] = [
-  ['dutch', 'Leveret', 'A small, friendly Git client for Windows', false],
-  ['dutch', 'dotfiles', 'My configuration files', false],
-  ['dutch', 'web-app', null, true],
-  ['dutch', 'advent-of-code', 'Solutions in Rust', false],
+  ['valneko-twoon2', 'Leveret', 'A small, friendly Git client for Windows', false],
+  ['valneko-twoon2', 'dotfiles', 'My configuration files', false],
+  ['valneko-twoon2', 'web-app', null, true],
+  ['valneko-twoon2', 'advent-of-code', 'Solutions in Rust', false],
   ['hana-sato', 'design-notes', '設計メモとスケッチ', true],
   ['example-org', 'api-server', 'Backend API for the example service', true],
   ['example-org', 'docs', 'Public documentation site', false],
@@ -734,7 +734,7 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
     }
     case 'agent_info':
       return {
-        exePath: 'C:\\Users\\dutch\\Apps\\Leveret\\Leveret.exe',
+        exePath: 'C:\\Users\\valneko-twoon2\\Apps\\Leveret\\Leveret.exe',
         access: agentAccess,
         tools: AGENT_TOOLS,
         activity: AGENT_ACTIVITY,
@@ -773,7 +773,7 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       console.info(`mock: would open ${String(args.url)}`)
       return null
     case 'default_clone_dir':
-      return 'C:\\Users\\dutch\\Documents\\GitHub'
+      return 'C:\\Users\\valneko-twoon2\\Documents\\GitHub'
     case 'clone_repo': {
       const name = String(args.name)
       const path = `${String(args.parent).replace(/[\\/]+$/, '')}\\${name}`
