@@ -26,6 +26,7 @@ use std::process::{Command, Stdio};
 use serde::Serialize;
 
 use crate::error::{AppError, Result};
+use crate::perf;
 
 pub struct Git<'a> {
     repo: &'a Path,
@@ -122,6 +123,13 @@ impl<'a> Git<'a> {
     }
 
     pub fn run(self) -> Result<GitOutput> {
+        let span = perf::Span::start(perf::Kind::Git, perf::git_name(&self.args));
+        let result = self.run_inner();
+        span.finish(result.is_ok());
+        result
+    }
+
+    fn run_inner(self) -> Result<GitOutput> {
         let mut cmd = self.command();
         cmd.stdin(if self.stdin.is_some() {
             Stdio::piped()
@@ -160,7 +168,14 @@ impl<'a> Git<'a> {
 
     /// Runs git and reports each stderr line (split on `\r` and `\n`, as progress
     /// output uses carriage returns) to `on_line`.
-    pub fn run_with_progress(self, mut on_line: impl FnMut(&str)) -> Result<()> {
+    pub fn run_with_progress(self, on_line: impl FnMut(&str)) -> Result<()> {
+        let span = perf::Span::start(perf::Kind::Git, perf::git_name(&self.args));
+        let result = self.run_with_progress_inner(on_line);
+        span.finish(result.is_ok());
+        result
+    }
+
+    fn run_with_progress_inner(self, mut on_line: impl FnMut(&str)) -> Result<()> {
         let mut cmd = self.command();
         cmd.stdin(Stdio::null()).stdout(Stdio::null());
         let mut child = Self::spawn(&mut cmd)?;

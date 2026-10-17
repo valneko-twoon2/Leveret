@@ -24,6 +24,7 @@ import {
 import { confirmDialog } from './dialogs'
 import { shortHash } from './format'
 import { t, type MessageKey } from './i18n/index.svelte'
+import { perf } from './perf'
 
 export type Tab = 'changes' | 'history'
 
@@ -121,6 +122,9 @@ class AppState {
   agentOpen = $state(false)
   agentInfo = $state.raw<AgentInfo | null>(null)
 
+  /** Performance panel (Ctrl+Shift+D). */
+  perfOpen = $state(false)
+
   toasts = $state<Toast[]>([])
   error = $state<ErrorInfo | null>(null)
   /** Number of in-flight loads; capture waits for this to reach zero. */
@@ -183,12 +187,16 @@ class AppState {
    * Runs a git action that changes the repository. Only one runs at a time, so
    * double clicks and shortcuts can't start overlapping git commands.
    */
-  private async run<T>(busy: Busy, work: (repo: string) => Promise<T>, options: { quiet?: boolean } = {}): Promise<T | undefined> {
+  private async run<T>(
+    busy: Busy,
+    work: (repo: string) => Promise<T>,
+    options: { quiet?: boolean; name?: string } = {},
+  ): Promise<T | undefined> {
     const repo = this.selectedPath
     if (!repo || this.busy !== null) return undefined
     this.busy = busy
     try {
-      return await this.track(work(repo))
+      return await this.track(perf.time('action', options.name ?? busy, () => work(repo)))
     } catch (e) {
       if (!options.quiet) this.error = describeError(e)
       return undefined
@@ -271,12 +279,15 @@ class AppState {
   }
 
   async selectRepo(path: string | null) {
-    if (path !== this.selectedPath) {
-      this.selectedPath = path
-      this.resetRepoView()
-      void api.selectRepo(path).catch(() => {})
+    const open = async () => {
+      if (path !== this.selectedPath) {
+        this.selectedPath = path
+        this.resetRepoView()
+        void api.selectRepo(path).catch(() => {})
+      }
+      await this.refresh()
     }
-    await this.refresh()
+    await (path ? perf.view('repo.open', open) : open())
   }
 
   private resetRepoView() {
@@ -304,12 +315,15 @@ class AppState {
 
   /** Reloads status (and history when it is visible) for the current repository. */
   async refresh() {
-    await Promise.all([
-      this.loadStatus(),
-      this.loadStashes(),
-      this.tab === 'history' ? this.loadLog() : Promise.resolve(),
-      this.branchesOpen ? this.loadBranches() : Promise.resolve(),
-    ])
+    if (!this.selectedPath) return
+    await perf.view('refresh', async () => {
+      await Promise.all([
+        this.loadStatus(),
+        this.loadStashes(),
+        this.tab === 'history' ? this.loadLog() : Promise.resolve(),
+        this.branchesOpen ? this.loadBranches() : Promise.resolve(),
+      ])
+    })
   }
 
   /** Refresh after an action that may have changed commits or branches. */
@@ -353,8 +367,10 @@ class AppState {
       this.workingDiff = null
       return
     }
-    const diff = await this.guard(() => api.getWorkingDiff(repo, file))
-    if (diff && this.selectedFile === path && repo === this.selectedPath) this.workingDiff = diff
+    await perf.view('diff.file', async () => {
+      const diff = await this.guard(() => api.getWorkingDiff(repo, file))
+      if (diff && this.selectedFile === path && repo === this.selectedPath) this.workingDiff = diff
+    })
   }
 
   toggleFile(path: string) {
@@ -457,7 +473,7 @@ class AppState {
   async remote(op: RemoteOp, options: { quiet?: boolean } = {}) {
     const branch = this.status?.branch
     const publishing = (op === 'push' || op === 'sync') && !this.status?.upstream
-    const outcome = await this.run(op, (repo) => api.remote(repo, op), options)
+    const outcome = await this.run(op, (repo) => api.remote(repo, op), { ...options, name: `remote.${op}` })
     if (outcome === undefined) {
       // A failed quiet fetch still updates nothing; a failed visible one showed its error.
       return
@@ -564,7 +580,7 @@ class AppState {
     if (!this.selectedPath) return
     this.branchFilter = ''
     this.branchesOpen = true
-    await this.loadBranches()
+    await perf.view('branches.open', () => this.loadBranches())
   }
 
   closeBranches() {
@@ -668,7 +684,7 @@ class AppState {
 
   async openAgent() {
     this.agentOpen = true
-    await this.loadAgentInfo()
+    await perf.view('agent.open', () => this.loadAgentInfo())
   }
 
   closeAgent() {
@@ -704,14 +720,16 @@ class AppState {
   // --- history --------------------------------------------------------------
 
   async setTab(tab: Tab) {
-    this.tab = tab
-    if (tab === 'history' && this.log.length === 0) await this.loadLog()
+    await perf.view(`tab.${tab}`, async () => {
+      this.tab = tab
+      if (tab === 'history' && this.log.length === 0) await this.loadLog()
+    })
   }
 
   async setScope(scope: LogScope) {
     this.scope = scope
     this.logLimit = LOG_PAGE
-    await this.loadLog()
+    await perf.view('history.scope', () => this.loadLog())
   }
 
   async loadLog() {
@@ -731,7 +749,7 @@ class AppState {
   async loadMoreLog() {
     if (!this.logHasMore || this.logLoading) return
     this.logLimit += LOG_PAGE
-    await this.loadLog()
+    await perf.view('history.more', () => this.loadLog())
   }
 
   async selectCommit(hash: string | null) {
@@ -742,10 +760,12 @@ class AppState {
       this.commitDiff = null
       return
     }
-    const detail = await this.guard(() => api.getCommit(repo, hash))
-    if (!detail || this.selectedCommit !== hash) return
-    this.detail = detail
-    await this.selectCommitFile(detail.files[0]?.path ?? null)
+    await perf.view('commit.open', async () => {
+      const detail = await this.guard(() => api.getCommit(repo, hash))
+      if (!detail || this.selectedCommit !== hash) return
+      this.detail = detail
+      await this.selectCommitFile(detail.files[0]?.path ?? null)
+    })
   }
 
   async selectCommitFile(path: string | null) {
@@ -757,8 +777,10 @@ class AppState {
       this.commitDiff = null
       return
     }
-    const diff = await this.guard(() => api.getCommitDiff(repo, detail, file))
-    if (diff && this.detailFile === path && this.detail === detail) this.commitDiff = diff
+    await perf.view('diff.commit', async () => {
+      const diff = await this.guard(() => api.getCommitDiff(repo, detail, file))
+      if (diff && this.detailFile === path && this.detail === detail) this.commitDiff = diff
+    })
   }
 }
 

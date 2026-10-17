@@ -181,12 +181,22 @@ export const scenes: Scene[] = [
       await app.openAgent()
     },
   },
+  {
+    id: '16-performance',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      app.perfOpen = true
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
   app.closeAgent()
+  app.perfOpen = false
   app.error = null
   app.closeNewBranch()
   app.closeBranches()

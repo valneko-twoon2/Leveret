@@ -4,15 +4,14 @@
 use std::io::Write;
 use std::path::PathBuf;
 
-/// `%LOCALAPPDATA%\com.leveret.desktop\logs\crash.log`
-fn crash_log() -> Option<PathBuf> {
+/// `%LOCALAPPDATA%\com.leveret.desktop\logs`
+pub fn logs_dir() -> Option<PathBuf> {
     let base = std::env::var_os("LOCALAPPDATA")?;
-    Some(
-        PathBuf::from(base)
-            .join("com.leveret.desktop")
-            .join("logs")
-            .join("crash.log"),
-    )
+    Some(PathBuf::from(base).join("com.leveret.desktop").join("logs"))
+}
+
+fn crash_log() -> Option<PathBuf> {
+    Some(logs_dir()?.join("crash.log"))
 }
 
 /// Appends every panic (message, location, backtrace) to the crash log, then

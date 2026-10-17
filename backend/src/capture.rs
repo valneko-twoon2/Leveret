@@ -4,6 +4,8 @@
 //! (no taskbar entry, no focus), lets the frontend walk through its capture
 //! scenes and saves each one as `<dir>/<scene>.png`, then exits.
 //! The current screen can also be saved at any time with Ctrl+Shift+S.
+//!
+//! `leveret --bench <dir> [--runs N]` runs the same way and saves timings instead (see `perf.rs`).
 
 use std::path::{Path, PathBuf};
 
@@ -19,6 +21,15 @@ pub struct CaptureRequest {
     pub scenes: Option<Vec<String>>,
 }
 
+/// `--bench <dir> [--runs N]`: walk through the benchmark steps off-screen
+/// (frontend/src/lib/bench.ts) and save the timings to `<dir>/perf.json`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BenchRequest {
+    pub dir: String,
+    pub runs: u32,
+}
+
 /// Command line options passed to the frontend.
 #[derive(Debug, Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -28,11 +39,31 @@ pub struct StartupOptions {
     /// `--theme light|dark`: force a color theme instead of following the OS.
     pub theme: Option<String>,
     pub capture: Option<CaptureRequest>,
+    pub bench: Option<BenchRequest>,
+    /// `LEVERET_PERF=1`: the frontend forwards its timings to `perf.jsonl`.
+    pub perf_log: bool,
 }
 
-/// Parses `--capture <dir>`, `--mock`, `--theme <light|dark>` and `--scenes a,b` from the command line.
+impl StartupOptions {
+    /// Capture and benchmark runs render in an off-screen window and then exit.
+    pub fn offscreen(&self) -> bool {
+        self.capture.is_some() || self.bench.is_some()
+    }
+}
+
+fn absolute(dir: &str) -> String {
+    std::path::absolute(dir)
+        .unwrap_or_else(|_| PathBuf::from(dir))
+        .display()
+        .to_string()
+}
+
+/// Parses `--capture <dir>`, `--bench <dir>`, `--runs N`, `--mock`, `--theme <light|dark>`
+/// and `--scenes a,b` from the command line.
 pub fn parse_args(args: impl IntoIterator<Item = String>) -> StartupOptions {
     let mut dir = None;
+    let mut bench = None;
+    let mut runs = 3;
     let mut mock = false;
     let mut theme = None;
     let mut scenes = None;
@@ -40,6 +71,8 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> StartupOptions {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--capture" => dir = args.next(),
+            "--bench" => bench = args.next(),
+            "--runs" => runs = args.next().and_then(|n| n.parse().ok()).unwrap_or(runs).clamp(1, 50),
             "--mock" => mock = true,
             "--theme" => theme = args.next().filter(|t| t == "light" || t == "dark"),
             "--scenes" => {
@@ -50,14 +83,21 @@ pub fn parse_args(args: impl IntoIterator<Item = String>) -> StartupOptions {
             _ => {}
         }
     }
-    let capture = dir.map(|dir| {
-        let dir = std::path::absolute(&dir).unwrap_or_else(|_| PathBuf::from(&dir));
-        CaptureRequest {
-            dir: dir.display().to_string(),
-            scenes,
-        }
+    let capture = dir.map(|dir| CaptureRequest {
+        dir: absolute(&dir),
+        scenes,
     });
-    StartupOptions { mock, theme, capture }
+    let bench = bench.map(|dir| BenchRequest {
+        dir: absolute(&dir),
+        runs,
+    });
+    StartupOptions {
+        mock,
+        theme,
+        capture,
+        bench,
+        perf_log: crate::perf::enabled_log(),
+    }
 }
 
 /// Saves the webview's current rendering to `path` as PNG.
@@ -143,6 +183,17 @@ mod tests {
         assert!(req.dir.ends_with("out"));
         assert_eq!(req.scenes, Some(vec!["a".to_string(), "b".to_string()]));
         let none = parse_args(["leveret".to_string()]);
-        assert!(none.capture.is_none() && !none.mock);
+        assert!(none.capture.is_none() && none.bench.is_none() && !none.mock && !none.offscreen());
+    }
+
+    #[test]
+    fn parses_bench_args() {
+        let opts = parse_args(["leveret", "--bench", "perf", "--runs", "500"].map(String::from));
+        let req = opts.bench.as_ref().unwrap();
+        assert!(req.dir.ends_with("perf"));
+        assert_eq!(req.runs, 50);
+        assert!(opts.offscreen());
+        let opts = parse_args(["leveret", "--bench", "perf", "--runs", "x"].map(String::from));
+        assert_eq!(opts.bench.unwrap().runs, 3);
     }
 }

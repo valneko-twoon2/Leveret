@@ -31,7 +31,9 @@ import type {
   RepoList,
   RepoStatus,
   StashEntry,
+  PerfSnapshot,
 } from './api'
+import type { PerfSample } from './perf'
 
 interface MockCommit {
   hash: string
@@ -473,6 +475,26 @@ function listBranches(r: MockRepo): Branch[] {
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/** Backend timings as the real app would report them (git processes, GitHub requests). */
+function mockPerfSamples(): PerfSample[] {
+  const rows: [PerfSample['kind'], string, number[]][] = [
+    ['startup', 'window created', [182]],
+    ['startup', 'page loaded', [412]],
+    ['git', 'git status', [28, 31, 26, 35, 30]],
+    ['git', 'git log', [64, 58, 71]],
+    ['git', 'git diff', [12, 15, 11, 14, 13, 18]],
+    ['git', 'git show', [22, 19, 25]],
+    ['git', 'git for-each-ref', [9, 11]],
+    ['git', 'git fetch', [842]],
+    ['http', 'GET /user', [231]],
+    ['http', 'GET /user/repos', [388]],
+  ]
+  let seq = 0
+  return rows.flatMap(([kind, name, values]) =>
+    values.map((ms) => ({ seq: ++seq, time: Date.now(), kind, name, ms, ok: true, source: 'backend' as const })),
+  )
+}
+
 export async function handle(cmd: string, args: Record<string, unknown>): Promise<unknown> {
   await delay(30)
   switch (cmd) {
@@ -744,6 +766,12 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       return null
     case 'agent_call':
       return { text: `mock: ${String(args.name)}`, isError: false }
+    case 'perf_samples': {
+      const after = Number(args.after)
+      return { samples: mockPerfSamples().filter((s) => (s.seq ?? 0) > after), uptimeMs: performance.now() } satisfies PerfSnapshot
+    }
+    case 'perf_report':
+      return null
     case 'github_state':
       return { account, deviceFlow: true } satisfies GithubState
     case 'github_start_sign_in':

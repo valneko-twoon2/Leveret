@@ -499,8 +499,10 @@ pub fn call(ctx: &Context, name: &str, args: &Value) -> std::result::Result<Outp
         Value::Null => &json!({}),
         a => a,
     };
+    let span = crate::perf::Span::start(crate::perf::Kind::Tool, tool.name);
     let result = std::panic::catch_unwind(AssertUnwindSafe(|| run(ctx, name, args)))
         .unwrap_or_else(|_| Err(AppError::Other("internal error (the tool panicked)".into())));
+    span.finish(result.is_ok());
 
     if tool.level != Level::Read {
         let repo = args.get("repo").and_then(Value::as_str).map(String::from);

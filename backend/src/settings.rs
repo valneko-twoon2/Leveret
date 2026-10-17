@@ -10,8 +10,12 @@ use crate::error::Result;
 /// Same as `identifier` in tauri.conf.json, so both modes use one folder.
 const IDENTIFIER: &str = "com.leveret.desktop";
 
-/// `%APPDATA%\com.leveret.desktop` (what Tauri's `app_config_dir` resolves to).
+/// `%APPDATA%\com.leveret.desktop` (what Tauri's `app_config_dir` resolves to), or
+/// `LEVERET_CONFIG_DIR` when set (benchmarks use their own repository list).
 pub fn config_dir() -> PathBuf {
+    if let Some(dir) = std::env::var_os("LEVERET_CONFIG_DIR").filter(|d| !d.is_empty()) {
+        return PathBuf::from(dir);
+    }
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(IDENTIFIER)

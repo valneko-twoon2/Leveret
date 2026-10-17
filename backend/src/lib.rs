@@ -5,6 +5,7 @@ mod error;
 mod git;
 mod github;
 mod lockdown;
+mod perf;
 mod repos;
 mod security;
 mod settings;
@@ -632,6 +633,55 @@ fn exit_app(app: AppHandle, code: i32) {
     app.exit(code);
 }
 
+// --- performance ------------------------------------------------------------
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PerfSnapshot {
+    /// Backend samples newer than the requested sequence number.
+    samples: Vec<perf::Sample>,
+    /// Milliseconds since the process started.
+    uptime_ms: f64,
+}
+
+#[tauri::command]
+fn perf_samples(after: u64) -> PerfSnapshot {
+    PerfSnapshot {
+        samples: perf::since(after),
+        uptime_ms: perf::uptime_ms(),
+    }
+}
+
+/// Timings measured by the frontend (screen transitions, round trips), added to
+/// the backend's samples so `perf.jsonl` has the whole picture.
+#[tauri::command]
+fn perf_report(samples: Vec<perf::Sample>) {
+    const MAX_BATCH: usize = 500;
+    perf::push(
+        samples
+            .into_iter()
+            .take(MAX_BATCH)
+            .filter_map(perf::sanitize_ui_sample)
+            .collect(),
+    );
+}
+
+/// Saves the benchmark report to `<bench dir>/perf.json`. Only in `--bench` mode.
+#[tauri::command]
+async fn bench_save(options: State<'_, StartupOptions>, report: String) -> Result<String> {
+    const MAX_REPORT: usize = 32 * 1024 * 1024;
+    let Some(bench) = &options.bench else {
+        return Err(AppError::InvalidInput("not in benchmark mode".into()));
+    };
+    if report.len() > MAX_REPORT || serde_json::from_str::<serde_json::Value>(&report).is_err() {
+        return Err(AppError::InvalidInput("benchmark report".into()));
+    }
+    let path = PathBuf::from(&bench.dir).join("perf.json");
+    let shown = path.display().to_string();
+    blocking(move || settings::write_atomic(&path, report.as_bytes())).await?;
+    Ok(shown)
+}
+
 fn create_main_window(app: &tauri::App, capture: bool) -> tauri::Result<()> {
     let mut builder = WebviewWindowBuilder::new(app, "main", WebviewUrl::default())
         .title("Leveret")
@@ -664,13 +714,15 @@ fn create_main_window(app: &tauri::App, capture: bool) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    perf::mark_process_start();
     crash::install_panic_hook();
     // `leveret --mcp`: serve the agent tools over stdio, without any window.
     if std::env::args().skip(1).any(|a| a == "--mcp") {
         std::process::exit(agent::mcp::serve());
     }
     let options = capture::parse_args(std::env::args());
-    let capturing = options.capture.is_some();
+    let capturing = options.offscreen();
+    let page_loaded = std::sync::Once::new();
 
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -689,11 +741,15 @@ pub fn run() {
             if !capturing {
                 watch_agent_activity(app.handle().clone());
             }
+            perf::startup("window created");
             Ok(())
         })
         .on_page_load(move |webview, payload| {
-            if !capturing && payload.event() == PageLoadEvent::Finished {
-                let _ = webview.window().show();
+            if payload.event() == PageLoadEvent::Finished {
+                page_loaded.call_once(|| perf::startup("page loaded"));
+                if !capturing {
+                    let _ = webview.window().show();
+                }
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -744,6 +800,9 @@ pub fn run() {
             startup_options,
             capture_screen,
             exit_app,
+            perf_samples,
+            perf_report,
+            bench_save,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

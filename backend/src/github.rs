@@ -6,6 +6,7 @@
 //! so it never appears on a command line or in a repository's config.
 
 use std::io::Read as _;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use base64::Engine;
@@ -13,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::error::{AppError, Result};
+use crate::perf;
 
 const API: &str = "https://api.github.com";
 const KEYRING_SERVICE: &str = "Leveret";
@@ -76,11 +78,21 @@ pub struct GithubRepo {
     pub pushed_at: Option<String>,
 }
 
-fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
-        .timeout(Duration::from_secs(30))
-        .user_agent(concat!("Leveret/", env!("CARGO_PKG_VERSION")))
-        .build()
+/// One agent for the whole process, so requests reuse its pooled TLS connections.
+fn agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        ureq::AgentBuilder::new()
+            .timeout(Duration::from_secs(30))
+            .user_agent(concat!("Leveret/", env!("CARGO_PKG_VERSION")))
+            .build()
+    })
+}
+
+/// Sends a request, recording its time as `name` (`<METHOD> <path>`: no query, no headers).
+/// `send` converts ureq's (large) error itself, so it never travels through closures.
+fn timed(name: &str, send: impl FnOnce() -> Result<ureq::Response>) -> Result<ureq::Response> {
+    perf::time(perf::Kind::Http, name, send)
 }
 
 fn http_error(e: ureq::Error) -> AppError {
@@ -136,13 +148,16 @@ fn require_token() -> Result<String> {
 // --- API ---------------------------------------------------------------------
 
 fn api_get(token: &str, path_and_query: &str) -> Result<ureq::Response> {
-    agent()
-        .get(&format!("{API}{path_and_query}"))
-        .set("Authorization", &format!("Bearer {token}"))
-        .set("Accept", "application/vnd.github+json")
-        .set("X-GitHub-Api-Version", "2022-11-28")
-        .call()
-        .map_err(http_error)
+    let path = path_and_query.split('?').next().unwrap_or_default();
+    timed(&format!("GET {path}"), || {
+        agent()
+            .get(&format!("{API}{path_and_query}"))
+            .set("Authorization", &format!("Bearer {token}"))
+            .set("Accept", "application/vnd.github+json")
+            .set("X-GitHub-Api-Version", "2022-11-28")
+            .call()
+            .map_err(http_error)
+    })
 }
 
 fn fetch_account(token: &str) -> Result<Account> {
@@ -164,7 +179,10 @@ fn fetch_avatar(url: &str) -> Option<String> {
         return None;
     }
     let sep = if url.contains('?') { '&' } else { '?' };
-    let resp = agent().get(&format!("{url}{sep}s=64")).call().ok()?;
+    let resp = timed("GET avatar", || {
+        agent().get(&format!("{url}{sep}s=64")).call().map_err(http_error)
+    })
+    .ok()?;
     let mime = match resp.content_type() {
         m @ ("image/png" | "image/jpeg" | "image/gif" | "image/webp") => m.to_string(),
         _ => return None,
@@ -207,11 +225,13 @@ pub fn sign_out() -> Result<()> {
 /// Step 1 of the device flow: get a code for the user to enter on github.com.
 pub fn start_device_flow() -> Result<DeviceCode> {
     let id = client_id().ok_or(AppError::GithubClientIdMissing)?;
-    let resp = agent()
-        .post("https://github.com/login/device/code")
-        .set("Accept", "application/json")
-        .send_form(&[("client_id", id.as_str()), ("scope", SCOPES)])
-        .map_err(http_error)?;
+    let resp = timed("POST /login/device/code", || {
+        agent()
+            .post("https://github.com/login/device/code")
+            .set("Accept", "application/json")
+            .send_form(&[("client_id", id.as_str()), ("scope", SCOPES)])
+            .map_err(http_error)
+    })?;
     let v: Value = json(resp)?;
     if let Some(err) = v.get("error").and_then(Value::as_str) {
         let desc = v.get("error_description").and_then(Value::as_str).unwrap_or(err);
@@ -223,15 +243,17 @@ pub fn start_device_flow() -> Result<DeviceCode> {
 /// Step 2 of the device flow: called every `interval` seconds until it is not `Pending`.
 pub fn poll_device_flow(device_code: &str) -> Result<PollResult> {
     let id = client_id().ok_or(AppError::GithubClientIdMissing)?;
-    let resp = agent()
-        .post("https://github.com/login/oauth/access_token")
-        .set("Accept", "application/json")
-        .send_form(&[
-            ("client_id", id.as_str()),
-            ("device_code", device_code),
-            ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-        ])
-        .map_err(http_error)?;
+    let resp = timed("POST /login/oauth/access_token", || {
+        agent()
+            .post("https://github.com/login/oauth/access_token")
+            .set("Accept", "application/json")
+            .send_form(&[
+                ("client_id", id.as_str()),
+                ("device_code", device_code),
+                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+            ])
+            .map_err(http_error)
+    })?;
     let v: Value = json(resp)?;
     if let Some(token) = v.get("access_token").and_then(Value::as_str) {
         let account = fetch_account(token)?;

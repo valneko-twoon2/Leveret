@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getCurrentWebview } from '@tauri-apps/api/webview'
-  import { api, inTauri, useMockBackend } from './lib/api'
+  import { api, inTauri, syncBackendPerf, useMockBackend } from './lib/api'
+  import { runBenchRequest } from './lib/bench'
   import { runCaptureRequest, runUrlScene } from './lib/capture'
+  import { afterPaint, perf } from './lib/perf'
   import { github } from './lib/github.svelte'
   import { t } from './lib/i18n/index.svelte'
   import { layout } from './lib/layout.svelte'
@@ -21,6 +23,7 @@
   import Icon from './lib/components/Icon.svelte'
   import NewBranchDialog from './lib/components/NewBranchDialog.svelte'
   import OperationBanner from './lib/components/OperationBanner.svelte'
+  import PerfPanel from './lib/components/PerfPanel.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
   import SignInDialog from './lib/components/SignInDialog.svelte'
@@ -41,8 +44,30 @@
     app.toast(describeError(error).message, 'error')
   }
 
+  /** Startup timings, taken once the first screen is painted. */
+  async function recordStartup() {
+    await afterPaint()
+    perf.record('startup', 'interactive (webview)', performance.now())
+    perf.recordPageTimings()
+    // From process start; unavailable in the browser preview.
+    const uptime = await syncBackendPerf().catch(() => null)
+    if (uptime !== null) perf.record('startup', 'interactive', uptime)
+  }
+
+  /** With LEVERET_PERF=1, sends the frontend's timings to the backend's perf.jsonl. */
+  function forwardTimings(): () => void {
+    perf.forward = true
+    const timer = setInterval(() => {
+      const batch = perf.takeUnsent()
+      if (batch.length) void api.perfReport(batch).catch(() => {})
+    }, 2000)
+    return () => clearInterval(timer)
+  }
+
   onMount(() => {
     let unlistenDrop: (() => void) | undefined
+    let stopForwarding: (() => void) | undefined
+    perf.observeLongTasks()
     const onError = (e: ErrorEvent) => reportUnexpected(e.error ?? e.message)
     const onRejection = (e: PromiseRejectionEvent) => {
       e.preventDefault()
@@ -58,12 +83,19 @@
       const theme = options.theme ?? params.get('theme')
       if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
       if (options.mock) await useMockBackend()
+      if (options.perfLog) stopForwarding = forwardTimings()
       if (options.capture) {
         await runCaptureRequest(options.capture)
         return
       }
-      void github.load()
+      // A benchmark measures repository screens only, not the network sign-in check.
+      if (!options.bench) void github.load()
       await app.init()
+      await recordStartup()
+      if (options.bench) {
+        await runBenchRequest(options.bench)
+        return
+      }
       const scene = params.get('scene')
       if (scene) {
         await runUrlScene(scene)
@@ -86,6 +118,7 @@
 
     return () => {
       unlistenDrop?.()
+      stopForwarding?.()
       window.removeEventListener('error', onError)
       window.removeEventListener('unhandledrejection', onRejection)
     }
@@ -114,6 +147,11 @@
     if (inTauri && e.ctrlKey && e.shiftKey && e.code === 'KeyS') {
       e.preventDefault()
       void saveScreenshot()
+      return
+    }
+    if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyD') {
+      e.preventDefault()
+      app.perfOpen = !app.perfOpen
       return
     }
     if (!e.ctrlKey || e.altKey || !app.repo || overlayOpen()) return
@@ -255,6 +293,9 @@
 {/if}
 {#if github.signInOpen}
   <SignInDialog />
+{/if}
+{#if app.perfOpen}
+  <PerfPanel />
 {/if}
 <ErrorDialog />
 <ContextMenu />

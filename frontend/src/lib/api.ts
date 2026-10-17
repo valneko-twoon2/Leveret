@@ -1,6 +1,7 @@
 // Typed wrappers around the backend commands. Outside of Tauri (plain browser,
 // e.g. `scripts/preview.bat`) or with `--mock`, calls go to the in-memory mock.
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { perf, type PerfSample } from './perf'
 
 export type ChangeKind =
   | 'modified'
@@ -209,11 +210,26 @@ export interface CaptureRequest {
   scenes: string[] | null
 }
 
-/** Command line options (`--mock`, `--theme light|dark`, `--capture <dir>`, `--scenes a,b`). */
+/** `--bench <dir> --runs N` (scripts/benchmark.ps1). */
+export interface BenchRequest {
+  dir: string
+  runs: number
+}
+
+export interface PerfSnapshot {
+  samples: PerfSample[]
+  /** Milliseconds since the backend process started. */
+  uptimeMs: number
+}
+
+/** Command line options (`--mock`, `--theme light|dark`, `--capture <dir>`, `--scenes a,b`, `--bench <dir>`). */
 export interface StartupOptions {
   mock: boolean
   theme: 'light' | 'dark' | null
   capture: CaptureRequest | null
+  bench: BenchRequest | null
+  /** `LEVERET_PERF=1`: forward timings to the backend's perf.jsonl. */
+  perfLog: boolean
   /** Devtools explicitly enabled (debug builds with LEVERET_DEVTOOLS=1). */
   devtools: boolean
 }
@@ -286,9 +302,20 @@ export function usingMock(): boolean {
   return mock !== null
 }
 
-async function call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
-  if (mock) return mock.handle(cmd, args) as Promise<T>
-  return invoke<T>(cmd, args)
+/** Commands that are part of the measuring itself. */
+const UNTIMED = new Set(['perf_samples', 'perf_report'])
+
+/** Calls a backend command, timing the round trip. */
+function call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
+  const send = () => (mock ? (mock.handle(cmd, args) as Promise<T>) : invoke<T>(cmd, args))
+  return UNTIMED.has(cmd) ? send() : perf.time('ipc', cmd, send)
+}
+
+/** Pulls the backend's new timing samples into `perf`. Returns the backend uptime. */
+export async function syncBackendPerf(): Promise<number> {
+  const snapshot = await call<PerfSnapshot>('perf_samples', { after: perf.lastSeq })
+  perf.addBackend(snapshot.samples)
+  return snapshot.uptimeMs
 }
 
 export const api = {
@@ -380,11 +407,14 @@ export const api = {
     return listen<CloneProgress>('clone-progress', (e) => handler(e.payload))
   },
 
+  perfReport: (samples: PerfSample[]) => call<void>('perf_report', { samples }),
+
   // Capture commands always go to the real backend: they act on the window.
   startupOptions: () =>
     inTauri
       ? invoke<StartupOptions>('startup_options')
-      : Promise.resolve<StartupOptions>({ mock: true, theme: null, capture: null, devtools: true }),
+      : Promise.resolve<StartupOptions>({ mock: true, theme: null, capture: null, bench: null, perfLog: false, devtools: true }),
   captureScreen: (path?: string) => invoke<string>('capture_screen', { path: path ?? null }),
+  benchSave: (report: string) => invoke<string>('bench_save', { report }),
   exitApp: (code = 0) => invoke<void>('exit_app', { code }),
 }
