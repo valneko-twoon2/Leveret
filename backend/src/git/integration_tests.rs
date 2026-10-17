@@ -101,3 +101,32 @@ fn history_with_merge_details_and_diffs() {
     let d = diff::working(p, "new.txt", None, true).unwrap();
     assert_eq!(d.hunks[0].lines.len(), 2);
 }
+
+#[test]
+fn status_leaves_out_ignored_and_optionally_untracked_files() {
+    let dir = repo();
+    let p = dir.path();
+    std::fs::write(p.join(".gitignore"), "target/\n*.log\n").unwrap();
+    std::fs::write(p.join("a.txt"), "one\n").unwrap();
+    git(p, &["add", "."]);
+    git(p, &["commit", "-qm", "init"]);
+    std::fs::create_dir(p.join("target")).unwrap();
+    std::fs::write(p.join("target/out.bin"), "x").unwrap();
+    std::fs::write(p.join("debug.log"), "x").unwrap();
+    std::fs::write(p.join("new.txt"), "x").unwrap();
+    std::fs::write(p.join("a.txt"), "two\n").unwrap();
+
+    let paths = |untracked| -> Vec<(String, ChangeKind)> {
+        status::get_with(p, untracked)
+            .unwrap()
+            .files
+            .into_iter()
+            .map(|f| (f.path, f.kind))
+            .collect()
+    };
+    assert_eq!(
+        paths(true),
+        [("a.txt".to_string(), ChangeKind::Modified), ("new.txt".to_string(), ChangeKind::Untracked)]
+    );
+    assert_eq!(paths(false), [("a.txt".to_string(), ChangeKind::Modified)]);
+}

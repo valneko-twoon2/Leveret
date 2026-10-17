@@ -11,10 +11,11 @@ use crate::git::status::RepoStatus;
 use crate::repos::RepoStore;
 use crate::{git, security};
 
+/// `untracked: false` leaves untracked files out (the user's "hide untracked" setting).
 #[tauri::command]
-pub async fn get_status(store: State<'_, RepoStore>, repo: String) -> Result<RepoStatus> {
+pub async fn get_status(store: State<'_, RepoStore>, repo: String, untracked: Option<bool>) -> Result<RepoStatus> {
     let repo = store.require(&repo)?;
-    blocking(move || git::status::get(&repo)).await
+    blocking(move || git::status::get_with(&repo, untracked.unwrap_or(true))).await
 }
 
 #[tauri::command]

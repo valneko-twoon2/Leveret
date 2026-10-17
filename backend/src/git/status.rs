@@ -48,12 +48,19 @@ pub struct RepoStatus {
 }
 
 pub fn get(repo: &Path) -> Result<RepoStatus> {
+    get_with(repo, true)
+}
+
+/// Like [`get`]; without `untracked`, untracked files are left out (and not
+/// searched for, which is faster in large working trees). Ignored files never appear.
+pub fn get_with(repo: &Path, untracked: bool) -> Result<RepoStatus> {
     // Independent processes run in parallel: starting each one costs tens of milliseconds.
     let (out, dir, remotes) = std::thread::scope(|s| {
         let dir = s.spawn(|| git_dir(repo));
         let remotes = s.spawn(|| remote::remotes(repo));
         let out = Git::new(repo)
-            .args(["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"])
+            .args(["status", "--porcelain=v2", "-z", "--branch"])
+            .arg(if untracked { "--untracked-files=all" } else { "--untracked-files=no" })
             .run();
         (out, join(dir), join(remotes))
     });

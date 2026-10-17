@@ -6,6 +6,7 @@
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
+  import { prefs } from '../prefs.svelte'
   import { app } from '../state.svelte'
   import CommitForm from './CommitForm.svelte'
   import FileRow from './FileRow.svelte'
@@ -15,6 +16,7 @@
   const all = $derived(app.files.length > 0 && changes.includedFiles.length === app.files.length)
   const some = $derived(changes.includedFiles.length > 0 && !all)
   const selectedIndex = $derived(app.files.findIndex((f) => f.path === changes.selectedFile))
+  const untrackedCount = $derived(app.files.filter((f) => f.kind === 'untracked').length)
   let stashOpen = $state(false)
 
   function extension(path: string): string | null {
@@ -52,6 +54,11 @@
     menu.open(e, items)
   }
 
+  function toggleUntracked() {
+    prefs.setShowUntracked(!prefs.showUntracked)
+    void app.loadStatus()
+  }
+
   function listMenu(e: MouseEvent) {
     const idle = app.busy === null
     const discardable = app.files.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
@@ -60,6 +67,8 @@
       [
         { label: t('discard.all'), action: () => changes.discard(discardable), disabled: !idle || discardable.length === 0, danger: true },
         { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
+        'separator',
+        { label: t('changes.showUntracked'), checked: prefs.showUntracked, action: () => toggleUntracked() },
       ],
       e.currentTarget as HTMLElement,
     )
@@ -77,7 +86,11 @@
       title={t('changes.selectAll')}
       aria-label={t('changes.selectAll')}
     />
-    <span class="count">{t('changes.count', { count: app.files.length })}</span>
+    <span class="count">
+      {t('changes.count', { count: app.files.length })}
+      {#if !prefs.showUntracked}<span class="sub">{t('changes.untrackedHidden')}</span>
+      {:else if untrackedCount}<span class="sub">{t('changes.untrackedCount', { count: untrackedCount })}</span>{/if}
+    </span>
     <button class="icon-btn" title={t('common.more')} aria-label={t('common.more')} onclick={listMenu}>
       <Icon name="more" size={16} />
     </button>
@@ -168,6 +181,11 @@
 
   .count {
     flex: 1;
+  }
+
+  .count .sub {
+    color: var(--fg-subtle);
+    font-size: 12px;
   }
 
   .list {

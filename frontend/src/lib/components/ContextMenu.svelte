@@ -2,6 +2,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { menu, type MenuAction } from '../menu.svelte'
+  import Icon from './Icon.svelte'
 
   let element = $state<HTMLDivElement>()
   let left = $state(0)
@@ -62,7 +63,14 @@
       {#if item === 'separator'}
         <div class="separator" role="separator"></div>
       {:else}
-        <button role="menuitem" class:danger={item.danger} disabled={item.disabled} onclick={() => run(item)}>
+        <button
+          role={item.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+          aria-checked={item.checked}
+          class:danger={item.danger}
+          disabled={item.disabled}
+          onclick={() => run(item)}
+        >
+          {#if item.checked !== undefined}<span class="check">{#if item.checked}<Icon name="check" size={14} />{/if}</span>{/if}
           <span class="label">{item.label}</span>
           {#if item.hint}<span class="hint">{item.hint}</span>{/if}
         </button>

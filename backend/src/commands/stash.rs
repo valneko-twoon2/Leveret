@@ -15,12 +15,17 @@ pub async fn list_stashes(store: State<'_, RepoStore>, repo: String) -> Result<V
 }
 
 #[tauri::command]
-pub async fn stash_save(store: State<'_, RepoStore>, repo: String, message: String) -> Result<()> {
+pub async fn stash_save(
+    store: State<'_, RepoStore>,
+    repo: String,
+    message: String,
+    untracked: Option<bool>,
+) -> Result<()> {
     let repo = store.require(&repo)?;
     if message.len() > 1000 || message.chars().any(char::is_control) {
         return Err(AppError::InvalidInput("stash message".into()));
     }
-    blocking(move || git::stash::save(&repo, &message)).await
+    blocking(move || git::stash::save(&repo, &message, untracked.unwrap_or(true))).await
 }
 
 #[tauri::command]

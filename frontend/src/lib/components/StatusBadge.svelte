@@ -11,7 +11,7 @@
     renamed: 'R',
     copied: 'C',
     typeChanged: 'T',
-    untracked: 'U',
+    untracked: '?',
     conflicted: '!',
   }
 </script>
@@ -38,9 +38,13 @@
     color: var(--warning);
   }
   .added,
-  .untracked,
   .copied {
     color: var(--success);
+  }
+  /* Not in git yet: dashed and muted, so it can't be mistaken for "added". */
+  .untracked {
+    border-style: dashed;
+    color: var(--fg-muted);
   }
   .deleted {
     color: var(--danger);

@@ -70,7 +70,7 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
             if message.len() > 1000 || message.chars().any(char::is_control) {
                 return Err(AppError::InvalidInput("stash message".into()));
             }
-            git::stash::save(&repo, message)?;
+            git::stash::save(&repo, message, true)?;
             outcome(&repo, Outcome::Done)
         }
         "stash_pop" => {

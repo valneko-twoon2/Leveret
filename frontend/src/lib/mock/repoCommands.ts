@@ -38,7 +38,7 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
         operation: r.operation,
         hasRemote: r.remoteBranches.length > 0,
         lastFetched: r.lastFetched,
-        files: r.files.map((f) => ({ ...f })),
+        files: r.files.filter((f) => args.untracked !== false || f.kind !== 'untracked').map((f) => ({ ...f })),
       } satisfies RepoStatus
     }
     case 'get_working_diff': {
@@ -159,10 +159,11 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       return find(args.repo).stashes
     case 'stash_save': {
       const r = find(args.repo)
-      if (!r.files.length) fail('noChanges')
+      const keep = args.untracked === false ? r.files.filter((f) => f.kind === 'untracked') : []
+      if (r.files.length === keep.length) fail('noChanges')
       const message = String(args.message).trim() || `WIP on ${r.branch ?? '(no branch)'}: ${r.commits[0]?.subject ?? ''}`
       r.stashes = [{ index: 0, message: `On ${r.branch ?? '(no branch)'}: ${message}`, time: Math.floor(Date.now() / 1000) }, ...r.stashes].map((x, i) => ({ ...x, index: i }))
-      r.files = []
+      r.files = keep
       return null
     }
     case 'stash_pop':

@@ -36,16 +36,20 @@ pub fn list(repo: &Path) -> Result<Vec<StashEntry>> {
         .collect())
 }
 
-/// Stashes all local changes, including untracked files.
-pub fn save(repo: &Path, message: &str) -> Result<()> {
-    if status::get(repo)?.files.is_empty() {
+/// Stashes all local changes, including untracked files unless `untracked` is
+/// false (the user has hidden them, so they aren't taken away unseen).
+pub fn save(repo: &Path, message: &str, untracked: bool) -> Result<()> {
+    if status::get_with(repo, untracked)?.files.is_empty() {
         return Err(AppError::NoChanges);
     }
     // Literal pathspecs break `--include-untracked` (untracked files stay behind);
     // no user paths are passed here, so it is safe to turn them off.
     let mut git = Git::new(repo)
         .envs([("GIT_LITERAL_PATHSPECS".to_string(), "0".to_string())])
-        .args(["stash", "push", "--include-untracked"]);
+        .args(["stash", "push"]);
+    if untracked {
+        git = git.arg("--include-untracked");
+    }
     if !message.trim().is_empty() {
         git = git.arg("--message").arg(message.trim());
     }
@@ -109,14 +113,18 @@ mod tests {
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "init"]);
 
-        assert!(matches!(save(p, ""), Err(AppError::NoChanges)));
+        assert!(matches!(save(p, "", true), Err(AppError::NoChanges)));
         std::fs::write(p.join("a.txt"), "changed\n").unwrap();
         std::fs::write(p.join("新規.txt"), "new\n").unwrap();
-        save(p, "作業中").unwrap();
+        save(p, "作業中", true).unwrap();
         let st = status::get(p).unwrap();
         assert!(st.files.is_empty(), "{:?}", st.files);
+        // Hidden untracked files are left alone (and alone aren't something to stash).
+        std::fs::write(p.join("keep.txt"), "keep\n").unwrap();
+        assert!(matches!(save(p, "", false), Err(AppError::NoChanges)));
         std::fs::write(p.join("a.txt"), "second\n").unwrap();
-        save(p, "").unwrap();
+        save(p, "", false).unwrap();
+        assert!(p.join("keep.txt").exists());
 
         let l = list(p).unwrap();
         assert_eq!(l.len(), 2);

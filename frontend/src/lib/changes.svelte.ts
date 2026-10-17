@@ -6,6 +6,7 @@ import { api, type FileChange, type FileDiff, type RepoStatus, type StashEntry }
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
 import { perf } from './perf'
+import { prefs } from './prefs.svelte'
 import { app } from './state.svelte'
 
 class ChangesState {
@@ -172,7 +173,7 @@ class ChangesState {
       app.toast(t('stash.noChanges'))
       return
     }
-    const done = await app.run('stash', (repo) => api.stashSave(repo, this.summary.trim()))
+    const done = await app.run('stash', (repo) => api.stashSave(repo, this.summary.trim(), prefs.showUntracked))
     if (done === undefined) return
     app.toast(t('stash.saved'))
     await Promise.all([app.loadStatus(), this.loadStashes()])

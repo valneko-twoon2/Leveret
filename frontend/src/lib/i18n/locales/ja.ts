@@ -282,6 +282,9 @@ export default {
   },
   changes: {
     count: '{count} 個の変更されたファイル',
+    untrackedCount: '（うち未追跡 {count}）',
+    untrackedHidden: '（未追跡は非表示）',
+    showUntracked: '未追跡のファイルを表示',
     selectAll: 'すべて選択 / 解除',
     none: '変更はありません',
     noneBody: '作業ツリーはクリーンです。',
@@ -294,7 +297,7 @@ export default {
     renamed: '名前変更',
     copied: 'コピー',
     typeChanged: '種類変更',
-    untracked: '新規',
+    untracked: '未追跡（まだ Git で管理されていないファイル）',
     conflicted: '競合',
   },
   commit: {

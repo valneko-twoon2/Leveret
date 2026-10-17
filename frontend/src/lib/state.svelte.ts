@@ -14,6 +14,7 @@ import { history } from './history.svelte'
 import { issues } from './issues.svelte'
 import { t, type MessageKey } from './i18n/index.svelte'
 import { perf } from './perf'
+import { prefs } from './prefs.svelte'
 
 export type Tab = 'changes' | 'history' | 'issues'
 
@@ -65,7 +66,11 @@ class AppState {
   pending = $state(0)
 
   repo = $derived(this.repos.find((r) => r.path === this.selectedPath) ?? null)
-  files = $derived(this.status?.files ?? [])
+  /** Changed files, untracked ones last (git lists them last too; this keeps the mock and agents' changes in line). */
+  files = $derived.by(() => {
+    const files = this.status?.files ?? []
+    return [...files.filter((f) => f.kind !== 'untracked'), ...files.filter((f) => f.kind === 'untracked')]
+  })
   conflicted = $derived(this.files.filter((f) => f.kind === 'conflicted'))
   operation = $derived(this.status?.operation ?? null)
   /** A rebase, revert or cherry-pick is stopped: commits go through "continue" instead. */
@@ -244,7 +249,7 @@ class AppState {
   async loadStatus() {
     const repo = this.selectedPath
     if (!repo) return
-    const status = await this.guard(() => api.getStatus(repo))
+    const status = await this.guard(() => api.getStatus(repo, prefs.showUntracked))
     if (!status || repo !== this.selectedPath) return
     this.status = status
     await changes.syncWithStatus(status)

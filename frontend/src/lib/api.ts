@@ -324,7 +324,7 @@ export const api = {
   removeRepo: (path: string) => call<void>('remove_repo', { path }),
   selectRepo: (path: string | null) => call<void>('select_repo', { path }),
 
-  getStatus: (repo: string) => call<RepoStatus>('get_status', { repo }),
+  getStatus: (repo: string, untracked = true) => call<RepoStatus>('get_status', { repo, untracked }),
   getWorkingDiff: (repo: string, file: FileChange) =>
     call<FileDiff>('get_working_diff', {
       repo,
@@ -367,7 +367,7 @@ export const api = {
   deleteBranch: (repo: string, name: string, force: boolean) => call<void>('delete_branch', { repo, name, force }),
 
   listStashes: (repo: string) => call<StashEntry[]>('list_stashes', { repo }),
-  stashSave: (repo: string, message: string) => call<void>('stash_save', { repo, message }),
+  stashSave: (repo: string, message: string, untracked: boolean) => call<void>('stash_save', { repo, message, untracked }),
   stashPop: (repo: string, index: number) => call<Outcome>('stash_pop', { repo, index }),
   stashDrop: (repo: string, index: number) => call<void>('stash_drop', { repo, index }),
 

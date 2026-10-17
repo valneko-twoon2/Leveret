@@ -5,6 +5,8 @@ export interface MenuAction {
   action: () => unknown
   disabled?: boolean
   danger?: boolean
+  /** Shown with a check mark (an on / off setting). */
+  checked?: boolean
   /** Shortcut shown on the right, e.g. "Ctrl+B". */
   hint?: string
 }
