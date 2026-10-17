@@ -121,9 +121,9 @@
 ```mermaid
 flowchart LR
     subgraph UI["frontend/ — Svelte 5"]
-        C[コンポーネント] --> S[state.svelte.ts]
+        C[コンポーネント] --> S[ストア *.svelte.ts]
         S --> A[api.ts]
-        A -. ブラウザ / --mock .-> M[mock.ts]
+        A -. ブラウザ / --mock .-> M[mock/]
     end
     subgraph Core["backend/ — Rust + Tauri 2"]
         V{{入力の検証}} --> G[git ラッパー<br>status · diff · log · commit<br>remote · branch · rebase · stash]
@@ -175,7 +175,7 @@ args = ["--mcp"]
   リポジトリは名前でもパスでも（その中の作業ディレクトリでも）指定でき、ブランチは `main` や `origin/main`、リビジョンは `HEAD~1`
   のように書けます。結果は簡潔な JSON で、次にすべきこと（リベースが止まったときの競合ファイルなど）も返します。
 - **ユーザーから見える**: エージェントの変更はすべて記録され、アプリに通知が出て表示も自動で更新されます。
-- **ツールは1か所** （[`backend/src/agent/tools.rs`](backend/src/agent/tools.rs)）: MCP サーバーと Leveret 内で動くエージェント（`agent_call`）が
+- **ツールは1か所** （[`backend/src/agent/tools/`](backend/src/agent/tools/)）: MCP サーバーと Leveret 内で動くエージェント（`agent_call`）が
   共有し、アプリ自身のコマンドと同じ検証を通ります。
 
 ## はじめかた
@@ -296,24 +296,30 @@ Leveret は自分自身の WebView を信頼せず、Rust のバックエンド�
 
 ```text
 frontend/                 Svelte の UI（package.json、vite.config.ts、tsconfig はここ）
-  src/lib/state.svelte.ts   アプリの状態と操作
+  src/lib/state.svelte.ts   app ストア: リポジトリ、状態、操作を1つずつ実行するガード
+  src/lib/changes.svelte.ts 変更タブ、コミット欄、スタッシュ（ほかに history / branches / agents ストア）
   src/lib/github.svelte.ts  GitHub アカウント、サインイン、クローンの状態
-  src/lib/api.ts            バックエンド呼び出しの型付きラッパー
-  src/lib/mock.ts           ブラウザ / --mock 用のダミーバックエンド
+  src/lib/api.ts            バックエンド呼び出しの型付きラッパー（往復時間を計測）
+  src/lib/perf.ts           計測値、目安、パフォーマンスパネルのデータ
+  src/lib/bench.ts          --bench のベンチマーク手順
+  src/lib/mock/             ブラウザ / --mock 用のダミーバックエンド
   src/lib/capture.ts        撮影シーンの定義
   src/lib/lockdown.ts       ブラウザのショートカットや操作を無効化
   src/lib/layout.svelte.ts  幅を変えられる領域のサイズ
   src/lib/menu.svelte.ts    アプリ独自の右クリックメニュー
   src/lib/i18n/             メッセージカタログ（locales/ja.ts がキーの定義元）
 backend/                  Rust / Tauri（Cargo.toml、tauri.conf.json はここ）
+  src/lib.rs                アプリの初期化とコマンドの登録
+  src/commands/             Tauri コマンド。領域ごとのモジュール（入力の検証はここ）
   src/git/                  status、diff、log + グラフ、commit、clone、remote、branch、
                             operation（マージ / リベース / リバート）、discard、stash
-  src/agent/                AI エージェント用ツール（tools.rs）と MCP サーバー（mcp.rs）
+  src/agent/                AI エージェント用ツール（tools/、領域ごとのモジュール）と MCP サーバー（mcp.rs）
+  src/perf.rs               計測値の記録、perf.jsonl
   src/settings.rs           settings.json（エージェントの権限）
   src/github.rs             デバイスフロー、トークン保存、リポジトリ一覧
   src/security.rs           WebView から来る入力の検証
   src/lockdown.rs           WebView2 の封じ込め設定
-  src/capture.rs            WebView2 による画面撮影
+  src/capture.rs            WebView2 による画面撮影、--capture / --bench の引数
   src/crash.rs              クラッシュログと致命的エラーの表示
   icons/generate_icon.py    icons/leveret.svg（アプリアイコン）を描くスクリプト
 scripts/                  開発用スクリプト

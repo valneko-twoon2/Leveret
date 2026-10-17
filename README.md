@@ -121,9 +121,9 @@ Pick a repository from your list, review the changes, commit. That's it.
 ```mermaid
 flowchart LR
     subgraph UI["frontend/ — Svelte 5"]
-        C[Components] --> S[state.svelte.ts]
+        C[Components] --> S[stores *.svelte.ts]
         S --> A[api.ts]
-        A -. browser / --mock .-> M[mock.ts]
+        A -. browser / --mock .-> M[mock/]
     end
     subgraph Core["backend/ — Rust + Tauri 2"]
         V{{input validation}} --> G[git wrapper<br>status · diff · log · commit<br>remote · branch · rebase · stash]
@@ -175,7 +175,7 @@ args = ["--mcp"]
   repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
   revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
 - **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.
-- **One tool layer** ([`backend/src/agent/tools.rs`](backend/src/agent/tools.rs)) shared by the MCP server and agents
+- **One tool layer** ([`backend/src/agent/tools/`](backend/src/agent/tools/)) shared by the MCP server and agents
   running inside Leveret (`agent_call`), with the same validation as the app's own commands.
 
 ## Getting started
@@ -296,24 +296,30 @@ Leveret treats its own webview as untrusted and keeps the Rust backend as the tr
 
 ```text
 frontend/                 Svelte UI (its own package.json, vite.config.ts, tsconfig)
-  src/lib/state.svelte.ts   app state and actions
+  src/lib/state.svelte.ts   app store: repositories, status, the one-at-a-time action guard
+  src/lib/changes.svelte.ts changes tab, commit form, stash (also history / branches / agents stores)
   src/lib/github.svelte.ts  GitHub account, sign-in and clone state
-  src/lib/api.ts            typed wrappers for backend commands
-  src/lib/mock.ts           sample-data backend for the browser and --mock
+  src/lib/api.ts            typed wrappers for backend commands (round trips are timed)
+  src/lib/perf.ts           timings, budgets, the performance panel's data
+  src/lib/bench.ts          benchmark steps for --bench
+  src/lib/mock/             sample-data backend for the browser and --mock
   src/lib/capture.ts        screenshot scenes
   src/lib/lockdown.ts       blocks browser shortcuts and gestures
   src/lib/layout.svelte.ts  resizable pane sizes
   src/lib/menu.svelte.ts    the app's own context menu
   src/lib/i18n/             message catalogs (locales/ja.ts defines the keys)
 backend/                  Rust / Tauri (its own Cargo.toml, tauri.conf.json)
+  src/lib.rs                app setup and command registration
+  src/commands/             Tauri commands, one module per area (input validation happens here)
   src/git/                  status, diff, log + graph, commit, clone, remote, branch,
                             operation (merge / rebase / revert), discard, stash
-  src/agent/                tools for AI agents (tools.rs) and the MCP server (mcp.rs)
+  src/agent/                tools for AI agents (tools/, one module per area) and the MCP server (mcp.rs)
+  src/perf.rs               timing samples, perf.jsonl
   src/settings.rs           settings.json (agent access level)
   src/github.rs             device flow, token storage, repository list
   src/security.rs           validation of everything coming from the webview
   src/lockdown.rs           WebView2 hardening
-  src/capture.rs            WebView2 screen capture
+  src/capture.rs            WebView2 screen capture and --capture / --bench options
   src/crash.rs              crash log and fatal error message
   icons/generate_icon.py    draws icons/leveret.svg (the app icon)
 scripts/                  developer scripts
