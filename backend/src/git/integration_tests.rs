@@ -28,6 +28,11 @@ fn empty_repository() {
     let st = status::get(dir.path()).unwrap();
     assert_eq!(st.branch.as_deref(), Some("main"));
     assert!(st.head_oid.is_none());
+    // Without HEAD, a staged file is diffed against the empty tree.
+    std::fs::write(dir.path().join("a.txt"), "one\n").unwrap();
+    git(dir.path(), &["add", "a.txt"]);
+    let d = diff::working(dir.path(), "a.txt", None, false).unwrap();
+    assert_eq!(d.hunks[0].lines[0].kind, LineKind::Add);
 }
 
 #[test]

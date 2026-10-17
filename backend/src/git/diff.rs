@@ -50,15 +50,19 @@ pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool
     if untracked {
         return untracked_file(&repo.join(path));
     }
-    let base = if has_head(repo)? {
-        "HEAD".to_string()
-    } else {
-        empty_tree(repo)?
+    let diff = |base: &str| {
+        Git::new(repo)
+            .args(["diff", "--no-color", "--no-ext-diff", "-M", base, "--", path])
+            .args(orig_path)
+            .run()
     };
-    let out = Git::new(repo)
-        .args(["diff", "--no-color", "--no-ext-diff", "-M", &base, "--", path])
-        .args(orig_path)
-        .run()?;
+    // HEAD exists except in a new repository; only check after a failure, to
+    // spare a git process (tens of milliseconds) on every diff.
+    let out = match diff("HEAD") {
+        Ok(out) => out,
+        Err(_) if !has_head(repo)? => diff(&empty_tree(repo)?)?,
+        Err(e) => return Err(e),
+    };
     Ok(parse(&decode(&out.stdout)))
 }
 
