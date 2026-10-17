@@ -1,0 +1,23 @@
+#!/bin/sh
+# Rejects commit messages that are not plain English (ASCII), as required by AGENTS.md.
+# Comment lines (starting with '#') are ignored.
+
+msg=$(sed '/^#/d' "$1")
+
+if [ -z "$(printf '%s' "$msg" | tr -d '[:space:]')" ]; then
+    exit 0 # empty message: let git abort as usual
+fi
+
+bad=$(printf '%s\n' "$msg" | LC_ALL=C grep -n '[^ -~	]')
+if [ -n "$bad" ]; then
+    echo "commit-msg: commit messages must be written in English (ASCII only)." >&2
+    echo "Offending lines:" >&2
+    printf '%s\n' "$bad" >&2
+    exit 1
+fi
+
+summary=$(printf '%s\n' "$msg" | head -n 1)
+if [ ${#summary} -gt 72 ]; then
+    echo "commit-msg: keep the summary line within 72 characters (currently ${#summary})." >&2
+    exit 1
+fi

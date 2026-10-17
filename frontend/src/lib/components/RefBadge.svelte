@@ -1,0 +1,56 @@
+<script lang="ts">
+  import type { RefLabel } from '../api'
+  import Icon from './Icon.svelte'
+
+  let { label }: { label: RefLabel } = $props()
+</script>
+
+<span class="ref {label.kind}" class:current={label.current} title={label.name}>
+  {#if label.kind === 'tag'}<Icon name="tag" size={11} />{:else if label.kind === 'remote'}<Icon name="cloud" size={11} />{/if}
+  {label.name}
+</span>
+
+<style>
+  .ref {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 180px;
+    height: 18px;
+    padding: 0 6px;
+    border: 1px solid;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .branch,
+  .head {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 50%, transparent);
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  }
+
+  .branch.current {
+    color: var(--fg-on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .remote {
+    color: var(--graph-3);
+    border-color: color-mix(in srgb, var(--graph-3) 50%, transparent);
+    background: color-mix(in srgb, var(--graph-3) 10%, var(--bg));
+  }
+
+  .tag {
+    color: var(--warning);
+    border-color: color-mix(in srgb, var(--warning) 50%, transparent);
+    background: color-mix(in srgb, var(--warning) 10%, var(--bg));
+  }
+</style>

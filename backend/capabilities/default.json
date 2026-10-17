@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Only what the frontend uses: event listening (clone progress, file drops) and native folder/confirm dialogs. Keep this list minimal; scripts/security.ps1 checks it.",
+  "windows": ["main"],
+  "permissions": ["core:event:allow-listen", "core:event:allow-unlisten", "dialog:allow-open", "dialog:allow-message"]
+}

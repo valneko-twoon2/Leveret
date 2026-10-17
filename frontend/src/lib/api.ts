@@ -1,0 +1,260 @@
+// Typed wrappers around the backend commands. Outside of Tauri (plain browser,
+// e.g. `scripts/preview.bat`) or with `--mock`, calls go to the in-memory mock.
+import { invoke, isTauri } from '@tauri-apps/api/core'
+
+export type ChangeKind =
+  | 'modified'
+  | 'added'
+  | 'deleted'
+  | 'renamed'
+  | 'copied'
+  | 'typeChanged'
+  | 'untracked'
+  | 'conflicted'
+
+export interface FileChange {
+  path: string
+  origPath: string | null
+  kind: ChangeKind
+}
+
+export interface RepoStatus {
+  branch: string | null
+  headOid: string | null
+  upstream: string | null
+  ahead: number
+  behind: number
+  merging: boolean
+  files: FileChange[]
+}
+
+export interface RepoEntry {
+  path: string
+  name: string
+}
+
+export interface RepoList {
+  repos: RepoEntry[]
+  selected: string | null
+}
+
+export type LineKind = 'context' | 'add' | 'delete' | 'noNewline'
+
+export interface DiffLine {
+  kind: LineKind
+  oldNo: number | null
+  newNo: number | null
+  text: string
+}
+
+export interface Hunk {
+  header: string
+  lines: DiffLine[]
+}
+
+export interface FileDiff {
+  binary: boolean
+  tooLarge: boolean
+  truncated: boolean
+  hunks: Hunk[]
+}
+
+export type RefKind = 'head' | 'branch' | 'remote' | 'tag'
+
+export interface RefLabel {
+  name: string
+  kind: RefKind
+  current: boolean
+}
+
+export interface Edge {
+  from: number
+  to: number
+  kind: 'up' | 'down'
+  color: number
+}
+
+export interface GraphRow {
+  col: number
+  color: number
+  width: number
+  edges: Edge[]
+}
+
+export interface LogEntry {
+  hash: string
+  parents: string[]
+  authorName: string
+  authorEmail: string
+  authorTime: number
+  refs: RefLabel[]
+  subject: string
+  graph: GraphRow
+}
+
+export type LogScope = 'head' | 'all'
+
+export interface CommitFile {
+  path: string
+  origPath: string | null
+  kind: ChangeKind
+}
+
+export interface CommitDetail {
+  hash: string
+  parents: string[]
+  authorName: string
+  authorEmail: string
+  authorTime: number
+  committerName: string
+  committerEmail: string
+  commitTime: number
+  message: string
+  files: CommitFile[]
+}
+
+export interface CommitRequest {
+  summary: string
+  description: string
+  paths: string[]
+}
+
+export interface CaptureRequest {
+  dir: string
+  scenes: string[] | null
+}
+
+/** Command line options (`--mock`, `--theme light|dark`, `--capture <dir>`, `--scenes a,b`). */
+export interface StartupOptions {
+  mock: boolean
+  theme: 'light' | 'dark' | null
+  capture: CaptureRequest | null
+  /** Devtools explicitly enabled (debug builds with LEVERET_DEVTOOLS=1). */
+  devtools: boolean
+}
+
+export interface GithubAccount {
+  login: string
+  name: string | null
+  htmlUrl: string
+  /** data: URL */
+  avatar: string | null
+}
+
+export interface GithubState {
+  account: GithubAccount | null
+  /** Whether sign-in through the browser (OAuth device flow) is available. */
+  deviceFlow: boolean
+}
+
+export interface DeviceCode {
+  deviceCode: string
+  userCode: string
+  verificationUri: string
+  expiresIn: number
+  interval: number
+}
+
+export type PollResult =
+  | { status: 'pending' }
+  | { status: 'slowDown'; interval: number }
+  | { status: 'denied' }
+  | { status: 'expired' }
+  | { status: 'success'; account: GithubAccount }
+
+export interface GithubRepo {
+  fullName: string
+  owner: string
+  name: string
+  description: string | null
+  private: boolean
+  fork: boolean
+  cloneUrl: string
+  htmlUrl: string
+  pushedAt: string | null
+}
+
+export interface CloneProgress {
+  phase: string
+  percent: number
+}
+
+/** Error shape returned by the backend (see backend/src/error.rs). */
+export interface AppError {
+  code: string
+  detail: string
+}
+
+export function isAppError(e: unknown): e is AppError {
+  return typeof e === 'object' && e !== null && 'code' in e && 'detail' in e
+}
+
+export const inTauri = isTauri()
+let mock: typeof import('./mock') | null = null
+
+/** Routes all following calls to the mock backend. */
+export async function useMockBackend(): Promise<void> {
+  mock ??= await import('./mock')
+}
+
+export function usingMock(): boolean {
+  return mock !== null
+}
+
+async function call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
+  if (mock) return mock.handle(cmd, args) as Promise<T>
+  return invoke<T>(cmd, args)
+}
+
+export const api = {
+  listRepos: () => call<RepoList>('list_repos'),
+  addRepo: (path: string) => call<RepoEntry>('add_repo', { path }),
+  removeRepo: (path: string) => call<void>('remove_repo', { path }),
+  selectRepo: (path: string | null) => call<void>('select_repo', { path }),
+
+  getStatus: (repo: string) => call<RepoStatus>('get_status', { repo }),
+  getWorkingDiff: (repo: string, file: FileChange) =>
+    call<FileDiff>('get_working_diff', {
+      repo,
+      path: file.path,
+      origPath: file.origPath,
+      untracked: file.kind === 'untracked',
+    }),
+  commit: (repo: string, request: CommitRequest) => call<string>('commit', { repo, request }),
+
+  getLog: (repo: string, scope: LogScope, limit: number) => call<LogEntry[]>('get_log', { repo, scope, limit }),
+  getCommit: (repo: string, hash: string) => call<CommitDetail>('get_commit', { repo, hash }),
+  getCommitDiff: (repo: string, detail: CommitDetail, file: CommitFile) =>
+    call<FileDiff>('get_commit_diff', {
+      repo,
+      hash: detail.hash,
+      parent: detail.parents[0] ?? null,
+      path: file.path,
+      origPath: file.origPath,
+    }),
+
+  githubState: () => call<GithubState>('github_state'),
+  githubStartSignIn: () => call<DeviceCode>('github_start_sign_in'),
+  githubPollSignIn: (deviceCode: string) => call<PollResult>('github_poll_sign_in', { deviceCode }),
+  githubSignInWithToken: (token: string) => call<GithubAccount>('github_sign_in_with_token', { token }),
+  githubSignOut: () => call<void>('github_sign_out'),
+  githubListRepos: () => call<GithubRepo[]>('github_list_repos'),
+  openGithubUrl: (url: string) => call<void>('open_github_url', { url }),
+
+  defaultCloneDir: () => call<string>('default_clone_dir'),
+  cloneRepo: (url: string, parent: string, name: string) => call<RepoEntry>('clone_repo', { url, parent, name }),
+  /** Subscribes to clone progress. Returns an unsubscribe function. */
+  onCloneProgress: async (handler: (p: CloneProgress) => void): Promise<() => void> => {
+    if (mock) return mock.onCloneProgress(handler)
+    const { listen } = await import('@tauri-apps/api/event')
+    return listen<CloneProgress>('clone-progress', (e) => handler(e.payload))
+  },
+
+  // Capture commands always go to the real backend: they act on the window.
+  startupOptions: () =>
+    inTauri
+      ? invoke<StartupOptions>('startup_options')
+      : Promise.resolve<StartupOptions>({ mock: true, theme: null, capture: null, devtools: true }),
+  captureScreen: (path?: string) => invoke<string>('capture_screen', { path: path ?? null }),
+  exitApp: (code = 0) => invoke<void>('exit_app', { code }),
+}

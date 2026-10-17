@@ -1,0 +1,149 @@
+<script lang="ts">
+  import { confirmDialog, pickFolder } from '../dialogs'
+  import { t } from '../i18n/index.svelte'
+  import { app } from '../state.svelte'
+  import type { RepoEntry } from '../api'
+  import AccountBox from './AccountBox.svelte'
+  import Icon from './Icon.svelte'
+  import Logo from './Logo.svelte'
+
+  async function add() {
+    const path = await pickFolder(t('repos.addDialogTitle'))
+    if (path) await app.addRepo(path)
+  }
+
+  async function remove(repo: RepoEntry, e: MouseEvent) {
+    e.stopPropagation()
+    if (await confirmDialog(t('repos.removeConfirm', { name: repo.name }), t('repos.remove'))) {
+      await app.removeRepo(repo.path)
+    }
+  }
+</script>
+
+<aside class="sidebar">
+  <header>
+    <Logo size={22} />
+    <span class="title">{t('app.name')}</span>
+    <button class="icon-btn" title={t('repos.add')} aria-label={t('repos.add')} onclick={add}>
+      <Icon name="plus" />
+    </button>
+  </header>
+
+  <ul>
+    {#each app.repos as repo (repo.path)}
+      <li class:selected={repo.path === app.selectedPath}>
+        <button class="repo" title={repo.path} onclick={() => app.selectRepo(repo.path)}>
+          <Icon name="repo" size={15} />
+          <span class="name">{repo.name}</span>
+        </button>
+        <button class="remove" title={t('repos.remove')} aria-label={t('repos.remove')} onclick={(e) => remove(repo, e)}>
+          <Icon name="x" size={13} />
+        </button>
+      </li>
+    {:else}
+      {#if app.loaded}
+        <li class="none">{t('repos.empty')}</li>
+      {/if}
+    {/each}
+  </ul>
+
+  <AccountBox />
+</aside>
+
+<style>
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 48px;
+    padding: 0 8px 0 14px;
+    border-bottom: 1px solid var(--border-muted);
+  }
+
+  .title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  ul {
+    flex: 1;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    overflow-y: auto;
+  }
+
+  .repo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 30px;
+    padding: 0 30px 0 10px;
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--fg-muted);
+    text-align: left;
+  }
+
+  li {
+    position: relative;
+  }
+
+  .repo:hover {
+    background: var(--bg-hover);
+    color: var(--fg);
+  }
+
+  li.selected .repo {
+    background: var(--bg-selected);
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  .name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .remove {
+    position: absolute;
+    top: 5px;
+    right: 6px;
+    display: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    color: var(--fg-subtle);
+  }
+
+  li:hover .remove {
+    display: inline-flex;
+  }
+
+  .remove:hover {
+    background: var(--bg-hover);
+    color: var(--danger);
+  }
+
+  .none {
+    padding: 10px;
+    color: var(--fg-subtle);
+  }
+</style>
