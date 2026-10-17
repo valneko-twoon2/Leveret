@@ -21,7 +21,7 @@ Users register repositories in a list and commit / browse history from there.
   commands and quoted output stay as they are.)
 
 - **English** for code comments, commit messages, PR titles/descriptions, issues, `AGENTS.md`, and `README.md`.
-- Japanese appears only in: UI translations (`frontend/src/lib/i18n/locales/ja.ts`), `README.ja.md`,
+- Japanese appears only in: UI translations (`frontend/src/lib/i18n/locales/ja.ts`, `locales/ja/`), `README.ja.md`,
   and test / mock data that deliberately exercises non-ASCII text.
 - A `commit-msg` hook (`.githooks/commit-msg`, enabled by `scripts\setup.ps1`) rejects non-ASCII commit messages.
 - `README.md` (English, the base) and `README.ja.md` are kept in sync. No emoji in documentation.
@@ -46,7 +46,8 @@ feat: add fetch, pull and push
 
 ## Conventions
 
-- **UI text is never hard-coded.** Add keys to `locales/ja.ts` (it defines the message shape; other locales
+- **UI text is never hard-coded.** Add keys to the area file in `locales/ja/` (combined by `locales/ja.ts`, which
+  defines the message shape; a new area gets its own file; other locales
   are type-checked against it) and use `t('key')`.
 - **Backend errors** are `AppError` variants serialized as `{ code, detail }` (`backend/src/error.rs`).
   When adding a variant, add a matching `errors.<code>` message.

@@ -1,0 +1,66 @@
+// Japanese messages: the app shell: common words, the repository list and header, tabs, shortcuts.
+export default {
+  app: {
+    name: 'Leveret',
+  },
+  common: {
+    cancel: 'キャンセル',
+    refresh: '最新の状態に更新',
+    copy: 'コピー',
+    copied: 'コピーしました',
+    loading: '読み込み中…',
+    more: 'その他の操作',
+    copyPath: 'パスをコピー',
+    showInExplorer: 'エクスプローラーで表示',
+    openInExplorer: 'エクスプローラーで開く',
+    resize: 'ドラッグで幅を変更（ダブルクリックで元に戻す）',
+  },
+  welcome: {
+    title: 'Leveret へようこそ',
+    body: '手元の Git リポジトリを追加するか、GitHub からクローンしましょう。\nフォルダをこのウィンドウにドラッグ＆ドロップしても追加できます。',
+  },
+  repos: {
+    title: 'リポジトリ',
+    add: 'リポジトリを追加',
+    addDialogTitle: '追加するリポジトリのフォルダを選択',
+    remove: '一覧から削除',
+    removeConfirm: '「{name}」を一覧から削除しますか？\nフォルダやファイルは削除されません。',
+    empty: 'リポジトリがありません',
+    dropHint: 'フォルダをここにドロップして追加',
+    added: '「{name}」を追加しました',
+  },
+  repo: {
+    branch: 'ブランチ',
+    detached: 'HEAD (デタッチ)',
+    noCommits: 'まだコミットがありません',
+    ahead: '未プッシュのコミット: {count}',
+    behind: '未取り込みのコミット: {count}',
+    noUpstream: '追跡ブランチなし',
+  },
+  tabs: {
+    changes: '変更',
+    history: '履歴',
+    issues: 'Issue',
+  },
+  time: {
+    justNow: 'たった今',
+  },
+  shortcuts: {
+    changes: 'Ctrl+1',
+    history: 'Ctrl+2',
+    issues: 'Ctrl+3',
+    submit: 'Ctrl+Enter',
+    branches: 'Ctrl+B',
+    newBranch: 'Ctrl+Shift+N',
+    fetch: 'Ctrl+Shift+F',
+    pull: 'Ctrl+Shift+L',
+    push: 'Ctrl+Shift+P',
+    search: 'Ctrl+F',
+    perf: 'Ctrl+Shift+D',
+  },
+  crash: {
+    title: '表示中にエラーが発生しました',
+    body: 'この画面の表示で問題が起きましたが、データは失われていません。',
+    retry: '表示し直す',
+  },
+}
