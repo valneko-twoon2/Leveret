@@ -41,6 +41,7 @@
 | **多言語化に対応した作り** | UI の文言はすべて型付きのメッセージカタログで管理（現在は日本語）。 |
 | **撮影機能を内蔵** | 全画面をバックグラウンドで撮影。ドキュメントやレビューに便利。 |
 | **しっかり封じ込め** | ブラウザのタブではなくデスクトップアプリとして動作。開発者ツール・再読み込み・印刷・ズームは無効、バックエンドで入力を厳しく検証。 |
+| **AI エージェント対応** | MCP サーバーを内蔵。Claude Code、Codex、GitHub Copilot などのエージェントがすべての機能を使えます。 |
 | **落ちにくい** | git の操作が重なることはなく、表示のエラーはその場で復帰。クラッシュはログに残ります。 |
 
 > [!NOTE]
@@ -129,12 +130,53 @@ flowchart LR
         V --> R[リポジトリ一覧<br>repos.json]
         V --> H[GitHub API<br>デバイスフロー · リポジトリ一覧]
         V --> P[WebView2 撮影]
+        T[エージェント用ツール] --> V
     end
     A -- invoke --> V
+    AG[AI エージェント<br>Claude Code · Codex · Copilot] -- "MCP (stdio)" --> T
     G -- 起動 --> X[(git.exe)]
     H -- HTTPS --> GH[(api.github.com)]
     H -. トークン .-> K[(Windows<br>資格情報マネージャー)]
 ```
+
+## AI エージェント連携（MCP）
+
+Leveret は手で操作するだけでなく、AI エージェントから操作されることも前提に作っています。`Leveret.exe --mcp` は
+stdio で動く [Model Context Protocol](https://modelcontextprotocol.io/) サーバーです（ウィンドウを開かず、ネットワークのポートも使いません）。
+同じ PC 上の Claude Code、Codex、GitHub Copilot、Claude Desktop、そして Ollama などのローカルモデルを使うものを含む
+あらゆる MCP クライアントから、Leveret のすべての機能を使えます。
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/15-agents.png">
+  <img alt="AI エージェント連携ダイアログ: 権限、クライアントの設定、ツール、最近の操作" src="docs/screenshots/light/15-agents.png">
+</picture>
+
+サイドバーのロボットのアイコン（**AI エージェント連携**）を開くと、exe のパスを埋めた設定がコピーできます。例:
+
+```bat
+claude mcp add --scope user leveret -- "C:\Apps\Leveret\Leveret.exe" --mcp
+```
+
+```toml
+# Codex: ~/.codex/config.toml
+[mcp_servers.leveret]
+command = 'C:\Apps\Leveret\Leveret.exe'
+args = ["--mcp"]
+```
+
+| 権限 | エージェントにできること |
+|---|---|
+| オフ | なし |
+| 読み取りのみ | 状態・差分・履歴・ブランチ・スタッシュの参照 |
+| **標準**（既定） | さらにコミット、プッシュ / プル / フェッチ、ブランチ、マージ、リベース、リバート、チェリーピック、スタッシュ |
+| すべて | さらに変更の破棄、ブランチの削除、操作の中止 / スキップ、スタッシュの削除 |
+
+- **31 個のツール**: JSON スキーマと MCP のアノテーション（読み取り専用 / 破壊的 / 外部通信）付きで、モデルが使いやすい作りです。
+  リポジトリは名前でもパスでも（その中の作業ディレクトリでも）指定でき、ブランチは `main` や `origin/main`、リビジョンは `HEAD~1`
+  のように書けます。結果は簡潔な JSON で、次にすべきこと（リベースが止まったときの競合ファイルなど）も返します。
+- **ユーザーから見える**: エージェントの変更はすべて記録され、アプリに通知が出て表示も自動で更新されます。
+- **ツールは1か所** （[`backend/src/agent/tools.rs`](backend/src/agent/tools.rs)）: MCP サーバーと Leveret 内で動くエージェント（`agent_call`）が
+  共有し、アプリ自身のコマンドと同じ検証を通ります。
 
 ## はじめかた
 
@@ -226,6 +268,8 @@ Leveret は自分自身の WebView を信頼せず、Rust のバックエンド�
   クローン URL は https / ssh のみ（[`security.rs`](backend/src/security.rs)）。
 - **最小限の公開範囲**: 厳格な CSP、プロトタイプの凍結、WebView に許可する権限は4つだけ、shell / fs / http プラグインなし。
   ネットワーク通信はすべて Rust 側で行います。
+- **エージェントにも手綱**: MCP は stdio のみ（待ち受けポートなし）、呼び出しごとに権限を確認、破壊的なツールは「すべて」のときだけ、
+  変更はすべて記録してアプリに表示します。
 - **継続的なチェック**: `scripts\security.bat` で静的ルール、依存関係の監査、セキュリティテストを実行します。
 
 ## 信頼性
@@ -252,6 +296,8 @@ frontend/                 Svelte の UI（package.json、vite.config.ts、tsconf
 backend/                  Rust / Tauri（Cargo.toml、tauri.conf.json はここ）
   src/git/                  status、diff、log + グラフ、commit、clone、remote、branch、
                             operation（マージ / リベース / リバート）、discard、stash
+  src/agent/                AI エージェント用ツール（tools.rs）と MCP サーバー（mcp.rs）
+  src/settings.rs           settings.json（エージェントの権限）
   src/github.rs             デバイスフロー、トークン保存、リポジトリ一覧
   src/security.rs           WebView から来る入力の検証
   src/lockdown.rs           WebView2 の封じ込め設定
@@ -277,6 +323,8 @@ docs/screenshots/         README で使う画像
 - [x] フェッチ / プル / プッシュ / 同期
 - [x] ブランチ作成 / 切り替え / 削除、チェックアウト
 - [x] リバート、チェリーピック、マージ、リベース、スタッシュ
+- [x] AI エージェント向け MCP サーバー
+- [ ] アプリ内エージェント（Claude、Codex、GitHub Copilot、Ollama）
 - [ ] WinMerge で差分を開く
 - [ ] 英語 UI
 - [ ] タグ

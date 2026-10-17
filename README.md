@@ -41,6 +41,7 @@ Pick a repository from your list, review the changes, commit. That's it.
 | **Ready for translation** | All UI text lives in typed message catalogs (Japanese today). |
 | **Built-in screenshots** | Captures every screen in the background — great for docs and reviews. |
 | **Locked down** | A desktop app, not a browser tab: no devtools, reload, print or zoom; strict input validation in the backend. |
+| **AI agent ready** | A built-in MCP server lets Claude Code, Codex, GitHub Copilot and other agents use every feature. |
 | **Sturdy** | Git actions never overlap, a failing view recovers in place, and crashes are logged instead of lost. |
 
 > [!NOTE]
@@ -129,12 +130,53 @@ flowchart LR
         V --> R[repository list<br>repos.json]
         V --> H[GitHub API<br>device flow · repos]
         V --> P[WebView2 capture]
+        T[agent tools] --> V
     end
     A -- invoke --> V
+    AG[AI agents<br>Claude Code · Codex · Copilot] -- "MCP (stdio)" --> T
     G -- spawns --> X[(git.exe)]
     H -- HTTPS --> GH[(api.github.com)]
     H -. token .-> K[(Windows<br>Credential Manager)]
 ```
+
+## AI agents (MCP)
+
+Leveret is built to be driven by AI agents as well as by hand. `Leveret.exe --mcp` runs a
+[Model Context Protocol](https://modelcontextprotocol.io/) server over stdio (no window, no network port), so agents on the
+same PC can use every feature: Claude Code, Codex, GitHub Copilot, Claude Desktop, or any MCP client, including ones that
+run local models such as Ollama.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/15-agents.png">
+  <img alt="AI agents dialog: access level, client configuration, tools and recent agent activity" src="docs/screenshots/light/15-agents.png">
+</picture>
+
+Open **AI agents** (the robot icon in the sidebar) for the configuration with your exe path filled in, for example:
+
+```bat
+claude mcp add --scope user leveret -- "C:\Apps\Leveret\Leveret.exe" --mcp
+```
+
+```toml
+# Codex: ~/.codex/config.toml
+[mcp_servers.leveret]
+command = 'C:\Apps\Leveret\Leveret.exe'
+args = ["--mcp"]
+```
+
+| Access level | Agents may |
+|---|---|
+| Off | nothing |
+| Read-only | read status, diffs, history, branches and stashes |
+| **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash |
+| Full | also discard changes, delete branches, abort / skip operations, drop stashes |
+
+- **31 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
+  repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
+  revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
+- **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.
+- **One tool layer** ([`backend/src/agent/tools.rs`](backend/src/agent/tools.rs)) shared by the MCP server and agents
+  running inside Leveret (`agent_call`), with the same validation as the app's own commands.
 
 ## Getting started
 
@@ -226,6 +268,8 @@ Leveret treats its own webview as untrusted and keeps the Rust backend as the tr
   only https / ssh clone URLs ([`security.rs`](backend/src/security.rs)).
 - **Minimal surface**: strict CSP, frozen prototypes, four webview permissions, no shell / fs / http plugins;
   all network access happens in Rust.
+- **Agents on a leash**: MCP over stdio only (no listening port), an access level checked on every call, destructive
+  tools only with Full access, and every change logged and shown in the app.
 - **Checked continuously**: `scripts\security.bat` runs static rules, dependency audits and security tests.
 
 ## Reliability
@@ -252,6 +296,8 @@ frontend/                 Svelte UI (its own package.json, vite.config.ts, tscon
 backend/                  Rust / Tauri (its own Cargo.toml, tauri.conf.json)
   src/git/                  status, diff, log + graph, commit, clone, remote, branch,
                             operation (merge / rebase / revert), discard, stash
+  src/agent/                tools for AI agents (tools.rs) and the MCP server (mcp.rs)
+  src/settings.rs           settings.json (agent access level)
   src/github.rs             device flow, token storage, repository list
   src/security.rs           validation of everything coming from the webview
   src/lockdown.rs           WebView2 hardening
@@ -277,6 +323,8 @@ Backend errors arrive as `{ code, detail }` and are shown through the `errors.<c
 - [x] Fetch / pull / push / sync
 - [x] Branch create / switch / delete, checkout
 - [x] Revert, cherry-pick, merge, rebase, stash
+- [x] MCP server for AI agents
+- [ ] In-app agents (Claude, Codex, GitHub Copilot, Ollama)
 - [ ] Open diffs in WinMerge
 - [ ] English UI
 - [ ] Tags
