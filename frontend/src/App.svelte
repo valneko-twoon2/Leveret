@@ -1,48 +1,32 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getCurrentWebview } from '@tauri-apps/api/webview'
-  import { agents } from './lib/agents.svelte'
   import { api, inTauri, syncBackendPerf, useMockBackend } from './lib/api'
   import { runBenchRequest } from './lib/bench'
-  import { branches } from './lib/branches.svelte'
   import { runCaptureRequest, runUrlScene } from './lib/capture'
   import { changes } from './lib/changes.svelte'
   import { diffTool } from './lib/difftool.svelte'
-  import { afterPaint, perf } from './lib/perf'
   import { github } from './lib/github.svelte'
+  import { afterPaint, perf } from './lib/perf'
   import { t } from './lib/i18n/index.svelte'
-  import { issues } from './lib/issues.svelte'
   import { layout } from './lib/layout.svelte'
-  import { menu } from './lib/menu.svelte'
   import { prefs } from './lib/prefs.svelte'
-  import { settings } from './lib/settings.svelte'
-  import { tags } from './lib/tags.svelte'
+  import { handleShortcut } from './lib/shortcuts'
   import { app, describeError } from './lib/state.svelte'
-  import AgentDialog from './lib/components/AgentDialog.svelte'
-  import BranchesDialog from './lib/components/BranchesDialog.svelte'
   import ChangesPane from './lib/components/ChangesPane.svelte'
-  import CloneDialog from './lib/components/CloneDialog.svelte'
   import CommitView from './lib/components/CommitView.svelte'
-  import ContextMenu from './lib/components/ContextMenu.svelte'
   import DiffHeader from './lib/components/DiffHeader.svelte'
   import DiffView from './lib/components/DiffView.svelte'
-  import ErrorDialog from './lib/components/ErrorDialog.svelte'
   import HistoryPane from './lib/components/HistoryPane.svelte'
-  import IssueEditor from './lib/components/IssueEditor.svelte'
   import IssuesPane from './lib/components/IssuesPane.svelte'
   import IssueView from './lib/components/IssueView.svelte'
   import Icon from './lib/components/Icon.svelte'
-  import NewBranchDialog from './lib/components/NewBranchDialog.svelte'
-  import NewTagDialog from './lib/components/NewTagDialog.svelte'
   import OperationBanner from './lib/components/OperationBanner.svelte'
-  import PerfPanel from './lib/components/PerfPanel.svelte'
+  import Overlays from './lib/components/Overlays.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
   import RepoTabs from './lib/components/RepoTabs.svelte'
-  import SettingsDialog from './lib/components/settings/SettingsDialog.svelte'
-  import SignInDialog from './lib/components/SignInDialog.svelte'
   import Splitter from './lib/components/Splitter.svelte'
-  import Toasts from './lib/components/Toasts.svelte'
   import Welcome from './lib/components/Welcome.svelte'
 
   let dragging = $state(false)
@@ -147,66 +131,6 @@
     }
   })
 
-  async function saveScreenshot() {
-    try {
-      const path = await api.captureScreen()
-      app.toast(path)
-    } catch (e) {
-      app.error = describeError(e)
-    }
-  }
-
-  /** Whether a dialog (or menu) is open, so global shortcuts stay out of its way. */
-  function overlayOpen(): boolean {
-    return menu.current !== null || document.querySelector('[role="dialog"]') !== null
-  }
-
-  function onkeydown(e: KeyboardEvent) {
-    if (e.key === 'F5') {
-      e.preventDefault()
-      void app.refresh({ explicit: true })
-      return
-    }
-    if (inTauri && e.ctrlKey && e.shiftKey && e.code === 'KeyS') {
-      e.preventDefault()
-      void saveScreenshot()
-      return
-    }
-    if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyD') {
-      e.preventDefault()
-      app.perfOpen = !app.perfOpen
-      return
-    }
-    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Comma' && !overlayOpen()) {
-      e.preventDefault()
-      void settings.openSettings()
-      return
-    }
-    if (!e.ctrlKey || e.altKey || !app.repo || overlayOpen()) return
-    const shortcuts: Record<string, () => unknown> = e.shiftKey
-      ? {
-          KeyN: () => app.status?.headOid && branches.openNewBranch(),
-          KeyF: () => app.status?.hasRemote && app.remote('fetch'),
-          KeyL: () => app.status?.upstream && app.remote('pull'),
-          KeyP: () => app.status?.hasRemote && app.status.branch && app.remote('push'),
-        }
-      : {
-          Digit1: () => app.setTab('changes'),
-          Digit2: () => app.setTab('history'),
-          Digit3: () => app.setTab('issues'),
-          KeyB: () => branches.openBranches(),
-          KeyF: async () => {
-            await app.setTab('history')
-            document.getElementById('history-search')?.focus()
-          },
-        }
-    const run = shortcuts[e.code]
-    if (run) {
-      e.preventDefault()
-      void run()
-    }
-  }
-
   // Pick up changes made outside Leveret when the window is focused again.
   function onfocus() {
     const now = Date.now()
@@ -217,7 +141,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} {onfocus} onresize={() => layout.fit(window.innerWidth)} />
+<svelte:window onkeydown={handleShortcut} {onfocus} onresize={() => layout.fit(window.innerWidth)} />
 
 {#snippet crashed(error: unknown, reset: () => void)}
   <div class="crashed">
@@ -291,37 +215,7 @@
   <div class="drop"><div>{t('repos.dropHint')}</div></div>
 {/if}
 
-{#if branches.branchesOpen}
-  <BranchesDialog />
-{/if}
-{#if branches.newBranch}
-  <NewBranchDialog />
-{/if}
-
-{#if tags.newTag}
-  <NewTagDialog />
-{/if}
-{#if issues.draft}
-  <IssueEditor />
-{/if}
-{#if settings.open}
-  <SettingsDialog />
-{/if}
-{#if agents.agentOpen}
-  <AgentDialog />
-{/if}
-{#if github.cloneOpen}
-  <CloneDialog />
-{/if}
-{#if github.signInOpen}
-  <SignInDialog />
-{/if}
-{#if app.perfOpen}
-  <PerfPanel />
-{/if}
-<ErrorDialog />
-<ContextMenu />
-<Toasts />
+<Overlays />
 
 <style>
   .layout {

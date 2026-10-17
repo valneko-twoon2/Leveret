@@ -1,6 +1,6 @@
 // Types and backend calls for issues (backend/src/issues, backend/src/commands/issues.rs).
-// Kept apart from api.ts so that file stays small.
-import { call } from './api'
+// Like the other area files, but not part of `api` (the issues store calls it directly).
+import { call } from './ipc'
 
 /** `local`: kept next to the repository, never on GitHub unless published. */
 export type IssueSource = 'local' | 'github'

@@ -8,11 +8,6 @@ use serde::Serialize;
 use super::{Git, PathspecFile, decode, git_dir};
 use crate::error::{AppError, Result};
 
-/// `GIT_EDITOR=:` makes git accept its prepared message without opening an editor.
-fn no_editor() -> [(String, String); 1] {
-    [("GIT_EDITOR".into(), ":".into())]
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum OperationKind {
@@ -118,7 +113,7 @@ fn require_none(repo: &Path) -> Result<()> {
 /// Reverts `hash` with a new commit. Merge commits are reverted against their first parent.
 pub fn revert(repo: &Path, hash: &str, is_merge: bool) -> Result<Outcome> {
     require_none(repo)?;
-    let mut git = Git::new(repo).envs(no_editor()).args(["revert", "--no-edit"]);
+    let mut git = Git::new(repo).args(["revert", "--no-edit"]);
     if is_merge {
         git = git.args(["-m", "1"]);
     }
@@ -128,7 +123,7 @@ pub fn revert(repo: &Path, hash: &str, is_merge: bool) -> Result<Outcome> {
 /// Applies the changes of `hash` to the current branch as a new commit.
 pub fn cherry_pick(repo: &Path, hash: &str, is_merge: bool) -> Result<Outcome> {
     require_none(repo)?;
-    let mut git = Git::new(repo).envs(no_editor()).arg("cherry-pick");
+    let mut git = Git::new(repo).arg("cherry-pick");
     if is_merge {
         git = git.args(["-m", "1"]);
     }
@@ -139,18 +134,14 @@ pub fn cherry_pick(repo: &Path, hash: &str, is_merge: bool) -> Result<Outcome> {
 /// stashed and restored automatically.
 pub fn rebase(repo: &Path, onto: &str) -> Result<Outcome> {
     require_none(repo)?;
-    let git = Git::new(repo)
-        .envs(no_editor())
-        .args(["rebase", "--autostash", "--end-of-options", onto]);
+    let git = Git::new(repo).args(["rebase", "--autostash", "--end-of-options", onto]);
     run_stoppable(repo, git)
 }
 
 /// Merges `branch` (a full ref name) into the current branch.
 pub fn merge(repo: &Path, branch: &str) -> Result<Outcome> {
     require_none(repo)?;
-    let git = Git::new(repo)
-        .envs(no_editor())
-        .args(["merge", "--no-edit", "--end-of-options", branch]);
+    let git = Git::new(repo).args(["merge", "--no-edit", "--end-of-options", branch]);
     run_stoppable(repo, git)
 }
 
@@ -172,7 +163,7 @@ pub fn continue_(repo: &Path) -> Result<Outcome> {
     }
     // Resolved files that were edited after "mark as resolved" belong to the step too.
     Git::new(repo).args(["add", "--update"]).run()?;
-    let git = Git::new(repo).envs(no_editor());
+    let git = Git::new(repo);
     let git = match op.kind {
         OperationKind::Merge => git.args(["commit", "--no-edit"]),
         OperationKind::Rebase => git.args(["rebase", "--continue"]),
@@ -185,7 +176,7 @@ pub fn continue_(repo: &Path) -> Result<Outcome> {
 /// Skips the current commit of a rebase, revert or cherry-pick.
 pub fn skip(repo: &Path) -> Result<Outcome> {
     let op = current(repo)?.ok_or(AppError::NoOperation)?;
-    let git = Git::new(repo).envs(no_editor());
+    let git = Git::new(repo);
     let git = match op.kind {
         OperationKind::Merge => return Err(AppError::NoOperation),
         OperationKind::Rebase => git.args(["rebase", "--skip"]),

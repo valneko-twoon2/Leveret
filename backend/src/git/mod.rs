@@ -104,6 +104,10 @@ impl<'a> Git<'a> {
             .env("GIT_TERMINAL_PROMPT", "0")
             .env("GIT_OPTIONAL_LOCKS", "0")
             .env("GIT_LITERAL_PATHSPECS", "1")
+            // Never open an editor: git accepts its prepared message instead, and a
+            // configured `code --wait` style editor can't block a command forever.
+            .env("GIT_EDITOR", ":")
+            .env("GIT_SEQUENCE_EDITOR", ":")
             // Untranslated messages, so errors such as conflicts can be recognized.
             .env("LC_ALL", "C")
             // Applied last so a command can override a default when it has to.

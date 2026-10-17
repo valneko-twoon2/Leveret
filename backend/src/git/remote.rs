@@ -114,9 +114,7 @@ pub fn pull(repo: &Path, envs: Vec<(String, String)>, on_progress: impl FnMut(Pr
     if upstream(repo, &branch)?.is_none() {
         return Err(AppError::NoUpstream);
     }
-    let mut git = Git::new(repo)
-        .envs(envs)
-        .envs([("GIT_EDITOR".to_string(), ":".to_string())]);
+    let mut git = Git::new(repo).envs(envs);
     git = git.args(["pull", "--progress", "--no-edit"]);
     if config(repo, "pull.rebase")?.is_none() && config(repo, &format!("branch.{branch}.rebase"))?.is_none() {
         // Without this, recent git refuses to pull diverged branches until configured.
