@@ -28,15 +28,16 @@ Pick a repository from your list, review the changes, commit. That's it.
 |---|---|
 | **Repository list** | Register repositories by folder picker or drag & drop, switch with one click. |
 | **GitHub sign-in & clone** | Sign in through the browser (or with a token), pick one of your repositories, clone it with a progress bar. |
-| **Commit what you pick** | Check the files to include, write a summary and description, `Ctrl+Enter`. |
+| **Commit what you pick** | Check the files to include, write a summary and description, `Ctrl+Enter`. Untracked files are marked apart and can be hidden; ignored files never show up. |
 | **Fetch, pull, push** | One toolbar button that does the right thing (pull, push, publish, sync) with progress; fetches in the background every 10 minutes. |
-| **Branches** | Switch, create, merge, rebase and delete from one dialog; remote branches become tracking branches. |
+| **Branches & tags** | Switch, create, merge, rebase and delete from one dialog; remote branches become tracking branches. Create tags (lightweight or annotated) from the history, push or delete them. |
 | **Undo-friendly** | Discarded changes go to the Recycle Bin; amend or undo the last commit; revert or cherry-pick any commit. |
 | **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. |
 | **Stash** | Put work aside and bring it back later. |
 | **Issues** | GitHub issues and local issues side by side: jot an issue down locally, publish it to GitHub when you want (optional). |
 | **Comfortable** | Resizable panes, right-click menus, keyboard shortcuts and history search. |
 | **Readable diffs** | Line numbers, hunk headers, and Shift_JIS files decoded correctly. |
+| **WinMerge** | Open any diff in WinMerge (button, double click or right click); conflicted files open as a 3-way merge. Shown when WinMerge is installed. |
 | **History with a graph** | Branch lanes, branch / remote / tag labels, commit details and per-file diffs. |
 | **Light & dark** | Follows the Windows theme. |
 | **Ready for translation** | All UI text lives in typed message catalogs (Japanese today). |
@@ -188,7 +189,7 @@ args = ["--mcp"]
 | **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash, create / edit / comment on / publish issues |
 | Full | also discard changes, delete branches, abort / skip operations, drop stashes, delete local issues |
 
-- **38 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
+- **43 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
   repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
   revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
 - **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.
@@ -324,7 +325,7 @@ frontend/                 Svelte UI (its own package.json, vite.config.ts, tscon
   src/lib/lockdown.ts       blocks browser shortcuts and gestures
   src/lib/layout.svelte.ts  resizable pane sizes
   src/lib/menu.svelte.ts    the app's own context menu
-  src/lib/i18n/             message catalogs (locales/ja.ts defines the keys)
+  src/lib/i18n/             message catalogs (locales/ja.ts combines locales/ja/*.ts by area and defines the keys)
 backend/                  Rust / Tauri (its own Cargo.toml, tauri.conf.json)
   src/lib.rs                app setup and command registration
   src/commands/             Tauri commands, one module per area (input validation happens here)
@@ -346,7 +347,7 @@ docs/screenshots/         images used by this README
 
 ## Adding a language
 
-1. Copy `frontend/src/lib/i18n/locales/ja.ts` to e.g. `en.ts` and translate it — the `Messages` type checks that every key is present.
+1. Copy `frontend/src/lib/i18n/locales/ja.ts` and the `ja/` folder to e.g. `en.ts` and `en/`, and translate them — the `Messages` type checks that every key is present.
 2. Register it in `catalogs` in `frontend/src/lib/i18n/index.svelte.ts`.
 
 Backend errors arrive as `{ code, detail }` and are shown through the `errors.<code>` messages.
@@ -362,9 +363,9 @@ Backend errors arrive as `{ code, detail }` and are shown through the `errors.<c
 - [x] MCP server for AI agents
 - [x] Issues: GitHub and local, with publishing
 - [ ] In-app agents (Claude, Codex, GitHub Copilot, Ollama)
-- [ ] Open diffs in WinMerge
+- [x] Open diffs in WinMerge
 - [ ] English UI
-- [ ] Tags
+- [x] Tags
 - [ ] Interactive rebase
 
 ## Contributing
