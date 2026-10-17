@@ -12,5 +12,4 @@ indent_size = 2
 indent_size = 4
 
 [*.{ps1,bat}]
-end_of_line = crlf
 indent_size = 4
