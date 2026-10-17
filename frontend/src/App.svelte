@@ -14,6 +14,7 @@
   import { issues } from './lib/issues.svelte'
   import { layout } from './lib/layout.svelte'
   import { menu } from './lib/menu.svelte'
+  import { tags } from './lib/tags.svelte'
   import { app, describeError } from './lib/state.svelte'
   import AgentDialog from './lib/components/AgentDialog.svelte'
   import BranchesDialog from './lib/components/BranchesDialog.svelte'
@@ -30,6 +31,7 @@
   import IssueView from './lib/components/IssueView.svelte'
   import Icon from './lib/components/Icon.svelte'
   import NewBranchDialog from './lib/components/NewBranchDialog.svelte'
+  import NewTagDialog from './lib/components/NewTagDialog.svelte'
   import OperationBanner from './lib/components/OperationBanner.svelte'
   import PerfPanel from './lib/components/PerfPanel.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
@@ -277,6 +279,10 @@
 {/if}
 {#if branches.newBranch}
   <NewBranchDialog />
+{/if}
+
+{#if tags.newTag}
+  <NewTagDialog />
 {/if}
 {#if issues.draft}
   <IssueEditor />

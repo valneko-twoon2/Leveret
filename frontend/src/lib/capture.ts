@@ -15,6 +15,7 @@ import { issues } from './issues.svelte'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
 import { app } from './state.svelte'
+import { tags } from './tags.svelte'
 
 export interface Scene {
   id: string
@@ -218,11 +219,33 @@ export const scenes: Scene[] = [
       }
     },
   },
+  {
+    id: '19-tags',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      await branches.openBranches('tags')
+    },
+  },
+  {
+    id: '20-new-tag',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      const c = history.log[0]
+      tags.openNewTag(c?.hash, c?.subject)
+      tags.newTagName = 'v0.2.0'
+      tags.newTagMessage = 'WinMerge 連携とタグに対応'
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
+  tags.closeNewTag()
   agents.closeAgent()
   app.perfOpen = false
   issues.closeDraft()

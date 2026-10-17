@@ -1,4 +1,5 @@
-<!-- Branch list: switch with a click; merge, rebase, branch off or delete from the "..." menu. -->
+<!-- Branches and tags. Branches: switch with a click; merge, rebase, branch off or delete from the "..." menu.
+     Tags: see TagList. -->
 <script lang="ts">
   import type { Branch } from '../api'
   import { branches } from '../branches.svelte'
@@ -6,8 +7,10 @@
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
+  import { tags } from '../tags.svelte'
   import Icon from './Icon.svelte'
   import Modal from './Modal.svelte'
+  import TagList from './TagList.svelte'
 
   const filtered = $derived.by(() => {
     const q = branches.branchFilter.trim().toLowerCase()
@@ -38,8 +41,10 @@
     )
   }
 
+  const onTags = $derived(branches.dialogTab === 'tags')
+
   function onkeydown(e: KeyboardEvent) {
-    if (e.key === 'Enter' && filtered.length > 0) {
+    if (!onTags && e.key === 'Enter' && filtered.length > 0) {
       e.preventDefault()
       void branches.switchBranch(local[0] ?? remote[0])
     }
@@ -71,38 +76,94 @@
   </li>
 {/snippet}
 
-<Modal title={t('branches.title')} width={560} onclose={() => branches.closeBranches()}>
+<Modal title={t(onTags ? 'tags.title' : 'branches.title')} width={600} onclose={() => branches.closeBranches()}>
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected={!onTags} class:active={!onTags} onclick={() => branches.setDialogTab('branches')}>
+      <Icon name="branch" size={14} />
+      {t('branches.tabBranches')}
+    </button>
+    <button role="tab" aria-selected={onTags} class:active={onTags} onclick={() => branches.setDialogTab('tags')}>
+      <Icon name="tag" size={14} />
+      {t('branches.tabTags')}
+    </button>
+  </div>
   <div class="top">
     <div class="search">
       <Icon name="search" size={14} />
-      <input type="text" placeholder={t('branches.filter')} bind:value={branches.branchFilter} {onkeydown} aria-label={t('branches.filter')} />
+      <input
+        type="text"
+        placeholder={t(onTags ? 'tags.filter' : 'branches.filter')}
+        bind:value={branches.branchFilter}
+        {onkeydown}
+        aria-label={t(onTags ? 'tags.filter' : 'branches.filter')}
+      />
     </div>
-    <button class="btn" disabled={app.busy !== null || !app.status?.headOid} onclick={() => branches.openNewBranch()}>
-      <Icon name="plus" size={14} />
-      {t('branches.new')}
-    </button>
+    {#if onTags}
+      <button class="btn" disabled={app.busy !== null || !app.status?.headOid} onclick={() => tags.openNewTag()}>
+        <Icon name="plus" size={14} />
+        {t('tags.new')}
+      </button>
+    {:else}
+      <button class="btn" disabled={app.busy !== null || !app.status?.headOid} onclick={() => branches.openNewBranch()}>
+        <Icon name="plus" size={14} />
+        {t('branches.new')}
+      </button>
+    {/if}
   </div>
 
-  <div class="lists">
-    {#if local.length}
-      <h4>{t('branches.local')}</h4>
-      <ul>
-        {#each local as b (b.fullRef)}{@render item(b)}{/each}
-      </ul>
-    {/if}
-    {#if remote.length}
-      <h4>{t('branches.remote')}</h4>
-      <ul>
-        {#each remote as b (b.fullRef)}{@render item(b)}{/each}
-      </ul>
-    {/if}
-    {#if !local.length && !remote.length}
-      <div class="none">{t('branches.none')}</div>
-    {/if}
-  </div>
+  {#if onTags}
+    <div class="lists"><TagList filter={branches.branchFilter} /></div>
+  {:else}
+    <div class="lists">
+      {#if local.length}
+        <h4>{t('branches.local')}</h4>
+        <ul>
+          {#each local as b (b.fullRef)}{@render item(b)}{/each}
+        </ul>
+      {/if}
+      {#if remote.length}
+        <h4>{t('branches.remote')}</h4>
+        <ul>
+          {#each remote as b (b.fullRef)}{@render item(b)}{/each}
+        </ul>
+      {/if}
+      {#if !local.length && !remote.length}
+        <div class="none">{t('branches.none')}</div>
+      {/if}
+    </div>
+  {/if}
 </Modal>
 
 <style>
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin: -4px 0 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--fg-muted);
+  }
+
+  .tabs button:hover {
+    color: var(--fg);
+  }
+
+  .tabs button.active {
+    border-bottom-color: var(--attention);
+    color: var(--fg);
+    font-weight: 600;
+  }
+
   .top {
     display: flex;
     gap: 8px;

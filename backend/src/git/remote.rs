@@ -83,6 +83,11 @@ fn push_remote(repo: &Path, branch: &str) -> Result<String> {
     if let Some(r) = config(repo, &format!("branch.{branch}.pushRemote"))?.or(config(repo, "remote.pushDefault")?) {
         return Ok(r);
     }
+    default_remote(repo)
+}
+
+/// `origin`, or the first remote when there is no `origin`.
+pub fn default_remote(repo: &Path) -> Result<String> {
     let remotes = remotes(repo)?;
     match remotes.iter().find(|r| *r == "origin").or(remotes.first()) {
         Some(r) => Ok(r.clone()),

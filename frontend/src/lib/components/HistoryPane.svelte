@@ -1,6 +1,6 @@
 <!-- Left column of the History tab: the commit list with its graph, search and a context menu. -->
 <script lang="ts">
-  import type { LogEntry, LogScope } from '../api'
+  import type { LogEntry, LogScope, Tag } from '../api'
   import { branches } from '../branches.svelte'
   import { changes } from '../changes.svelte'
   import { formatDateTime, formatRelative, shortHash } from '../format'
@@ -8,6 +8,7 @@
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
+  import { tags } from '../tags.svelte'
   import GraphCell from './GraphCell.svelte'
   import Icon from './Icon.svelte'
   import RefBadge from './RefBadge.svelte'
@@ -28,6 +29,11 @@
     }
   }
 
+  /** A tag shown on a commit, for the tag actions (which only need its name and commit). */
+  function tagOf(c: LogEntry, name: string): Tag {
+    return { name, target: c.hash, annotated: false, subject: c.subject, time: c.authorTime }
+  }
+
   function commitMenu(c: LogEntry, e: MouseEvent | KeyboardEvent) {
     const idle = app.busy === null
     const isHead = c.hash === app.status?.headOid
@@ -35,6 +41,13 @@
     menu.open(e, [
       { label: t('history.createBranch'), hint: isHead ? t('shortcuts.newBranch') : undefined, action: () => branches.openNewBranch(c.hash, shortHash(c.hash)), disabled: !idle },
       { label: t('history.checkout'), action: () => history.checkoutCommit(c), disabled: busyOp || isHead },
+      { label: t('tags.createHere'), action: () => tags.openNewTag(c.hash, c.subject), disabled: !idle },
+      ...c.refs
+        .filter((r) => r.kind === 'tag')
+        .flatMap((r) => [
+          { label: t('tags.pushOne', { tag: r.name }), action: () => tags.push(tagOf(c, r.name)), disabled: !idle || !app.status?.hasRemote },
+          { label: t('tags.deleteOne', { tag: r.name }), action: () => tags.remove(tagOf(c, r.name), false), disabled: !idle, danger: true },
+        ]),
       'separator',
       { label: t('history.revert'), action: () => history.revertCommit(c), disabled: busyOp },
       { label: t('history.cherryPick'), action: () => history.cherryPick(c), disabled: busyOp || isHead },

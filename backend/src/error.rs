@@ -47,6 +47,8 @@ pub enum AppError {
     NoOperation,
     #[error("branch already exists: {0}")]
     BranchExists(String),
+    #[error("tag already exists: {0}")]
+    TagExists(String),
     #[error("branch is not fully merged: {0}")]
     BranchNotMerged(String),
     #[error("there are no local changes")]
@@ -102,6 +104,7 @@ impl AppError {
             AppError::NoOperation => "noOperation",
             AppError::BranchExists(_) => "branchExists",
             AppError::BranchNotMerged(_) => "branchNotMerged",
+            AppError::TagExists(_) => "tagExists",
             AppError::NoChanges => "noChanges",
             AppError::AlreadyPushed => "alreadyPushed",
             AppError::IssueNotFound(_) => "issueNotFound",
@@ -133,6 +136,7 @@ impl AppError {
             | AppError::LocalChangesConflict(s)
             | AppError::BranchExists(s)
             | AppError::BranchNotMerged(s)
+            | AppError::TagExists(s)
             | AppError::GithubAuthFailed(s)
             | AppError::GithubApi(s)
             | AppError::Network(s)

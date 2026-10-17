@@ -87,6 +87,23 @@ pub fn folder_name(name: &str) -> Result<&str> {
 /// A branch name git accepts (the rules of `git check-ref-format --branch`),
 /// which also can't be mistaken for an option.
 pub fn branch_name(name: &str) -> Result<&str> {
+    ref_name(name).map_err(|_| invalid("branch name", name))
+}
+
+/// A tag name: the same rules as branch names.
+pub fn tag_name(name: &str) -> Result<&str> {
+    ref_name(name).map_err(|_| invalid("tag name", name))
+}
+
+/// A tag message: up to 10,000 characters, no control characters but newlines and tabs.
+pub fn tag_message(text: &str) -> Result<&str> {
+    if text.chars().count() > 10_000 || text.chars().any(|c| c.is_control() && !"\n\r\t".contains(c)) {
+        return Err(invalid("tag message", ""));
+    }
+    Ok(text)
+}
+
+fn ref_name(name: &str) -> Result<&str> {
     let bad_char = name
         .chars()
         .any(|c| c.is_control() || c.is_whitespace() || "~^:?*[\\".contains(c));
@@ -260,7 +277,12 @@ mod tests {
             ".hidden", "a/.b", "a.lock", "a.", "@", "a@{1}", "HEAD", "a\tb", "a\0b",
         ] {
             assert!(branch_name(bad).is_err(), "{bad:?} should be rejected");
+            assert!(tag_name(bad).is_err(), "{bad:?} should be rejected as a tag");
         }
+        assert!(tag_name("v1.0.0").is_ok());
+        assert!(tag_message("リリース\n\n- 修正\tあり").is_ok());
+        assert!(tag_message("a\0b").is_err());
+        assert!(tag_message(&"x".repeat(10_001)).is_err());
     }
 
     #[test]

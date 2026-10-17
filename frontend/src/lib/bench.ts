@@ -48,6 +48,7 @@ async function benchRepo(path: string) {
   await history.setScope('head')
 
   await branches.openBranches()
+  await branches.setDialogTab('tags')
   branches.closeBranches()
   await agents.openAgent()
   agents.closeAgent()

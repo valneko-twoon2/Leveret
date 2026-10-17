@@ -2,6 +2,8 @@
 export default {
   branches: {
     title: 'ブランチ',
+    tabBranches: 'ブランチ',
+    tabTags: 'タグ',
     open: 'ブランチを切り替え',
     filter: 'ブランチを検索',
     local: 'ローカル',

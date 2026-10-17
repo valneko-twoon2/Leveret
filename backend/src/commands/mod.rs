@@ -21,6 +21,7 @@ pub(crate) mod perf;
 pub(crate) mod remote;
 pub(crate) mod repos;
 pub(crate) mod stash;
+pub(crate) mod tags;
 
 use crate::error::{AppError, Result};
 

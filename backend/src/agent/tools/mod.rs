@@ -20,6 +20,7 @@ mod render;
 mod repos;
 mod schema;
 mod stash;
+mod tags;
 
 use std::panic::AssertUnwindSafe;
 use std::path::Path;
@@ -110,6 +111,10 @@ const AREAS: &[Area] = &[
         tools: issues::tools,
         run: issues::run,
     },
+    Area {
+        tools: tags::tools,
+        run: tags::run,
+    },
 ];
 
 /// The order tools are listed to agents: read, then write, then destructive.
@@ -125,6 +130,7 @@ const ORDER: &[&str] = &[
     "get_commit",
     "list_branches",
     "list_stashes",
+    "list_tags",
     "list_issues",
     "get_issue",
     // write
@@ -146,6 +152,8 @@ const ORDER: &[&str] = &[
     "continue_operation",
     "stash_save",
     "stash_pop",
+    "create_tag",
+    "push_tag",
     "ignore_path",
     "create_issue",
     "update_issue",
@@ -157,6 +165,7 @@ const ORDER: &[&str] = &[
     "abort_operation",
     "skip_operation",
     "stash_drop",
+    "delete_tag",
     "delete_issue",
 ];
 

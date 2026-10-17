@@ -1,10 +1,11 @@
-// The branches dialog, the "new branch" dialog and branch actions (switch,
-// merge, rebase, delete, create). Builds on `app` (state.svelte.ts).
+// The branches dialog (with its tags tab, see tags.svelte.ts), the "new branch"
+// dialog and branch actions (switch, merge, rebase, delete, create). Builds on `app` (state.svelte.ts).
 import { api, isAppError, type Branch } from './api'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
 import { perf } from './perf'
 import { app, describeError } from './state.svelte'
+import { tags } from './tags.svelte'
 
 export interface NewBranchRequest {
   /** Commit hash or full ref to start from; null for HEAD. */
@@ -28,6 +29,8 @@ export function localName(branch: Branch): string {
 
 class BranchesState {
   branchesOpen = $state(false)
+  /** Which list the branches dialog shows. */
+  dialogTab = $state<'branches' | 'tags'>('branches')
   branches = $state.raw<Branch[]>([])
   branchFilter = $state('')
   newBranch = $state.raw<NewBranchRequest | null>(null)
@@ -49,11 +52,17 @@ class BranchesState {
     this.newBranch = null
   }
 
-  async openBranches() {
+  async openBranches(tab: 'branches' | 'tags' = 'branches') {
     if (!app.selectedPath) return
     this.branchFilter = ''
     this.branchesOpen = true
-    await perf.view('branches.open', () => this.loadBranches())
+    await this.setDialogTab(tab)
+  }
+
+  async setDialogTab(tab: 'branches' | 'tags') {
+    this.dialogTab = tab
+    if (tab === 'tags') await tags.load()
+    else await perf.view('branches.open', () => this.loadBranches())
   }
 
   closeBranches() {

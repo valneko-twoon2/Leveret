@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RemoteOp } from '../api'
   import { branches } from '../branches.svelte'
+  import { tags } from '../tags.svelte'
   import { changes } from '../changes.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
@@ -77,6 +78,8 @@
         { label: t('remote.sync'), action: () => app.remote('sync'), disabled: !idle || !st?.upstream || !onBranch },
         'separator',
         { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => branches.openNewBranch(), disabled: !idle || !st?.headOid },
+        { label: t('tags.new'), action: () => tags.openNewTag(), disabled: !idle || !st?.headOid },
+        { label: t('tags.title'), action: () => branches.openBranches('tags') },
         { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
         { label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead },
         'separator',

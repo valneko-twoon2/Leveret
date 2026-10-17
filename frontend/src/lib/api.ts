@@ -47,6 +47,16 @@ export interface RepoStatus {
   files: FileChange[]
 }
 
+export interface Tag {
+  name: string
+  /** The commit the tag points at. */
+  target: string
+  annotated: boolean
+  /** First line of the tag message (or of the commit message for lightweight tags). */
+  subject: string
+  time: number
+}
+
 export interface Branch {
   /** `main`, `origin/main` */
   name: string
@@ -365,6 +375,10 @@ export const api = {
   switchBranch: (repo: string, branch: string) => call<void>('switch_branch', { repo, branch }),
   checkoutCommit: (repo: string, hash: string) => call<void>('checkout_commit', { repo, hash }),
   deleteBranch: (repo: string, name: string, force: boolean) => call<void>('delete_branch', { repo, name, force }),
+  listTags: (repo: string) => call<Tag[]>('list_tags', { repo }),
+  createTag: (repo: string, name: string, target: string, message: string) => call<void>('create_tag', { repo, name, target, message }),
+  deleteTag: (repo: string, name: string, remote: boolean) => call<void>('delete_tag', { repo, name, remote }),
+  pushTag: (repo: string, name: string) => call<void>('push_tag', { repo, name }),
 
   listStashes: (repo: string) => call<StashEntry[]>('list_stashes', { repo }),
   stashSave: (repo: string, message: string, untracked: boolean) => call<void>('stash_save', { repo, message, untracked }),

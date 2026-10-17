@@ -14,6 +14,7 @@ pub mod operation;
 pub mod remote;
 pub mod stash;
 pub mod status;
+pub mod tag;
 
 #[cfg(test)]
 mod integration_tests;

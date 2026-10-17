@@ -123,6 +123,10 @@ pub fn run() {
             commands::stash::stash_save,
             commands::stash::stash_pop,
             commands::stash::stash_drop,
+            commands::tags::list_tags,
+            commands::tags::create_tag,
+            commands::tags::delete_tag,
+            commands::tags::push_tag,
         ])
         .run(tauri::generate_context!());
     if let Err(e) = result {

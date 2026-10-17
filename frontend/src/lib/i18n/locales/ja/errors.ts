@@ -34,6 +34,7 @@ export default {
     noOperation: '進行中のマージやリベースはありません。',
     branchExists: '同じ名前のブランチがすでにあります: {detail}',
     branchNotMerged: 'ブランチ「{detail}」はマージされていません。',
+    tagExists: '同じ名前のタグがすでにあります: {detail}',
     noChanges: '変更がありません。',
     alreadyPushed: 'このコミットはすでにプッシュされているため取り消せません。',
     other: '予期しないエラーが発生しました。',

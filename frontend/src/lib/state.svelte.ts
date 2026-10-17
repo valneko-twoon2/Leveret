@@ -12,6 +12,7 @@ import { changes } from './changes.svelte'
 import { confirmDialog } from './dialogs'
 import { history } from './history.svelte'
 import { issues } from './issues.svelte'
+import { tags } from './tags.svelte'
 import { t, type MessageKey } from './i18n/index.svelte'
 import { perf } from './perf'
 import { prefs } from './prefs.svelte'
@@ -19,7 +20,7 @@ import { prefs } from './prefs.svelte'
 export type Tab = 'changes' | 'history' | 'issues'
 
 /** A long-running action; while one runs, other git actions are disabled. */
-export type Busy = RemoteOp | 'commit' | 'branch' | 'operation' | 'discard' | 'stash'
+export type Busy = RemoteOp | 'commit' | 'branch' | 'operation' | 'discard' | 'stash' | 'tag'
 
 export interface Toast {
   id: number
@@ -218,6 +219,7 @@ class AppState {
     history.resetRepoView()
     branches.resetRepoView()
     issues.resetRepoView()
+    tags.resetRepoView()
   }
 
   /** Reloads status (and history when it is visible) for the current repository. */

@@ -1,6 +1,6 @@
 // Mock commands for merge / rebase and stopped operations, branches and remote
 // actions (fetch, pull, push, sync).
-import type { Outcome, RemoteOp } from '../api'
+import type { Outcome, RemoteOp, Tag } from '../api'
 import { addCommit, finishOperation, listBranches, moveBranchLabel } from './repo'
 import { delay, fail, find, remoteListeners, UNHANDLED } from './state'
 
@@ -41,6 +41,30 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
       finishOperation(r, false)
       return cmd === 'skip_operation' ? ('done' satisfies Outcome) : null
     }
+    case 'list_tags': {
+      const r = find(args.repo)
+      return r.commits.flatMap((c) =>
+        (r.refs.get(c.hash) ?? [])
+          .filter((x) => x.kind === 'tag')
+          .map((x) => ({ name: x.name, target: c.hash, annotated: x.name.startsWith('v'), subject: c.subject, time: c.authorTime }) satisfies Tag),
+      )
+    }
+    case 'create_tag': {
+      const r = find(args.repo)
+      const name = String(args.name)
+      if ([...r.refs.values()].flat().some((x) => x.kind === 'tag' && x.name === name)) fail('tagExists', name)
+      const target = String(args.target)
+      r.refs.set(target, [...(r.refs.get(target) ?? []), { name, kind: 'tag', current: false }])
+      return null
+    }
+    case 'delete_tag': {
+      const r = find(args.repo)
+      for (const [hash, labels] of r.refs) r.refs.set(hash, labels.filter((x) => !(x.kind === 'tag' && x.name === args.name)))
+      return null
+    }
+    case 'push_tag':
+      await delay(400)
+      return null
     case 'list_branches':
       return listBranches(find(args.repo))
     case 'create_branch': {
