@@ -90,7 +90,7 @@ pub(super) fn tools() -> Vec<Tool> {
             "Comment on issue",
             Write,
             true,
-            "Adds a comment to an issue.",
+            "Adds a comment to a local or GitHub issue (GitHub issues need the user to be signed in to GitHub in Leveret).",
             object(
                 json!({ "repo": repo_prop(), "source": source_prop("github"), "id": id_prop(), "body": string("Markdown comment.") }),
                 &["repo", "id", "body"],

@@ -4,6 +4,8 @@
 mod agent;
 mod capture;
 mod commands;
+#[cfg(test)]
+mod contract_tests;
 mod crash;
 mod difftool;
 mod error;

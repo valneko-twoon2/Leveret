@@ -49,7 +49,7 @@ pub(super) fn tools() -> Vec<Tool> {
             "Delete stash",
             Destructive,
             false,
-            "Deletes a stash permanently.",
+            "Deletes a stash permanently; its changes are lost unless they were restored with stash_pop first.",
             object(
                 json!({ "repo": repo_prop(), "index": integer("Stash index from list_stashes.", 0, 10_000) }),
                 &["repo", "index"],
