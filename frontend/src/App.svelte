@@ -7,6 +7,7 @@
   import { branches } from './lib/branches.svelte'
   import { runCaptureRequest, runUrlScene } from './lib/capture'
   import { changes } from './lib/changes.svelte'
+  import { diffTool } from './lib/difftool.svelte'
   import { afterPaint, perf } from './lib/perf'
   import { github } from './lib/github.svelte'
   import { t } from './lib/i18n/index.svelte'
@@ -20,9 +21,9 @@
   import CloneDialog from './lib/components/CloneDialog.svelte'
   import CommitView from './lib/components/CommitView.svelte'
   import ContextMenu from './lib/components/ContextMenu.svelte'
+  import DiffHeader from './lib/components/DiffHeader.svelte'
   import DiffView from './lib/components/DiffView.svelte'
   import ErrorDialog from './lib/components/ErrorDialog.svelte'
-  import FileRow from './lib/components/FileRow.svelte'
   import HistoryPane from './lib/components/HistoryPane.svelte'
   import IssueEditor from './lib/components/IssueEditor.svelte'
   import IssuesPane from './lib/components/IssuesPane.svelte'
@@ -246,9 +247,8 @@
           <section class="main">
             {#if app.tab === 'changes'}
               {#if changes.selectedChange}
-                <div class="file-header">
-                  <FileRow path={changes.selectedChange.path} origPath={changes.selectedChange.origPath} kind={changes.selectedChange.kind} />
-                </div>
+                {@const file = changes.selectedChange}
+                <DiffHeader path={file.path} origPath={file.origPath} kind={file.kind} height={37} onopen={() => diffTool.openWorking(file)} />
                 <div class="main-body"><DiffView diff={changes.workingDiff} /></div>
               {:else if app.status}
                 <div class="empty">
@@ -341,13 +341,6 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-  }
-
-  .file-header {
-    flex: none;
-    height: 34px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg-subtle);
   }
 
   .main-body {

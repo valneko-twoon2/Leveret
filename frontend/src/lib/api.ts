@@ -338,6 +338,17 @@ export const api = {
   markResolved: (repo: string, paths: string[]) => call<void>('mark_resolved', { repo, paths }),
   ignorePath: (repo: string, path: string, byExtension: boolean) => call<void>('ignore_path', { repo, path, byExtension }),
   showInExplorer: (repo: string, path?: string) => call<void>('show_in_explorer', { repo, path: path ?? null }),
+  getDiffTool: () => call<boolean>('get_diff_tool'),
+  openWorkingInDiffTool: (repo: string, file: FileChange) =>
+    call<void>('open_working_in_diff_tool', { repo, path: file.path, origPath: file.origPath }),
+  openCommitInDiffTool: (repo: string, detail: CommitDetail, file: CommitFile) =>
+    call<void>('open_commit_in_diff_tool', {
+      repo,
+      hash: detail.hash,
+      parent: detail.parents[0] ?? null,
+      path: file.path,
+      origPath: file.origPath,
+    }),
   undoLastCommit: (repo: string) => call<string>('undo_last_commit', { repo }),
 
   revertCommit: (repo: string, hash: string) => call<Outcome>('revert_commit', { repo, hash }),

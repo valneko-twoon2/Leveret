@@ -347,6 +347,10 @@ export default {
     tooLarge: 'ファイルが大きすぎるため差分を表示できません',
     truncated: '差分が大きいため途中までを表示しています',
     noChanges: '内容の変更はありません（モードや改行コードのみの変更の可能性があります）',
+    openInTool: 'WinMerge で開く',
+    mergeInTool: 'WinMerge でマージ',
+    openInToolHint: 'WinMerge で差分を開きます（ダブルクリックでも開けます）',
+    mergeInToolHint: 'WinMerge の 3 方向マージで競合を解決します。保存すると作業ツリーのファイルに書き込まれます',
   },
   time: {
     justNow: 'たった今',
@@ -413,6 +417,7 @@ export default {
     githubNotSignedIn: 'GitHub にサインインしていません。',
     issueNotFound: 'Issue #{detail} が見つかりません。',
     noGithubRemote: 'このリポジトリには github.com のリモートがありません。',
+    diffToolNotFound: 'WinMerge が見つかりません。WinMerge をインストールしてください。',
     githubUnauthorized: 'GitHub に認証を拒否されました。トークンが正しいか、有効期限が切れていないか確認してください。',
     githubAuthFailed: 'GitHub へのサインインに失敗しました。',
     githubApi: 'GitHub との通信でエラーが発生しました。',

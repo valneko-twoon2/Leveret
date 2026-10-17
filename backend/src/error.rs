@@ -57,6 +57,8 @@ pub enum AppError {
     IssueNotFound(u64),
     #[error("the repository has no github.com remote")]
     NoGithubRemote,
+    #[error("WinMerge was not found")]
+    DiffToolNotFound,
     #[error("GitHub OAuth client id is not configured")]
     GithubClientIdMissing,
     #[error("not signed in to GitHub")]
@@ -104,6 +106,7 @@ impl AppError {
             AppError::AlreadyPushed => "alreadyPushed",
             AppError::IssueNotFound(_) => "issueNotFound",
             AppError::NoGithubRemote => "noGithubRemote",
+            AppError::DiffToolNotFound => "diffToolNotFound",
             AppError::GithubClientIdMissing => "githubClientIdMissing",
             AppError::GithubNotSignedIn => "githubNotSignedIn",
             AppError::GithubUnauthorized => "githubUnauthorized",
@@ -148,6 +151,7 @@ impl AppError {
             | AppError::NoChanges
             | AppError::AlreadyPushed
             | AppError::NoGithubRemote
+            | AppError::DiffToolNotFound
             | AppError::GithubClientIdMissing
             | AppError::GithubNotSignedIn
             | AppError::GithubUnauthorized => String::new(),

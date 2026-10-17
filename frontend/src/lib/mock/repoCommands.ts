@@ -133,6 +133,12 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       if (!r.files.some((f) => f.path === '.gitignore')) r.files.push({ path: '.gitignore', origPath: null, kind: 'modified' })
       return null
     }
+    case 'get_diff_tool':
+      return true
+    case 'open_working_in_diff_tool':
+    case 'open_commit_in_diff_tool':
+      console.info(`mock: would open ${String(args.path)} in WinMerge`)
+      return null
     case 'show_in_explorer':
       console.info(`mock: would open ${String(args.repo)} ${String(args.path ?? '')}`)
       return null

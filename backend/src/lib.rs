@@ -5,6 +5,7 @@ mod agent;
 mod capture;
 mod commands;
 mod crash;
+mod difftool;
 mod error;
 mod git;
 mod github;
@@ -79,6 +80,9 @@ pub fn run() {
             commands::changes::undo_last_commit,
             commands::changes::ignore_path,
             commands::changes::show_in_explorer,
+            commands::difftool::get_diff_tool,
+            commands::difftool::open_working_in_diff_tool,
+            commands::difftool::open_commit_in_diff_tool,
             commands::clone::default_clone_dir,
             commands::clone::clone_repo,
             commands::github::github_state,

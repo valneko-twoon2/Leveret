@@ -120,6 +120,7 @@ const ORDER: &[&str] = &[
     "list_repositories",
     "get_status",
     "get_diff",
+    "open_in_diff_tool",
     "get_log",
     "get_commit",
     "list_branches",

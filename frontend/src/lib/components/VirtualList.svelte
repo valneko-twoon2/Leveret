@@ -14,6 +14,8 @@
     onreachend?: () => void
     /** Right click or the context menu key on a row (the row is selected first). */
     oncontext?: (index: number, e: MouseEvent | KeyboardEvent) => void
+    /** Double click on a row (not on a checkbox in it). */
+    onactivate?: (index: number) => void
     row: Snippet<[T, number]>
     footer?: Snippet
   }
@@ -28,6 +30,7 @@
     onselect,
     onreachend,
     oncontext,
+    onactivate,
     row,
     footer,
   }: Props = $props()
@@ -112,6 +115,7 @@
         aria-selected={index === selectedIndex}
         tabindex="-1"
         onmousedown={(e) => e.button === 0 && selectable && onselect?.(index)}
+        ondblclick={(e) => !(e.target instanceof HTMLInputElement) && onactivate?.(index)}
         oncontextmenu={(e) => {
           if (!oncontext) return
           if (selectable && index !== selectedIndex) onselect?.(index)

@@ -43,8 +43,9 @@ Test-Pattern 'Tokens must stay in the backend (never in web storage)' $web '(loc
 # --- static rules: backend ----------------------------------------------------
 Write-Step 'Static rules: backend'
 $rs = @(Get-SourceFiles (Join-Path $Backend 'src') @('.rs'))
-Test-Pattern 'Processes may only be spawned through git::Git' $rs 'Command::new\(' @('src/git/mod.rs')
-Test-Pattern 'unsafe code is limited to the Win32 / WebView2 integration' $rs '\bunsafe\b' @('src/capture.rs', 'src/lockdown.rs', 'src/crash.rs')
+# difftool.rs starts WinMerge, found through its own registry key (never a path from the webview).
+Test-Pattern 'Processes may only be spawned through git::Git (or WinMerge in difftool)' $rs 'Command::new\(' @('src/git/mod.rs', 'src/difftool.rs')
+Test-Pattern 'unsafe code is limited to the Win32 / WebView2 integration' $rs '\bunsafe\b' @('src/capture.rs', 'src/lockdown.rs', 'src/crash.rs', 'src/difftool.rs')
 Test-Pattern 'Never log or print secrets' $rs '(log::\w+!|println!|eprintln!|dbg!)\([^\n]*(token|secret|password)'
 Test-Pattern 'No leftover dbg!' $rs '\bdbg!\('
 

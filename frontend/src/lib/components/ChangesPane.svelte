@@ -2,6 +2,7 @@
 <script lang="ts">
   import type { FileChange } from '../api'
   import { changes } from '../changes.svelte'
+  import { diffTool } from '../difftool.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
@@ -27,6 +28,10 @@
     const checked = changes.includedFiles.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
     const ext = extension(file.path)
     const items: MenuItem[] = []
+    if (diffTool.available) {
+      const merge = file.kind === 'conflicted'
+      items.push({ label: t(merge ? 'diff.mergeInTool' : 'diff.openInTool'), action: () => diffTool.openWorking(file) }, 'separator')
+    }
     if (file.kind === 'conflicted') {
       items.push({ label: t('discard.markResolved'), action: () => changes.markResolved([file.path]), disabled: !idle })
     } else {
@@ -92,6 +97,7 @@
         label={t('tabs.changes')}
         onselect={(i) => app.files[i] && changes.selectFile(app.files[i].path)}
         oncontext={(i, e) => app.files[i] && fileMenu(app.files[i], e)}
+        onactivate={(i) => app.files[i] && diffTool.openWorking(app.files[i])}
       >
         {#snippet row(file)}
           <FileRow

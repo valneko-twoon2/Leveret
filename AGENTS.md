@@ -105,7 +105,8 @@ The webview is treated as untrusted; the Rust backend is the trust boundary.
   object ids through `security::object_id`, clone URLs through `security::clone_url`, folder names through
   `security::folder_name`. Add a validator (with tests in `security.rs`) for any new kind of input.
 - **Git** is only spawned via `git::Git`, which disables risky transports (`protocol.ext.allow=never`),
-  prompts and pathspec magic. Put `--` before user-supplied paths/URLs.
+  prompts and pathspec magic. Put `--` before user-supplied paths/URLs. The only other program started is
+  WinMerge (`difftool.rs`), located through its registry key; the webview can never name a program to run.
 - **Secrets** (the GitHub token) live in Windows Credential Manager (`github.rs`). Never send them to the
   webview, log them, put them on a command line, or write them to a repository config; git receives them
   through `GIT_CONFIG_*` environment variables only.

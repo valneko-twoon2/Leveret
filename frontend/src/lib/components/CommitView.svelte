@@ -1,11 +1,13 @@
 <!-- Main area of the History tab: commit message, metadata, files and the diff. -->
 <script lang="ts">
+  import { diffTool } from '../difftool.svelte'
   import { formatDateTime, shortHash } from '../format'
   import { history } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
-  import { menu } from '../menu.svelte'
+  import { menu, type MenuItem } from '../menu.svelte'
   import { app } from '../state.svelte'
+  import DiffHeader from './DiffHeader.svelte'
   import DiffView from './DiffView.svelte'
   import FileRow from './FileRow.svelte'
   import Icon from './Icon.svelte'
@@ -16,6 +18,16 @@
   const subject = $derived(detail?.message.split('\n')[0] ?? '')
   const body = $derived(detail?.message.split('\n').slice(1).join('\n').trim() ?? '')
   const selectedIndex = $derived(detail?.files.findIndex((f) => f.path === history.detailFile) ?? -1)
+  const selectedFile = $derived(detail?.files[selectedIndex] ?? null)
+
+  function fileMenu(i: number, e: MouseEvent | KeyboardEvent) {
+    const file = detail?.files[i]
+    if (!detail || !file) return
+    const items: MenuItem[] = []
+    if (diffTool.available) items.push({ label: t('diff.openInTool'), action: () => diffTool.openCommit(detail, file) }, 'separator')
+    items.push({ label: t('common.copyPath'), action: () => app.copy(file.path) })
+    menu.open(e, items)
+  }
 
   let copied = $state(false)
   async function copyHash() {
@@ -62,7 +74,8 @@
             {selectedIndex}
             label={t('history.filesChanged', { count: detail.files.length })}
             onselect={(i) => detail.files[i] && history.selectCommitFile(detail.files[i].path)}
-            oncontext={(i, e) => menu.open(e, [{ label: t('common.copyPath'), action: () => app.copy(detail.files[i]?.path ?? '') }])}
+            onactivate={(i) => detail.files[i] && diffTool.openCommit(detail, detail.files[i])}
+            oncontext={(i, e) => fileMenu(i, e)}
           >
             {#snippet row(f)}
               <FileRow path={f.path} origPath={f.origPath} kind={f.kind} />
@@ -72,7 +85,10 @@
       </div>
       <Splitter pane="commitFiles" />
       <div class="diff">
-        <DiffView diff={history.commitDiff} />
+        {#if selectedFile}
+          <DiffHeader path={selectedFile.path} origPath={selectedFile.origPath} kind={selectedFile.kind} height={34} onopen={() => diffTool.openCommit(detail, selectedFile)} />
+        {/if}
+        <div class="diff-body"><DiffView diff={history.commitDiff} /></div>
       </div>
     </div>
   </div>
@@ -170,5 +186,12 @@
   .diff {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .diff-body {
+    flex: 1;
+    min-height: 0;
   }
 </style>

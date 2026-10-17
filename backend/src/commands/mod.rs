@@ -12,6 +12,7 @@ pub(crate) mod app;
 pub(crate) mod branches;
 pub(crate) mod changes;
 pub(crate) mod clone;
+pub(crate) mod difftool;
 pub(crate) mod github;
 pub(crate) mod history;
 pub(crate) mod issues;

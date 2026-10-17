@@ -36,7 +36,7 @@ dirs = "7"
 [target.'cfg(windows)'.dependencies]
 # Must match the versions used by tauri/wry (used for WebView2 screen capture).
 webview2-com = "0.39"
-windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
+windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Registry", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 
 [profile.release]
 # Panics keep the default unwinding: a panic inside a command becomes an error
