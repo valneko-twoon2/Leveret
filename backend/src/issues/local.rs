@@ -285,12 +285,7 @@ pub fn publish(repo: &Path, id: u64, remote: &mut impl Remote) -> Result<Issue> 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn repo() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
-        Git::new(dir.path()).args(["init", "-q"]).run().unwrap();
-        dir
-    }
+    use crate::testutil::{git_out, repo};
 
     #[test]
     fn create_update_comment_delete() {
@@ -325,7 +320,7 @@ mod tests {
         // Ids are never reused.
         assert_eq!(create(r, "Third", "").unwrap().id, 3);
         // Nothing shows up in the working tree.
-        let status = Git::new(r).args(["status", "--porcelain"]).run_string().unwrap();
+        let status = git_out(r, &["status", "--porcelain"]);
         assert!(status.is_empty(), "{status}");
     }
 

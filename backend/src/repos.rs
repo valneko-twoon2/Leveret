@@ -158,12 +158,7 @@ fn same_path(a: &str, b: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn repo() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
-        git::Git::new(dir.path()).args(["init", "-q"]).run().unwrap();
-        dir
-    }
+    use crate::testutil::repo;
 
     #[test]
     fn sees_changes_made_by_another_process() {

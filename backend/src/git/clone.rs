@@ -57,15 +57,8 @@ mod tests {
 
     #[test]
     fn clones_a_local_repository() {
-        let src = tempfile::tempdir().unwrap();
+        let src = crate::testutil::repo_with_commit();
         let s = src.path();
-        let git = |args: &[&str]| Git::new(s).args(args).run().unwrap();
-        git(&["init", "-q"]);
-        git(&["config", "user.name", "T"]);
-        git(&["config", "user.email", "t@example.com"]);
-        std::fs::write(s.join("a.txt"), "a\n").unwrap();
-        git(&["add", "."]);
-        git(&["commit", "-qm", "init"]);
 
         let dst = tempfile::tempdir().unwrap();
         let dest = dst.path().join("copy");

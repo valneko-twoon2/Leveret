@@ -227,19 +227,12 @@ fn start(exe: &Path, sides: &[Side], output: Option<&Path>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
+    use crate::testutil::{self, git};
 
     #[test]
     fn extracts_files_from_revisions_and_stages() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        git(p, &["config", "core.autocrlf", "false"]);
         std::fs::create_dir(p.join("src")).unwrap();
         std::fs::write(p.join("src/メモ.txt"), "base\n").unwrap();
         git(p, &["add", "."]);

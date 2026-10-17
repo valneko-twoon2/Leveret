@@ -102,10 +102,7 @@ fn split_by_head(repo: &Path, paths: &[String]) -> Result<(Vec<String>, Vec<Stri
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
+    use crate::testutil::{self, git};
 
     fn remove(files: &[PathBuf]) -> Result<()> {
         for f in files {
@@ -116,12 +113,8 @@ mod tests {
 
     #[test]
     fn discards_every_kind_of_change() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        git(p, &["config", "core.autocrlf", "false"]);
         for f in ["mod.txt", "del.txt", "old.txt", "keep.txt"] {
             std::fs::write(p.join(f), format!("{f}\n")).unwrap();
         }
@@ -153,9 +146,8 @@ mod tests {
 
     #[test]
     fn discards_in_a_repository_without_commits() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo();
         let p = dir.path();
-        git(p, &["init", "-q"]);
         std::fs::write(p.join("a.txt"), "a\n").unwrap();
         std::fs::write(p.join("b.txt"), "b\n").unwrap();
         git(p, &["add", "a.txt"]);

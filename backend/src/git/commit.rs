@@ -145,19 +145,7 @@ fn escape_pattern(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::git::status;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
-
-    fn init() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
-        git(dir.path(), &["init", "-q"]);
-        git(dir.path(), &["config", "user.name", "Test"]);
-        git(dir.path(), &["config", "user.email", "test@example.com"]);
-        git(dir.path(), &["config", "core.autocrlf", "false"]);
-        dir
-    }
+    use crate::testutil::{git, repo as init};
 
     #[test]
     fn commits_only_selected_files() {

@@ -115,6 +115,10 @@ impl<'a> Git<'a> {
             const CREATE_NO_WINDOW: u32 = 0x0800_0000;
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
+        // Tests don't depend on (or get slowed down by) the machine's git config.
+        #[cfg(test)]
+        cmd.env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", crate::testutil::empty_config());
         cmd
     }
 

@@ -15,6 +15,8 @@ mod perf;
 mod repos;
 mod security;
 mod settings;
+#[cfg(test)]
+mod testutil;
 
 use tauri::Manager;
 use tauri::webview::PageLoadEvent;

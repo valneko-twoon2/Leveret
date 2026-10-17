@@ -171,22 +171,7 @@ pub fn delete(repo: &Path, name: &str, force: bool) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
-
-    fn repo() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
-        let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        std::fs::write(p.join("a.txt"), "a\n").unwrap();
-        git(p, &["add", "."]);
-        git(p, &["commit", "-qm", "init"]);
-        dir
-    }
+    use crate::testutil::{git, git_out, repo_with_commit as repo};
 
     #[test]
     fn parses_for_each_ref() {
@@ -272,8 +257,8 @@ mod tests {
     fn checkout_commit_detaches() {
         let dir = repo();
         let p = dir.path();
-        let head = Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap();
-        checkout_detached(p, head.trim()).unwrap();
+        let head = git_out(p, &["rev-parse", "HEAD"]);
+        checkout_detached(p, &head).unwrap();
         let st = crate::git::status::get(p).unwrap();
         assert!(st.branch.is_none());
     }

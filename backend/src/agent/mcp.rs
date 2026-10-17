@@ -196,24 +196,16 @@ pub fn serve() -> i32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::git::Git;
     use crate::settings::Settings;
+    use crate::testutil::{self, git};
 
     fn setup() -> (tempfile::TempDir, tempfile::TempDir, Server) {
         let config = tempfile::tempdir().unwrap();
-        let repo = tempfile::tempdir().unwrap();
+        let repo = testutil::repo();
         let p = repo.path();
-        for args in [
-            &["init", "-q", "-b", "main"][..],
-            &["config", "user.name", "Test"],
-            &["config", "user.email", "test@example.com"],
-            &["config", "core.autocrlf", "false"],
-        ] {
-            Git::new(p).args(args).run().unwrap();
-        }
         std::fs::write(p.join("a.txt"), "one\n").unwrap();
-        Git::new(p).args(["add", "."]).run().unwrap();
-        Git::new(p).args(["commit", "-qm", "first"]).run().unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "first"]);
         let server = Server::new(config.path());
         server.store.add(p, false).unwrap();
         (config, repo, server)

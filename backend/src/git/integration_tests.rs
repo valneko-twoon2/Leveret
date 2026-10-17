@@ -1,25 +1,9 @@
 //! End-to-end checks of the git wrappers against a real temporary repository.
 
-use std::path::Path;
-
-use super::Git;
 use super::diff::{self, LineKind};
 use super::log::{self, LogScope, RefKind};
 use super::status::{self, ChangeKind};
-
-fn git(dir: &Path, args: &[&str]) {
-    Git::new(dir).args(args).run().unwrap();
-}
-
-fn repo() -> tempfile::TempDir {
-    let dir = tempfile::tempdir().unwrap();
-    let p = dir.path();
-    git(p, &["init", "-q", "-b", "main"]);
-    git(p, &["config", "user.name", "Test"]);
-    git(p, &["config", "user.email", "test@example.com"]);
-    git(p, &["config", "core.autocrlf", "false"]);
-    dir
-}
+use crate::testutil::{git, repo};
 
 #[test]
 fn empty_repository() {

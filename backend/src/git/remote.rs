@@ -163,38 +163,33 @@ pub fn sync(repo: &Path, envs: Vec<(String, String)>, mut on_progress: impl FnMu
 mod tests {
     use super::*;
     use crate::git::status;
+    use crate::testutil::{self, git};
 
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
-
-    fn identity(p: &Path) {
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        git(p, &["config", "core.autocrlf", "false"]);
-    }
-
-    /// A bare "remote" and two clones of it.
+    /// A bare "remote", a repository that pushed one commit to it, and a clone of it.
     fn setup() -> (tempfile::TempDir, tempfile::TempDir, tempfile::TempDir) {
-        let remote = tempfile::tempdir().unwrap();
-        git(remote.path(), &["init", "-q", "--bare", "-b", "main"]);
-        let clone = || {
-            let d = tempfile::tempdir().unwrap();
-            Git::new(d.path())
-                .args(["clone", "-q", "--"])
-                .arg(remote.path().as_os_str())
-                .arg(".")
-                .run()
-                .unwrap();
-            identity(d.path());
-            d
-        };
-        let a = clone();
-        std::fs::write(a.path().join("a.txt"), "a\n").unwrap();
-        git(a.path(), &["add", "."]);
-        git(a.path(), &["commit", "-qm", "init"]);
+        let remote = testutil::bare();
+        let url = remote.path().display().to_string();
+        let a = testutil::repo_with_commit();
+        git(a.path(), &["remote", "add", "origin", &url]);
         git(a.path(), &["push", "-q", "-u", "origin", "main"]);
-        let b = clone();
+        // The clone gets the same identity as the template in one git process.
+        let b = tempfile::tempdir().unwrap();
+        git(
+            b.path(),
+            &[
+                "clone",
+                "-q",
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                "-c",
+                "core.autocrlf=false",
+                "--",
+                &url,
+                ".",
+            ],
+        );
         (remote, a, b)
     }
 
@@ -246,13 +241,8 @@ mod tests {
 
     #[test]
     fn errors_without_remote_or_branch() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo_with_commit();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        identity(p);
-        std::fs::write(p.join("a.txt"), "a\n").unwrap();
-        git(p, &["add", "."]);
-        git(p, &["commit", "-qm", "init"]);
         assert!(matches!(fetch(p, Vec::new(), |_| {}), Err(AppError::NoRemote)));
         assert!(matches!(push(p, Vec::new(), |_| {}), Err(AppError::NoRemote)));
         git(p, &["switch", "-q", "--detach"]);

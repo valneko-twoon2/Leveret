@@ -96,22 +96,12 @@ pub fn drop(repo: &Path, index: u32) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
+    use crate::testutil::{self, git};
 
     #[test]
     fn save_list_pop_drop() {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo_with_commit();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        git(p, &["config", "core.autocrlf", "false"]);
-        std::fs::write(p.join("a.txt"), "a\n").unwrap();
-        git(p, &["add", "."]);
-        git(p, &["commit", "-qm", "init"]);
 
         assert!(matches!(save(p, "", true), Err(AppError::NoChanges)));
         std::fs::write(p.join("a.txt"), "changed\n").unwrap();

@@ -214,18 +214,11 @@ pub fn abort(repo: &Path) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
+    use crate::testutil::{self, git, git_out};
 
     fn repo() -> tempfile::TempDir {
-        let dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo();
         let p = dir.path();
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        git(p, &["config", "core.autocrlf", "false"]);
         std::fs::write(p.join("a.txt"), "base\n").unwrap();
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "base"]);
@@ -265,7 +258,7 @@ mod tests {
         assert_eq!(continue_(p).unwrap(), Outcome::Done);
         assert!(current(p).unwrap().is_none());
 
-        let log = Git::new(p).args(["log", "--format=%s"]).run_string().unwrap();
+        let log = git_out(p, &["log", "--format=%s"]);
         assert_eq!(
             log.lines().collect::<Vec<_>>(),
             ["feature 2", "feature", "main", "base"]
@@ -276,11 +269,11 @@ mod tests {
     fn rebase_abort_restores_branch() {
         let dir = diverged();
         let p = dir.path();
-        let before = Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap();
+        let before = git_out(p, &["rev-parse", "HEAD"]);
         assert_eq!(rebase(p, "refs/heads/main").unwrap(), Outcome::Conflicts);
         abort(p).unwrap();
         assert!(current(p).unwrap().is_none());
-        assert_eq!(Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap(), before);
+        assert_eq!(git_out(p, &["rev-parse", "HEAD"]), before);
         assert!(matches!(abort(p), Err(AppError::NoOperation)));
     }
 
@@ -290,7 +283,7 @@ mod tests {
         let p = dir.path();
         assert_eq!(rebase(p, "refs/heads/main").unwrap(), Outcome::Conflicts);
         assert_eq!(skip(p).unwrap(), Outcome::Done);
-        let log = Git::new(p).args(["log", "--format=%s"]).run_string().unwrap();
+        let log = git_out(p, &["log", "--format=%s"]);
         assert_eq!(log.lines().collect::<Vec<_>>(), ["feature 2", "main", "base"]);
     }
 
@@ -323,7 +316,7 @@ mod tests {
         std::fs::write(p.join("a.txt"), "both\n").unwrap();
         mark_resolved(p, &["a.txt".into()]).unwrap();
         assert_eq!(continue_(p).unwrap(), Outcome::Done);
-        let parents = Git::new(p).args(["log", "-1", "--format=%P"]).run_string().unwrap();
+        let parents = git_out(p, &["log", "-1", "--format=%P"]);
         assert_eq!(parents.split_whitespace().count(), 2);
     }
 
@@ -334,19 +327,19 @@ mod tests {
         std::fs::write(p.join("b.txt"), "b\n").unwrap();
         git(p, &["add", "."]);
         git(p, &["commit", "-qm", "add b"]);
-        let hash = Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap();
-        assert_eq!(revert(p, hash.trim(), false).unwrap(), Outcome::Done);
+        let hash = git_out(p, &["rev-parse", "HEAD"]);
+        assert_eq!(revert(p, &hash, false).unwrap(), Outcome::Done);
         assert!(!p.join("b.txt").exists());
-        let subject = Git::new(p).args(["log", "-1", "--format=%s"]).run_string().unwrap();
+        let subject = git_out(p, &["log", "-1", "--format=%s"]);
         assert!(subject.starts_with("Revert \"add b\""));
 
         // Reverting a change that was edited again afterwards conflicts.
         std::fs::write(p.join("a.txt"), "two\n").unwrap();
         git(p, &["commit", "-qam", "two"]);
-        let two = Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap();
+        let two = git_out(p, &["rev-parse", "HEAD"]);
         std::fs::write(p.join("a.txt"), "three\n").unwrap();
         git(p, &["commit", "-qam", "three"]);
-        assert_eq!(revert(p, two.trim(), false).unwrap(), Outcome::Conflicts);
+        assert_eq!(revert(p, &two, false).unwrap(), Outcome::Conflicts);
         assert_eq!(current(p).unwrap().unwrap().kind, OperationKind::Revert);
         abort(p).unwrap();
         assert!(current(p).unwrap().is_none());
@@ -358,9 +351,9 @@ mod tests {
         let p = dir.path();
         std::fs::write(p.join("a.txt"), "two\n").unwrap();
         git(p, &["commit", "-qam", "two"]);
-        let two = Git::new(p).args(["rev-parse", "HEAD"]).run_string().unwrap();
+        let two = git_out(p, &["rev-parse", "HEAD"]);
         std::fs::write(p.join("a.txt"), "local\n").unwrap();
-        let err = revert(p, two.trim(), false).unwrap_err();
+        let err = revert(p, &two, false).unwrap_err();
         assert!(matches!(err, AppError::LocalChangesConflict(_)), "{err:?}");
         assert_eq!(std::fs::read_to_string(p.join("a.txt")).unwrap(), "local\n");
     }

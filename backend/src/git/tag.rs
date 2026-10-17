@@ -125,10 +125,7 @@ pub fn delete_remote(repo: &Path, envs: Vec<(String, String)>, name: &str) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn git(dir: &Path, args: &[&str]) {
-        Git::new(dir).args(args).run().unwrap();
-    }
+    use crate::testutil::{self, git, git_out};
 
     #[test]
     fn parses_lightweight_and_annotated_tags() {
@@ -154,19 +151,10 @@ mod tests {
 
     #[test]
     fn create_list_push_and_delete() {
-        let dir = tempfile::tempdir().unwrap();
-        let remote_dir = tempfile::tempdir().unwrap();
+        let dir = testutil::repo_with_commit();
+        let remote_dir = testutil::bare();
         let p = dir.path();
-        git(remote_dir.path(), &["init", "-q", "--bare"]);
-        git(p, &["init", "-q", "-b", "main"]);
-        git(p, &["config", "user.name", "Test"]);
-        git(p, &["config", "user.email", "test@example.com"]);
-        std::fs::write(p.join("a.txt"), "a\n").unwrap();
-        git(p, &["add", "."]);
-        git(p, &["commit", "-qm", "init"]);
-        let head = decode(&Git::new(p).args(["rev-parse", "HEAD"]).run().unwrap().stdout)
-            .trim()
-            .to_string();
+        let head = git_out(p, &["rev-parse", "HEAD"]);
 
         create(p, "v1.0", &head, "").unwrap();
         create(p, "release/2", &head, "リリース 2\n\n詳細").unwrap();
@@ -183,10 +171,9 @@ mod tests {
             &["remote", "add", "origin", &remote_dir.path().display().to_string()],
         );
         push(p, Vec::new(), "v1.0").unwrap();
-        let remote_tags = |dir: &Path| decode(&Git::new(dir).args(["tag", "--list"]).run().unwrap().stdout);
-        assert_eq!(remote_tags(remote_dir.path()).trim(), "v1.0");
+        assert_eq!(git_out(remote_dir.path(), &["tag", "--list"]), "v1.0");
         delete_remote(p, Vec::new(), "v1.0").unwrap();
-        assert_eq!(remote_tags(remote_dir.path()).trim(), "");
+        assert_eq!(git_out(remote_dir.path(), &["tag", "--list"]), "");
 
         delete(p, "v1.0").unwrap();
         assert_eq!(list(p).unwrap().len(), 1);
