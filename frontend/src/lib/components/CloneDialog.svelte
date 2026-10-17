@@ -1,6 +1,6 @@
 <script lang="ts">
   import { pickFolder } from '../dialogs'
-  import { formatRelative } from '../format'
+  import { formatRelative, phaseLabel } from '../format'
   import { github } from '../github.svelte'
   import { t } from '../i18n/index.svelte'
   import Icon from './Icon.svelte'
@@ -13,6 +13,25 @@
       : '',
   )
   const selectedIndex = $derived(github.filteredRepos.findIndex((r) => r.fullName === github.selectedRepo))
+  const canClone = $derived(!!github.cloneSource && !!github.parentDir.trim() && !github.cloning)
+
+  /** Enter in the search / URL field starts the clone when the form is complete
+      (and, on the GitHub tab, the selected repository is still shown by the filter). */
+  function submitOnEnter(e: KeyboardEvent) {
+    if (github.cloneTab === 'github' && selectedIndex < 0) return
+    if (e.key === 'Enter' && !e.isComposing && canClone) {
+      e.preventDefault()
+      void github.clone()
+    }
+  }
+
+  /** Double-click on a repository selects it and starts the clone. */
+  function activate(i: number) {
+    const repo = github.filteredRepos[i]
+    if (!repo) return
+    github.selectedRepo = repo.fullName
+    if (canClone) void github.clone()
+  }
 
   async function browse() {
     const dir = await pickFolder(t('clone.browseTitle'))
@@ -42,7 +61,7 @@
     {:else}
       <div class="search">
         <Icon name="search" size={14} />
-        <input type="text" placeholder={t('clone.filter')} aria-label={t('clone.filter')} bind:value={github.filter} />
+        <input type="text" placeholder={t('clone.filter')} aria-label={t('clone.filter')} bind:value={github.filter} onkeydown={submitOnEnter} />
       </div>
       <div class="repo-list">
         {#if github.reposLoading}
@@ -56,6 +75,7 @@
             {selectedIndex}
             label={t('clone.githubTab')}
             onselect={(i) => (github.selectedRepo = github.filteredRepos[i].fullName)}
+            onactivate={activate}
           >
             {#snippet row(repo)}
               <div class="repo">
@@ -65,7 +85,7 @@
                 </div>
                 <div class="meta" title={repo.description ?? undefined}>
                   {repo.description ?? ''}
-                  {#if repo.pushedAt}<span class="when">· {formatRelative(Date.parse(repo.pushedAt) / 1000)}</span>{/if}
+                  {#if repo.pushedAt}<span class="when">{repo.description ? '· ' : ''}{formatRelative(Date.parse(repo.pushedAt) / 1000)}</span>{/if}
                 </div>
               </div>
             {/snippet}
@@ -76,7 +96,7 @@
   {:else}
     <label class="field">
       <span>{t('clone.url')}</span>
-      <input type="text" spellcheck="false" placeholder={t('clone.urlPlaceholder')} bind:value={github.url} />
+      <input type="text" spellcheck="false" placeholder={t('clone.urlPlaceholder')} bind:value={github.url} onkeydown={submitOnEnter} />
     </label>
   {/if}
 
@@ -92,13 +112,13 @@
   {#if github.progress}
     <div class="progress" aria-live="polite">
       <div class="bar"><div class="fill" style:width="{github.progress.percent}%"></div></div>
-      <small>{github.progress.phase || t('clone.cloning')} {github.progress.percent}%</small>
+      <small>{github.progress.phase ? phaseLabel(github.progress.phase) : t('clone.cloning')} {github.progress.percent}%</small>
     </div>
   {/if}
 
   {#snippet footer()}
     <button class="btn" disabled={github.cloning} onclick={() => github.closeClone()}>{t('common.cancel')}</button>
-    <button class="btn primary" disabled={!github.cloneSource || !github.parentDir.trim() || github.cloning} onclick={() => github.clone()}>
+    <button class="btn primary" disabled={!canClone} onclick={() => github.clone()}>
       <Icon name="download" size={14} />
       {github.cloning ? t('clone.cloning') : t('clone.submit')}
     </button>

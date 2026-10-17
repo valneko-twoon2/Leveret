@@ -11,7 +11,7 @@
   --bg-selected-strong: #0969da;
   --fg: #1f2328;
   --fg-muted: #59636e;
-  --fg-subtle: #818b98;
+  --fg-subtle: #6e7781;
   --fg-on-accent: #ffffff;
   --border: #d1d9e0;
   --border-muted: #e5e9ed;
@@ -56,7 +56,7 @@
     --bg-selected-strong: #1f6feb;
     --fg: #f0f6fc;
     --fg-muted: #9198a1;
-    --fg-subtle: #656c76;
+    --fg-subtle: #7d8590;
     --border: #3d444d;
     --border-muted: #2a313a;
     --accent: #4493f8;
@@ -97,7 +97,7 @@
   --bg-selected-strong: #1f6feb;
   --fg: #f0f6fc;
   --fg-muted: #9198a1;
-  --fg-subtle: #656c76;
+  --fg-subtle: #7d8590;
   --border: #3d444d;
   --border-muted: #2a313a;
   --accent: #4493f8;
@@ -190,6 +190,28 @@ textarea:focus {
 input[type='checkbox'] {
   accent-color: var(--accent);
   margin: 0;
+}
+
+/* Inside a focused selected list row (VirtualList, --bg-selected-strong background), colored
+   badges and checkboxes switch to the on-accent color so they stay readable. */
+.viewport:focus-within .row.selected .status-badge,
+.viewport:focus-within .row.selected .ref-badge {
+  color: var(--fg-on-accent);
+  border-color: currentColor;
+}
+
+.viewport:focus-within .row.selected .ref-badge {
+  background: color-mix(in srgb, var(--fg-on-accent) 14%, transparent);
+}
+
+.viewport:focus-within .row.selected .ref-badge.current {
+  color: var(--bg-selected-strong);
+  background: var(--fg-on-accent);
+  border-color: var(--fg-on-accent);
+}
+
+.viewport:focus-within .row.selected input[type='checkbox']:not(.switch) {
+  accent-color: var(--fg-on-accent);
 }
 
 :focus-visible {

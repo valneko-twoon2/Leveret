@@ -16,7 +16,7 @@
   }
 </script>
 
-<span class="badge {kind}" title={t(`kind.${kind}`)}>{LETTER[kind]}</span>
+<span class="badge status-badge {kind}" title={t(`kind.${kind}`)}>{LETTER[kind]}</span>
 
 <style>
   .badge {

@@ -22,8 +22,9 @@
       <Icon name="plus" size={14} />
       {t('repos.add')}
     </button>
-    <button class="btn" onclick={() => github.openClone()} title={t('clone.open')} aria-label={t('clone.open')}>
+    <button class="btn clone" onclick={() => github.openClone()} title={t('clone.open')} aria-label={t('clone.open')}>
       <Icon name="download" size={14} />
+      <span class="clone-label">{t('clone.submit')}</span>
     </button>
   </div>
 
@@ -59,14 +60,23 @@
   .buttons {
     display: flex;
     gap: 6px;
+    container-type: inline-size;
   }
 
   .buttons .btn:first-child {
     flex: 1;
   }
 
-  .buttons .btn:last-child {
+  .clone {
     padding: 0 9px;
+  }
+
+  /* The clone button shows its label when the sidebar is wide enough; the tooltip and
+     aria-label name it otherwise. */
+  @container (max-width: 259px) {
+    .clone-label {
+      display: none;
+    }
   }
 
   .signin {

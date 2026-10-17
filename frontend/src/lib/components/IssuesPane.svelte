@@ -88,7 +88,7 @@
             <div class="text">
               <div class="title">
                 <span class="summary" title={issue.title}>{issue.title}</span>
-                <IssueLabels labels={issue.labels} />
+                {#if issue.labels.length}<span class="labels"><IssueLabels labels={issue.labels} max={2} /></span>{/if}
               </div>
               <div class="meta" title={formatDateTime(issue.updatedAt)}>
                 {#if issue.source === 'local'}<span class="local"><Icon name="laptop" size={12} /> {idLabel(issue)}</span>{:else}<span>{idLabel(issue)}</span>{/if}
@@ -238,11 +238,22 @@
     min-width: 0;
   }
 
+  /* The title keeps its full width (up to the row); labels get what is left. */
   .summary {
+    flex: none;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 500;
+  }
+
+  .labels {
+    flex: 1 1 0;
+    display: flex;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .meta {

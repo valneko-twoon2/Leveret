@@ -5,18 +5,20 @@
   let { label }: { label: RefLabel } = $props()
 </script>
 
-<span class="ref {label.kind}" class:current={label.current} title={label.name}>
+<span class="ref ref-badge {label.kind}" class:current={label.current} class:short={label.name.length <= 8} title={label.name}>
   {#if label.kind === 'tag'}<Icon name="tag" size={11} />{:else if label.kind === 'remote'}<Icon name="cloud" size={11} />{/if}
-  {label.name}
+  <span class="text">{label.name}</span>
 </span>
 
 <style>
+  /* Badges give way before the commit subject next to them (higher flex-shrink). */
   .ref {
-    flex: none;
+    flex: 0 3 auto;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    max-width: 180px;
+    min-width: 0;
+    max-width: 140px;
     height: 18px;
     padding: 0 6px;
     border: 1px solid;
@@ -25,8 +27,22 @@
     font-weight: 600;
     line-height: 1;
     overflow: hidden;
-    text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Short names (main, HEAD, v1.2.0) are cheap to show in full. */
+  .short {
+    flex: none;
+  }
+
+  .ref :global(svg) {
+    flex: none;
+  }
+
+  .text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .branch,

@@ -156,7 +156,9 @@
     color: var(--fg-subtle);
   }
 
-  li:hover .remove {
+  /* Also on keyboard focus, so the button can be reached with Tab (not after a mouse click). */
+  li:hover .remove,
+  li:has(:focus-visible) .remove {
     display: inline-flex;
   }
 
