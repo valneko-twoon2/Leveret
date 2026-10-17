@@ -90,8 +90,19 @@ pub fn record(dir: &Path, activity: &Activity) {
     };
     let path = activity_file(dir);
     let _ = std::fs::create_dir_all(dir);
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
-        let _ = writeln!(f, "{line}");
+    let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) else {
+        return;
+    };
+    let _ = writeln!(f, "{line}");
+    // This runs on every tool call: only read the log back once it is large
+    // enough to possibly hold more than MAX entries (each is at least 64 bytes).
+    if f.metadata().map_or(0, |m| m.len()) <= (MAX * 64) as u64 {
+        return;
+    }
+    drop(f);
+    let lines = std::fs::read(&path).map_or(0, |b| b.iter().filter(|&&c| c == b'\n').count());
+    if lines <= MAX {
+        return;
     }
     let entries = read_all(dir);
     if entries.len() > MAX {
