@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 
 use super::operation::{self, Operation};
-use super::{Git, decode, git_dir, remote};
+use super::{Git, decode, git_dir, join, remote};
 use crate::error::Result;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -48,13 +48,19 @@ pub struct RepoStatus {
 }
 
 pub fn get(repo: &Path) -> Result<RepoStatus> {
-    let out = Git::new(repo)
-        .args(["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"])
-        .run()?;
-    let mut status = parse(&decode(&out.stdout));
-    let dir = git_dir(repo)?;
+    // Independent processes run in parallel: starting each one costs tens of milliseconds.
+    let (out, dir, remotes) = std::thread::scope(|s| {
+        let dir = s.spawn(|| git_dir(repo));
+        let remotes = s.spawn(|| remote::remotes(repo));
+        let out = Git::new(repo)
+            .args(["status", "--porcelain=v2", "-z", "--branch", "--untracked-files=all"])
+            .run();
+        (out, join(dir), join(remotes))
+    });
+    let mut status = parse(&decode(&out?.stdout));
+    let dir = dir?;
     status.operation = operation::current_in(&dir);
-    status.has_remote = !remote::remotes(repo)?.is_empty();
+    status.has_remote = !remotes?.is_empty();
     status.last_fetched = std::fs::metadata(dir.join("FETCH_HEAD"))
         .and_then(|m| m.modified())
         .ok()

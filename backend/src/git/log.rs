@@ -3,7 +3,7 @@ use std::path::Path;
 use serde::Serialize;
 
 use super::status::ChangeKind;
-use super::{Git, decode, has_head};
+use super::{Git, decode, has_head, join};
 use crate::error::Result;
 
 const FIELD: char = '\x1f';
@@ -79,9 +79,6 @@ pub enum LogScope {
 }
 
 pub fn get(repo: &Path, scope: LogScope, limit: u32) -> Result<Vec<LogEntry>> {
-    if !has_head(repo)? {
-        return Ok(Vec::new());
-    }
     let format = format!("--format={RECORD}%H{FIELD}%P{FIELD}%an{FIELD}%ae{FIELD}%at{FIELD}%D{FIELD}%s");
     let mut git = Git::new(repo)
         .args(["log", "--date-order", "--decorate=full", "--no-color"])
@@ -91,7 +88,14 @@ pub fn get(repo: &Path, scope: LogScope, limit: u32) -> Result<Vec<LogEntry>> {
         LogScope::Head => git.arg("HEAD"),
         LogScope::All => git.args(["HEAD", "--branches", "--remotes", "--tags"]),
     };
-    let text = decode(&git.arg("--").run()?.stdout);
+    let out = match git.arg("--").run() {
+        Ok(out) => out,
+        // A repository without commits has no HEAD to log. Checked only on failure,
+        // to save a process on every call.
+        Err(_) if !has_head(repo)? => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let text = decode(&out.stdout);
 
     let mut entries: Vec<LogEntry> = text.split(RECORD).filter_map(parse_entry).collect();
     build_graph(&mut entries);
@@ -309,12 +313,24 @@ pub struct CommitDetail {
 
 pub fn detail(repo: &Path, hash: &str) -> Result<CommitDetail> {
     let format = format!("--format=%H{FIELD}%P{FIELD}%an{FIELD}%ae{FIELD}%at{FIELD}%cn{FIELD}%ce{FIELD}%ct{FIELD}%B");
-    let text = Git::new(repo)
-        .args(["show", "-s", "--no-color"])
-        .arg(format)
-        .arg(hash)
-        .arg("--")
-        .run_string()?;
+    // The message and the changed files come from two processes run in parallel; the
+    // file list is diffed against the first parent (`<hash>^1`), which root commits lack.
+    let (text, diff) = std::thread::scope(|s| {
+        let diff = s.spawn(|| {
+            Git::new(repo)
+                .args(["diff-tree", "-r", "-M", "--name-status", "-z", "--no-commit-id"])
+                .args([format!("{hash}^1"), hash.to_string()])
+                .run()
+        });
+        let text = Git::new(repo)
+            .args(["show", "-s", "--no-color"])
+            .arg(format)
+            .arg(hash)
+            .arg("--")
+            .run_string();
+        (text, join(diff))
+    });
+    let text = text?;
     let f: Vec<&str> = text.splitn(9, FIELD).collect();
     let [h, parents, an, ae, at, cn, ce, ct, body] = f[..] else {
         return Err(crate::error::AppError::Other(format!(
@@ -324,12 +340,22 @@ pub fn detail(repo: &Path, hash: &str) -> Result<CommitDetail> {
     let parents: Vec<String> = parents.split_whitespace().map(String::from).collect();
 
     // Files changed relative to the first parent (or everything, for a root commit).
-    let mut git = Git::new(repo).args(["diff-tree", "-r", "-M", "--name-status", "-z", "--no-commit-id"]);
-    git = match parents.first() {
-        Some(p) => git.args([p.as_str(), h]),
-        None => git.args(["--root", h]),
+    let out = match parents.first() {
+        Some(_) => diff?,
+        None => Git::new(repo)
+            .args([
+                "diff-tree",
+                "-r",
+                "-M",
+                "--name-status",
+                "-z",
+                "--no-commit-id",
+                "--root",
+                h,
+            ])
+            .run()?,
     };
-    let files = parse_name_status(&decode(&git.run()?.stdout));
+    let files = parse_name_status(&decode(&out.stdout));
 
     Ok(CommitDetail {
         hash: h.into(),

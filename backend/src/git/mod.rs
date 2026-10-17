@@ -18,10 +18,12 @@ pub mod status;
 #[cfg(test)]
 mod integration_tests;
 
+use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Mutex;
 
 use serde::Serialize;
 
@@ -271,10 +273,29 @@ pub fn empty_tree(repo: &Path) -> Result<String> {
 }
 
 /// Absolute path of the repository's git directory (`.git`, or the worktree's own
-/// directory for linked worktrees).
+/// directory for linked worktrees). Cached per repository: it doesn't change, and
+/// every git process costs tens of milliseconds just to start on Windows.
 pub fn git_dir(repo: &Path) -> Result<PathBuf> {
+    static CACHE: Mutex<BTreeMap<PathBuf, PathBuf>> = Mutex::new(BTreeMap::new());
+    let cached = CACHE.lock().unwrap_or_else(|e| e.into_inner()).get(repo).cloned();
+    if let Some(dir) = cached.filter(|d| d.is_dir()) {
+        return Ok(dir);
+    }
     let p = Git::new(repo).args(["rev-parse", "--absolute-git-dir"]).run_string()?;
-    Ok(PathBuf::from(p.trim()))
+    let dir = PathBuf::from(p.trim());
+    CACHE
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .insert(repo.to_path_buf(), dir.clone());
+    Ok(dir)
+}
+
+/// The result of a scoped thread; a panic in it becomes an error. Used to run
+/// independent git processes in parallel.
+pub fn join<T>(handle: std::thread::ScopedJoinHandle<'_, Result<T>>) -> Result<T> {
+    handle
+        .join()
+        .unwrap_or_else(|_| Err(AppError::Other("a git worker thread panicked".into())))
 }
 
 /// Writes `paths` NUL-separated to a temporary file for `--pathspec-from-file`,
