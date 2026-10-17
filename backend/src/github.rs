@@ -160,6 +160,36 @@ fn api_get(token: &str, path_and_query: &str) -> Result<ureq::Response> {
     })
 }
 
+/// A REST call for other modules (issues). `name` is what the timing records
+/// (e.g. `GET /repos/{repo}/issues`), so repository names stay out of the logs.
+/// Reads work without signing in (public repositories); writes need a token.
+pub(crate) fn request(method: &str, path: &str, name: &str, body: Option<&Value>) -> Result<Value> {
+    let token = load_token()?;
+    if token.is_none() && method != "GET" {
+        return Err(AppError::GithubNotSignedIn);
+    }
+    let resp = timed(name, || {
+        let mut req = agent()
+            .request(method, &format!("{API}{path}"))
+            .set("Accept", "application/vnd.github+json")
+            .set("X-GitHub-Api-Version", "2022-11-28");
+        if let Some(t) = &token {
+            req = req.set("Authorization", &format!("Bearer {t}"));
+        }
+        match body {
+            Some(b) => req.send_json(b),
+            None => req.call(),
+        }
+        .map_err(http_error)
+    })?;
+    json(resp)
+}
+
+/// Whether a GitHub token is stored (without checking it with GitHub).
+pub(crate) fn signed_in() -> bool {
+    matches!(load_token(), Ok(Some(_)))
+}
+
 fn fetch_account(token: &str) -> Result<Account> {
     let user: Value = json(api_get(token, "/user")?)?;
     let field = |k: &str| user.get(k).and_then(Value::as_str).map(String::from);

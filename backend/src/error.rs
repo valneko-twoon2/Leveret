@@ -53,6 +53,10 @@ pub enum AppError {
     NoChanges,
     #[error("the commit has already been pushed")]
     AlreadyPushed,
+    #[error("issue #{0} was not found")]
+    IssueNotFound(u64),
+    #[error("the repository has no github.com remote")]
+    NoGithubRemote,
     #[error("GitHub OAuth client id is not configured")]
     GithubClientIdMissing,
     #[error("not signed in to GitHub")]
@@ -98,6 +102,8 @@ impl AppError {
             AppError::BranchNotMerged(_) => "branchNotMerged",
             AppError::NoChanges => "noChanges",
             AppError::AlreadyPushed => "alreadyPushed",
+            AppError::IssueNotFound(_) => "issueNotFound",
+            AppError::NoGithubRemote => "noGithubRemote",
             AppError::GithubClientIdMissing => "githubClientIdMissing",
             AppError::GithubNotSignedIn => "githubNotSignedIn",
             AppError::GithubUnauthorized => "githubUnauthorized",
@@ -130,6 +136,7 @@ impl AppError {
             | AppError::Credential(s)
             | AppError::Other(s) => s.clone(),
             AppError::Io(e) => e.to_string(),
+            AppError::IssueNotFound(n) => n.to_string(),
             AppError::GitNotFound
             | AppError::EmptySummary
             | AppError::NothingSelected
@@ -140,6 +147,7 @@ impl AppError {
             | AppError::NoOperation
             | AppError::NoChanges
             | AppError::AlreadyPushed
+            | AppError::NoGithubRemote
             | AppError::GithubClientIdMissing
             | AppError::GithubNotSignedIn
             | AppError::GithubUnauthorized => String::new(),

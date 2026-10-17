@@ -147,6 +147,45 @@ pub fn github_web_url(url: &str) -> Result<&str> {
     }
 }
 
+/// GitHub's limit for issue and comment bodies, in characters.
+const MAX_ISSUE_TEXT: usize = 65_536;
+
+/// An issue title: 1 to 256 characters after trimming, no control characters.
+pub fn issue_title(title: &str) -> Result<&str> {
+    let t = title.trim();
+    if t.is_empty() || t.chars().count() > 256 || has_control_chars(t) {
+        return Err(invalid("issue title", title));
+    }
+    Ok(title)
+}
+
+/// An issue body (may be empty): at most 65,536 characters; line breaks and tabs
+/// are the only control characters allowed.
+pub fn issue_text(text: &str) -> Result<&str> {
+    let bad = text.chars().any(|c| c.is_control() && !matches!(c, '\n' | '\r' | '\t'));
+    if bad || text.chars().count() > MAX_ISSUE_TEXT {
+        return Err(AppError::InvalidInput("issue text".into()));
+    }
+    Ok(text)
+}
+
+/// A comment: like an issue body, but not blank.
+pub fn issue_comment(text: &str) -> Result<&str> {
+    if text.trim().is_empty() {
+        return Err(AppError::InvalidInput("comment".into()));
+    }
+    issue_text(text)
+}
+
+/// A local or GitHub issue number.
+pub fn issue_id(id: u64) -> Result<u64> {
+    if (1..=1_000_000_000_000).contains(&id) {
+        Ok(id)
+    } else {
+        Err(AppError::InvalidInput(format!("issue id: {id}")))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -261,6 +300,22 @@ mod tests {
         for bad in ["", "-n", "--all", "a..b", "HEAD:file", "a b", "a;b", "$(x)", "a\nb"] {
             assert!(revision_expr(bad).is_err(), "{bad:?} should be rejected");
         }
+    }
+
+    #[test]
+    fn issue_texts() {
+        assert!(issue_title("ログの表示が遅い").is_ok());
+        for bad in ["", "   ", "a\nb", "a\u{7}b"] {
+            assert!(issue_title(bad).is_err(), "{bad:?} should be rejected");
+        }
+        assert!(issue_title(&"x".repeat(257)).is_err());
+        assert!(issue_text("").is_ok());
+        assert!(issue_text("line 1\r\n\tline 2").is_ok());
+        assert!(issue_text("a\u{0}b").is_err());
+        assert!(issue_text(&"x".repeat(65_537)).is_err());
+        assert!(issue_comment("  ").is_err());
+        assert!(issue_comment("LGTM").is_ok());
+        assert!(issue_id(1).is_ok() && issue_id(0).is_err());
     }
 
     #[test]

@@ -8,6 +8,7 @@ mod crash;
 mod error;
 mod git;
 mod github;
+mod issues;
 mod lockdown;
 mod perf;
 mod repos;
@@ -90,6 +91,14 @@ pub fn run() {
             commands::history::get_log,
             commands::history::get_commit,
             commands::history::get_commit_diff,
+            commands::issues::issue_sources,
+            commands::issues::list_issues,
+            commands::issues::get_issue,
+            commands::issues::create_issue,
+            commands::issues::update_issue,
+            commands::issues::comment_issue,
+            commands::issues::delete_issue,
+            commands::issues::publish_issue,
             commands::operations::revert_commit,
             commands::operations::rebase_branch,
             commands::operations::merge_branch,

@@ -14,6 +14,7 @@ pub(crate) mod changes;
 pub(crate) mod clone;
 pub(crate) mod github;
 pub(crate) mod history;
+pub(crate) mod issues;
 pub(crate) mod operations;
 pub(crate) mod perf;
 pub(crate) mod remote;
