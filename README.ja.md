@@ -35,6 +35,7 @@
 | **競合が分かりやすい** | 止まったマージ・リベース・リバートをバナーで表示し、解決済みにする / 続行 / スキップ / 中止。 |
 | **スタッシュ** | 作業中の変更を一時的に退避して、あとで戻せます。 |
 | **Issue** | GitHub の Issue とローカルの Issue を並べて扱えます。まずローカルに書き留め、必要になったら GitHub に反映（任意）。 |
+| **設定** | テーマ、Git の名前・メールやプルの方法、差分の表示、バックグラウンドフェッチ、クローン先、AI エージェントの権限、Leveret と同梱しているオープンソースソフトウェアのライセンス（`Ctrl+,`）。 |
 | **使いやすさ** | 各領域の幅を変更可能、右クリックメニュー、キーボードショートカット、履歴の検索。 |
 | **読みやすい差分** | 行番号・ハンク見出し付き。Shift_JIS のファイルも文字化けせずに表示。 |
 | **WinMerge** | 差分を WinMerge で開けます（ボタン、ダブルクリック、右クリック）。競合したファイルは 3 方向マージで開きます。WinMerge がインストールされているときに表示されます。 |
@@ -247,6 +248,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret.exe と Leveret_
 | `Shift+F10`、アプリケーションキー、右クリック | コンテキストメニュー |
 | `Ctrl+Shift+S` | 画面を保存 |
 | `Ctrl+Shift+D` | パフォーマンスパネル |
+| `Ctrl+,` | 設定 |
 
 ## スクリプト
 
@@ -263,6 +265,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret.exe と Leveret_
 | `scripts\benchmark.bat [-Runs N] [-Repo <パス>] [-Mock] [-SaveBaseline] [-Strict]` | ベンチマーク。生成した大きなリポジトリで全画面の処理時間を計測し、基準値と比較 |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | 全画面を `artifacts\screenshots\` に撮影 |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | バージョンを一括変更（引数なしなら入力を求めます） |
+| `scripts\licenses.bat [-Check]` | 設定画面に表示するサードパーティのライセンス一覧を生成（依存パッケージを変えたら実行） |
 | `scripts\clean.ps1 [-All]` | ビルド成果物を削除 |
 
 ## 撮影モード

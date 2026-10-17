@@ -10,6 +10,7 @@ import remote from './ja/remote'
 import issues from './ja/issues'
 import agent from './ja/agent'
 import errors from './ja/errors'
+import settings from './ja/settings'
 
 export default {
   ...app,
@@ -21,4 +22,5 @@ export default {
   ...issues,
   ...agent,
   ...errors,
+  ...settings,
 }

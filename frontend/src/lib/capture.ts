@@ -14,6 +14,7 @@ import { history } from './history.svelte'
 import { issues } from './issues.svelte'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
+import { settings } from './settings.svelte'
 import { app } from './state.svelte'
 import { tags } from './tags.svelte'
 
@@ -240,12 +241,38 @@ export const scenes: Scene[] = [
       tags.newTagMessage = 'WinMerge 連携とタグに対応'
     },
   },
+  {
+    id: '21-settings',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await settings.openSettings('general')
+    },
+  },
+  {
+    id: '22-settings-git',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await settings.openSettings('git')
+    },
+  },
+  {
+    id: '23-licenses',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await settings.openSettings('licenses')
+      await new Promise((r) => setTimeout(r, 300))
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
   tags.closeNewTag()
+  settings.close()
   agents.closeAgent()
   app.perfOpen = false
   issues.closeDraft()

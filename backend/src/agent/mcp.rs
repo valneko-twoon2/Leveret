@@ -258,6 +258,7 @@ mod tests {
             config.path(),
             &Settings {
                 agent_access: Access::ReadOnly,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -327,6 +328,7 @@ mod tests {
             config.path(),
             &Settings {
                 agent_access: Access::Full,
+                ..Default::default()
             },
         )
         .unwrap();
@@ -354,6 +356,7 @@ mod tests {
             config.path(),
             &Settings {
                 agent_access: Access::Off,
+                ..Default::default()
             },
         )
         .unwrap();

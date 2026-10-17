@@ -6,6 +6,7 @@
 import { agents } from './agents.svelte'
 import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
 import { branches } from './branches.svelte'
+import { settings } from './settings.svelte'
 import { changes } from './changes.svelte'
 import { history } from './history.svelte'
 import { issues } from './issues.svelte'
@@ -50,6 +51,8 @@ async function benchRepo(path: string) {
   await branches.openBranches()
   await branches.setDialogTab('tags')
   branches.closeBranches()
+  await settings.openSettings()
+  settings.close()
   await agents.openAgent()
   agents.closeAgent()
   await app.setTab('issues')

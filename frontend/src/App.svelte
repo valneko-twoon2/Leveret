@@ -14,6 +14,8 @@
   import { issues } from './lib/issues.svelte'
   import { layout } from './lib/layout.svelte'
   import { menu } from './lib/menu.svelte'
+  import { prefs } from './lib/prefs.svelte'
+  import { settings } from './lib/settings.svelte'
   import { tags } from './lib/tags.svelte'
   import { app, describeError } from './lib/state.svelte'
   import AgentDialog from './lib/components/AgentDialog.svelte'
@@ -37,6 +39,7 @@
   import RepoHeader from './lib/components/RepoHeader.svelte'
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
   import RepoTabs from './lib/components/RepoTabs.svelte'
+  import SettingsDialog from './lib/components/settings/SettingsDialog.svelte'
   import SignInDialog from './lib/components/SignInDialog.svelte'
   import Splitter from './lib/components/Splitter.svelte'
   import Toasts from './lib/components/Toasts.svelte'
@@ -75,6 +78,14 @@
     return () => clearInterval(timer)
   }
 
+  // Theme: the user's choice, unless the screenshot / browser preview forces one.
+  let forcedTheme = $state<'light' | 'dark' | null>(null)
+  $effect(() => {
+    const theme = forcedTheme ?? (prefs.theme === 'system' ? null : prefs.theme)
+    if (theme) document.documentElement.dataset.theme = theme
+    else delete document.documentElement.dataset.theme
+  })
+
   onMount(() => {
     let unlistenDrop: (() => void) | undefined
     let stopForwarding: (() => void) | undefined
@@ -92,7 +103,7 @@
       const params = new URLSearchParams(location.search)
       // Forced theme: `--theme` in the app, `?theme=` in the browser.
       const theme = options.theme ?? params.get('theme')
-      if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
+      if (theme === 'light' || theme === 'dark') forcedTheme = theme
       if (options.mock) await useMockBackend()
       if (options.perfLog) stopForwarding = forwardTimings()
       if (options.capture) {
@@ -163,6 +174,11 @@
     if (e.ctrlKey && e.shiftKey && !e.altKey && e.code === 'KeyD') {
       e.preventDefault()
       app.perfOpen = !app.perfOpen
+      return
+    }
+    if (e.ctrlKey && !e.shiftKey && !e.altKey && e.code === 'Comma' && !overlayOpen()) {
+      e.preventDefault()
+      void settings.openSettings()
       return
     }
     if (!e.ctrlKey || e.altKey || !app.repo || overlayOpen()) return
@@ -286,6 +302,9 @@
 {/if}
 {#if issues.draft}
   <IssueEditor />
+{/if}
+{#if settings.open}
+  <SettingsDialog />
 {/if}
 {#if agents.agentOpen}
   <AgentDialog />

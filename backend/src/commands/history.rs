@@ -34,6 +34,7 @@ pub async fn get_commit_diff(
     parent: Option<String>,
     path: String,
     orig_path: Option<String>,
+    ignore_whitespace: Option<bool>,
 ) -> Result<FileDiff> {
     let repo = store.require(&repo)?;
     security::object_id(&hash)?;
@@ -44,5 +45,7 @@ pub async fn get_commit_diff(
     if let Some(o) = &orig_path {
         security::relative_path(o)?;
     }
-    blocking(move || git::diff::commit_file(&repo, &hash, parent.as_deref(), &path, orig_path.as_deref())).await
+    let ws = ignore_whitespace.unwrap_or(false);
+    blocking(move || git::diff::commit_file_with(&repo, &hash, parent.as_deref(), &path, orig_path.as_deref(), ws))
+        .await
 }

@@ -35,6 +35,7 @@ Pick a repository from your list, review the changes, commit. That's it.
 | **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. |
 | **Stash** | Put work aside and bring it back later. |
 | **Issues** | GitHub issues and local issues side by side: jot an issue down locally, publish it to GitHub when you want (optional). |
+| **Settings** | Theme, git identity and pull behaviour, diff options, background fetch, clone folder, agent access, and the licenses of Leveret and every bundled open source package (`Ctrl+,`). |
 | **Comfortable** | Resizable panes, right-click menus, keyboard shortcuts and history search. |
 | **Readable diffs** | Line numbers, hunk headers, and Shift_JIS files decoded correctly. |
 | **WinMerge** | Open any diff in WinMerge (button, double click or right click); conflicted files open as a 3-way merge. Shown when WinMerge is installed. |
@@ -247,6 +248,7 @@ so it never appears on a command line or in a repository's config.
 | `Shift+F10`, menu key, right click | Context menu |
 | `Ctrl+Shift+S` | Save a screenshot |
 | `Ctrl+Shift+D` | Performance panel |
+| `Ctrl+,` | Settings |
 
 ## Scripts
 
@@ -263,6 +265,7 @@ Every `.bat` works from a terminal or by double-clicking, and forwards its argum
 | `scripts\benchmark.bat [-Runs N] [-Repo <path>] [-Mock] [-SaveBaseline] [-Strict]` | Benchmark: times every screen on a large generated repository and compares with the baseline |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | Captures every screen into `artifacts\screenshots\` |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | Bumps the version everywhere (prompts when run without arguments) |
+| `scripts\licenses.bat [-Check]` | Regenerates the third-party license list shown in the settings (run after changing dependencies) |
 | `scripts\clean.ps1 [-All]` | Removes build outputs |
 
 ## Screenshot mode

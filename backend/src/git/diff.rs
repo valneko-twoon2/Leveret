@@ -47,12 +47,30 @@ pub struct FileDiff {
 
 /// Diff of a working tree file against HEAD (what committing it would record).
 pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool) -> Result<FileDiff> {
+    working_with(repo, path, orig_path, untracked, false)
+}
+
+/// `-w`: leave out changes that only touch whitespace (the user's diff setting).
+fn whitespace_arg(ignore_whitespace: bool) -> Option<&'static str> {
+    ignore_whitespace.then_some("--ignore-all-space")
+}
+
+/// Like [`working`]; `ignore_whitespace` hides whitespace-only changes.
+pub fn working_with(
+    repo: &Path,
+    path: &str,
+    orig_path: Option<&str>,
+    untracked: bool,
+    ignore_whitespace: bool,
+) -> Result<FileDiff> {
     if untracked {
         return untracked_file(&repo.join(path));
     }
     let diff = |base: &str| {
         Git::new(repo)
-            .args(["diff", "--no-color", "--no-ext-diff", "-M", base, "--", path])
+            .args(["diff", "--no-color", "--no-ext-diff", "-M"])
+            .args(whitespace_arg(ignore_whitespace))
+            .args([base, "--", path])
             .args(orig_path)
             .run()
     };
@@ -67,6 +85,7 @@ pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool
 }
 
 /// Diff of one file in a commit, against its first parent.
+#[cfg(test)]
 pub fn commit_file(
     repo: &Path,
     hash: &str,
@@ -74,12 +93,26 @@ pub fn commit_file(
     path: &str,
     orig_path: Option<&str>,
 ) -> Result<FileDiff> {
+    commit_file_with(repo, hash, parent, path, orig_path, false)
+}
+
+/// Like [`commit_file`]; `ignore_whitespace` hides whitespace-only changes.
+pub fn commit_file_with(
+    repo: &Path,
+    hash: &str,
+    parent: Option<&str>,
+    path: &str,
+    orig_path: Option<&str>,
+    ignore_whitespace: bool,
+) -> Result<FileDiff> {
     let parent = match parent {
         Some(p) => p.to_string(),
         None => empty_tree(repo)?,
     };
     let out = Git::new(repo)
-        .args(["diff", "--no-color", "--no-ext-diff", "-M", &parent, hash, "--", path])
+        .args(["diff", "--no-color", "--no-ext-diff", "-M"])
+        .args(whitespace_arg(ignore_whitespace))
+        .args([&parent, hash, "--", path])
         .args(orig_path)
         .run()?;
     Ok(parse(&decode(&out.stdout)))

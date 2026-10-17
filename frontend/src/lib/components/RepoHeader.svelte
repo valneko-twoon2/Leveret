@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RemoteOp } from '../api'
   import { branches } from '../branches.svelte'
+  import { settings } from '../settings.svelte'
   import { tags } from '../tags.svelte'
   import { changes } from '../changes.svelte'
   import { formatRelative } from '../format'
@@ -84,6 +85,8 @@
         { label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead },
         'separator',
         { label: t('common.openInExplorer'), action: () => app.showInExplorer() },
+        'separator',
+        { label: t('settings.open'), hint: t('shortcuts.settings'), action: () => settings.openSettings() },
       ],
       e.currentTarget as HTMLElement,
     )

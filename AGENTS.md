@@ -61,6 +61,12 @@ feat: add fetch, pull and push
   command (it is logged by `crash.rs`). Persist files atomically (write a temporary file, then rename).
 - Keep the mock backend (`frontend/src/lib/mock/`, commands by area) in sync with new commands so the UI preview and
   screenshots keep working.
+- **Settings**: display preferences live in `prefs.svelte.ts` (localStorage); settings shared with other tools go
+  through the backend (`git::config` edits only an allowlist of global git keys). App settings are deliberately
+  not agent tools, so agents can never change their own access level or the user's identity.
+- **Third-party licenses**: after changing dependencies, run `scripts\licenses.bat` (needs PowerShell 7); it
+  regenerates `frontend/src/lib/licenses/third-party.json` for Settings > Licenses, and `test.bat` fails while
+  it is out of date.
 - **AI agents**: every user-facing feature is also an agent tool in `backend/src/agent/tools/` (served over MCP by
   `leveret --mcp` and used by in-app agents through `agent_call`). Pick the right `Level` (read / write / destructive),
   reuse the same validators as the Tauri command, write the description for a model (what it does, when to use it),
@@ -138,3 +144,4 @@ The webview is treated as untrusted; the Rust backend is the trust boundary.
 | Benchmark (timings vs. baseline) | `scripts\benchmark.bat [-Runs N] [-SaveBaseline] [-Strict]` |
 | Release build to `artifacts\` | `scripts\publish.bat` |
 | Bump version | `scripts\version.bat <x.y.z \| major \| minor \| patch>` |
+| Regenerate third-party licenses | `scripts\licenses.bat` |

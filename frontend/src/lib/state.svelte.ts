@@ -33,8 +33,7 @@ export interface ErrorInfo {
   detail: string
 }
 
-/** Fetch in the background when the last fetch is older than this. */
-const AUTO_FETCH_AFTER_MS = 10 * 60 * 1000
+/** How often to check whether a background fetch is due (see prefs.autoFetchMinutes). */
 const AUTO_FETCH_CHECK_MS = 60 * 1000
 
 /** Turns any thrown value into a localized message plus raw detail. */
@@ -173,8 +172,9 @@ class AppState {
     if (this.autoFetchTimer) return
     this.autoFetchTimer = setInterval(() => {
       const st = this.status
-      if (!st?.hasRemote || this.busy !== null || document.visibilityState !== 'visible') return
-      if (st.lastFetched !== null && Date.now() - st.lastFetched * 1000 < AUTO_FETCH_AFTER_MS) return
+      const every = prefs.autoFetchMinutes * 60 * 1000
+      if (!every || !st?.hasRemote || this.busy !== null || document.visibilityState !== 'visible') return
+      if (st.lastFetched !== null && Date.now() - st.lastFetched * 1000 < every) return
       void this.remote('fetch', { quiet: true })
     }, AUTO_FETCH_CHECK_MS)
   }

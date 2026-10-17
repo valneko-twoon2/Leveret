@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DiffLine, FileDiff } from '../api'
   import { t } from '../i18n/index.svelte'
+  import { prefs } from '../prefs.svelte'
   import VirtualList from './VirtualList.svelte'
 
   interface Props {
@@ -25,7 +26,7 @@
     let n = 0
     for (const ch of text) {
       const c = ch.codePointAt(0)!
-      n += ch === '\t' ? 4 : c >= 0x1100 && (c <= 0x115f || (c >= 0x2e80 && c <= 0xffdc)) ? 2 : 1
+      n += ch === '\t' ? prefs.tabSize : c >= 0x1100 && (c <= 0x115f || (c >= 0x2e80 && c <= 0xffdc)) ? 2 : 1
     }
     return n
   }
@@ -39,7 +40,7 @@
   const SIGN = { context: ' ', add: '+', delete: '-', noNewline: '' } as const
 </script>
 
-<div class="diff">
+<div class="diff" style:tab-size={prefs.tabSize}>
   {#if !diff}
     <div class="empty"></div>
   {:else if diff.binary}
@@ -102,7 +103,7 @@
     height: 20px;
     line-height: 20px;
     white-space: pre;
-    tab-size: 4;
+    tab-size: inherit;
   }
 
   .no {

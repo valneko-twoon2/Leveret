@@ -105,6 +105,11 @@ class HistoryState {
     })
   }
 
+  /** Shows the selected file's diff again (after a diff setting changed). */
+  async reloadCommitFile() {
+    if (this.detailFile) await this.selectCommitFile(this.detailFile)
+  }
+
   // --- actions on a commit --------------------------------------------------
 
   async revertCommit(c: LogEntry) {

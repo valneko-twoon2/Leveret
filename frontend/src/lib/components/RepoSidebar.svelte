@@ -1,6 +1,7 @@
 <script lang="ts">
   import { agents } from '../agents.svelte'
   import { confirmDialog, pickFolder } from '../dialogs'
+  import { settings } from '../settings.svelte'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
@@ -45,6 +46,9 @@
     </button>
     <button class="icon-btn" title={t('repos.add')} aria-label={t('repos.add')} onclick={add}>
       <Icon name="plus" />
+    </button>
+    <button class="icon-btn" title={`${t('settings.open')} (${t('shortcuts.settings')})`} aria-label={t('settings.open')} onclick={() => settings.openSettings()}>
+      <Icon name="settings" />
     </button>
   </header>
 

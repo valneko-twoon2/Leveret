@@ -2,6 +2,7 @@
 // e.g. `scripts/preview.bat`) or with `--mock`, calls go to the in-memory mock.
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { perf, type PerfSample } from './perf'
+import { prefs } from './prefs.svelte'
 
 export type ChangeKind =
   | 'modified'
@@ -45,6 +46,26 @@ export interface RepoStatus {
   /** Unix seconds of the last fetch. */
   lastFetched: number | null
   files: FileChange[]
+}
+
+export interface GitSettings {
+  version: string
+  userName: string
+  userEmail: string
+  defaultBranch: string
+  pullRebase: string
+  autocrlf: string
+}
+
+export type GitConfigKey = 'user.name' | 'user.email' | 'init.defaultBranch' | 'pull.rebase' | 'core.autocrlf'
+
+export interface AppSettings {
+  version: string
+  git: GitSettings
+  cloneDir: string
+  configDir: string
+  logsDir: string
+  diffTool: boolean
 }
 
 export interface Tag {
@@ -341,6 +362,7 @@ export const api = {
       path: file.path,
       origPath: file.origPath,
       untracked: file.kind === 'untracked',
+      ignoreWhitespace: prefs.ignoreWhitespace,
     }),
   commit: (repo: string, request: CommitRequest) => call<string>('commit', { repo, request }),
 
@@ -402,7 +424,13 @@ export const api = {
       parent: detail.parents[0] ?? null,
       path: file.path,
       origPath: file.origPath,
+      ignoreWhitespace: prefs.ignoreWhitespace,
     }),
+
+  getSettings: () => call<AppSettings>('get_settings'),
+  setGitConfig: (key: GitConfigKey, value: string) => call<void>('set_git_config', { key, value }),
+  setCloneDir: (dir: string | null) => call<void>('set_clone_dir', { dir }),
+  openAppFolder: (which: 'config' | 'logs') => call<void>('open_app_folder', { which }),
 
   agentInfo: () => call<AgentInfo>('agent_info'),
   setAgentAccess: (access: AgentAccess) => call<void>('set_agent_access', { access }),

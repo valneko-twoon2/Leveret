@@ -25,13 +25,15 @@ pub async fn get_working_diff(
     path: String,
     orig_path: Option<String>,
     untracked: bool,
+    ignore_whitespace: Option<bool>,
 ) -> Result<FileDiff> {
     let repo = store.require(&repo)?;
     security::relative_path(&path)?;
     if let Some(o) = &orig_path {
         security::relative_path(o)?;
     }
-    blocking(move || git::diff::working(&repo, &path, orig_path.as_deref(), untracked)).await
+    let ws = ignore_whitespace.unwrap_or(false);
+    blocking(move || git::diff::working_with(&repo, &path, orig_path.as_deref(), untracked, ws)).await
 }
 
 #[tauri::command]

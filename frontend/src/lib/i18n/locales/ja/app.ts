@@ -57,6 +57,7 @@ export default {
     push: 'Ctrl+Shift+P',
     search: 'Ctrl+F',
     perf: 'Ctrl+Shift+D',
+    settings: 'Ctrl+,',
   },
   crash: {
     title: '表示中にエラーが発生しました',

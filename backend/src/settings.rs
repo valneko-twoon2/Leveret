@@ -26,6 +26,8 @@ pub fn config_dir() -> PathBuf {
 pub struct Settings {
     /// What AI agents may do through the MCP server or in-app agents.
     pub agent_access: Access,
+    /// Folder new clones go into; `Documents\GitHub` when unset.
+    pub clone_dir: Option<String>,
 }
 
 fn file(dir: &Path) -> PathBuf {
@@ -73,6 +75,7 @@ mod tests {
             dir.path(),
             &Settings {
                 agent_access: Access::Full,
+                ..Default::default()
             },
         )
         .unwrap();

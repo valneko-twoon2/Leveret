@@ -57,6 +57,11 @@ class Layout {
     this.save()
   }
 
+  resetAll() {
+    for (const name of Object.keys(PANES) as PaneName[]) this.sizes[name] = PANES[name].default
+    this.save()
+  }
+
   save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.sizes))

@@ -9,10 +9,10 @@ use crate::error::{AppError, Result};
 use crate::repos::{RepoEntry, RepoStore};
 use crate::{git, github, security};
 
+/// The folder chosen in the settings, else `Documents\GitHub`.
 #[tauri::command]
 pub fn default_clone_dir(app: AppHandle) -> Result<String> {
-    let docs = app.path().document_dir().map_err(|e| AppError::Other(e.to_string()))?;
-    Ok(docs.join("GitHub").display().to_string())
+    super::settings::clone_dir(&app)
 }
 
 /// Clones `url` into `<parent>\<name>` and registers it. Progress is emitted as
