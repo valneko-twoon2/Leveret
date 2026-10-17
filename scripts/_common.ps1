@@ -67,3 +67,20 @@ function Get-AppVersion {
 function Get-ReleaseExe {
     Join-Path $Backend 'target\release\leveret.exe'
 }
+
+# Whether the exe is missing or older than any frontend / backend source.
+function Test-ExeOutdated([string]$Exe) {
+    if (-not (Test-Path $Exe)) { return $true }
+    $built = (Get-Item $Exe).LastWriteTime
+    $inputs = @((Join-Path $Frontend 'src'), (Join-Path $Backend 'src'), (Join-Path $Backend 'tauri.conf.json'), (Join-Path $Backend 'Cargo.toml'))
+    $newest = Get-ChildItem $inputs -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    return $newest.LastWriteTime -gt $built
+}
+
+# Builds the release exe (tauri build --no-bundle) when forced or outdated.
+function Update-ReleaseExe([switch]$Force) {
+    if ($Force -or (Test-ExeOutdated (Get-ReleaseExe))) {
+        Write-Step 'Building the app (tauri build --no-bundle)'
+        Invoke-Tauri @('build', '--no-bundle')
+    }
+}

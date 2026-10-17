@@ -41,14 +41,6 @@ function Get-SceneIds {
     [regex]::Matches($source, "id:\s*'([^']+)'") | ForEach-Object { $_.Groups[1].Value }
 }
 
-function Test-ExeOutdated([string]$Exe) {
-    if (-not (Test-Path $Exe)) { return $true }
-    $built = (Get-Item $Exe).LastWriteTime
-    $inputs = @((Join-Path $Frontend 'src'), (Join-Path $Backend 'src'), (Join-Path $Backend 'tauri.conf.json'), (Join-Path $Backend 'Cargo.toml'))
-    $newest = Get-ChildItem $inputs -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    return $newest.LastWriteTime -gt $built
-}
-
 function Invoke-AppCapture([string]$Dir, [string]$ThemeName) {
     $appArgs = @('--capture', "`"$Dir`"")
     if (-not $Real) { $appArgs += '--mock' }
@@ -131,10 +123,7 @@ if ($Browser) {
     }
 }
 else {
-    if ($Build -or (Test-ExeOutdated (Get-ReleaseExe))) {
-        Write-Step 'Building the app (tauri build --no-bundle)'
-        Invoke-Tauri @('build', '--no-bundle')
-    }
+    Update-ReleaseExe -Force:$Build
     foreach ($run in $runs) { Invoke-AppCapture $run.Dir $run.Theme }
 }
 
