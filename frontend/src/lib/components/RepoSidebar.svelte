@@ -39,6 +39,9 @@
   <header>
     <Logo size={22} />
     <span class="title">{t('app.name')}</span>
+    <button class="icon-btn" title={t('agent.open')} aria-label={t('agent.open')} onclick={() => app.openAgent()}>
+      <Icon name="agent" />
+    </button>
     <button class="icon-btn" title={t('repos.add')} aria-label={t('repos.add')} onclick={add}>
       <Icon name="plus" />
     </button>

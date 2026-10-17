@@ -170,6 +170,40 @@ export interface CommitRequest {
   amend?: boolean
 }
 
+/** What AI agents may do (backend/src/agent/mod.rs). */
+export type AgentAccess = 'off' | 'readOnly' | 'standard' | 'full'
+export type AgentLevel = 'read' | 'write' | 'destructive'
+
+export interface AgentTool {
+  name: string
+  title: string
+  level: AgentLevel
+}
+
+/** One change made by an AI agent. */
+export interface AgentActivity {
+  /** Unix milliseconds. */
+  time: number
+  client: string
+  tool: string
+  repo: string | null
+  ok: boolean
+  message: string
+}
+
+export interface AgentInfo {
+  /** This executable; MCP clients run `<exePath> --mcp`. */
+  exePath: string
+  access: AgentAccess
+  tools: AgentTool[]
+  activity: AgentActivity[]
+}
+
+export interface AgentCallResult {
+  text: string
+  isError: boolean
+}
+
 export interface CaptureRequest {
   dir: string
   scenes: string[] | null
@@ -317,6 +351,17 @@ export const api = {
       path: file.path,
       origPath: file.origPath,
     }),
+
+  agentInfo: () => call<AgentInfo>('agent_info'),
+  setAgentAccess: (access: AgentAccess) => call<void>('set_agent_access', { access }),
+  /** Runs an agent tool in-process (for agents running inside Leveret). */
+  agentCall: (name: string, args: Record<string, unknown>) => call<AgentCallResult>('agent_call', { name, arguments: args }),
+  /** Subscribes to changes made by AI agents. Returns an unsubscribe function. */
+  onAgentActivity: async (handler: (entries: AgentActivity[]) => void): Promise<() => void> => {
+    if (mock) return mock.onAgentActivity(handler)
+    const { listen } = await import('@tauri-apps/api/event')
+    return listen<AgentActivity[]>('agent-activity', (e) => handler(e.payload))
+  },
 
   githubState: () => call<GithubState>('github_state'),
   githubStartSignIn: () => call<DeviceCode>('github_start_sign_in'),

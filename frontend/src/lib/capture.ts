@@ -172,11 +172,21 @@ export const scenes: Scene[] = [
       app.remoteProgress = { repo: app.selectedPath ?? '', operation: 'push', phase: 'Writing objects', percent: 45 }
     },
   },
+  {
+    id: '15-agents',
+    run: async () => {
+      closeOverlays()
+      app.busy = null
+      app.remoteProgress = null
+      await app.openAgent()
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
+  app.closeAgent()
   app.error = null
   app.closeNewBranch()
   app.closeBranches()

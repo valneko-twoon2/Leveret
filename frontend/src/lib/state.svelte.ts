@@ -4,6 +4,9 @@ import { SvelteSet } from 'svelte/reactivity'
 import {
   api,
   isAppError,
+  type AgentAccess,
+  type AgentActivity,
+  type AgentInfo,
   type Branch,
   type CommitDetail,
   type CommitFile,
@@ -114,6 +117,10 @@ class AppState {
   newBranchName = $state('')
   newBranchCheckout = $state(true)
 
+  // AI agents
+  agentOpen = $state(false)
+  agentInfo = $state.raw<AgentInfo | null>(null)
+
   toasts = $state<Toast[]>([])
   error = $state<ErrorInfo | null>(null)
   /** Number of in-flight loads; capture waits for this to reach zero. */
@@ -217,6 +224,9 @@ class AppState {
         .onRemoteProgress((p) => {
           if (p.repo === this.selectedPath && this.busy === p.operation) this.remoteProgress = p
         })
+        .catch(() => {})
+      void api
+        .onAgentActivity((entries) => void this.onAgentActivity(entries))
         .catch(() => {})
     }
     const list = await this.guard(() => api.listRepos())
@@ -652,6 +662,43 @@ class AppState {
     this.closeBranches()
     this.toast(t('newBranch.created', { branch: name }))
     await this.refreshAfterChange()
+  }
+
+  // --- AI agents ------------------------------------------------------------
+
+  async openAgent() {
+    this.agentOpen = true
+    await this.loadAgentInfo()
+  }
+
+  closeAgent() {
+    this.agentOpen = false
+  }
+
+  async loadAgentInfo() {
+    const info = await this.guard(() => api.agentInfo())
+    if (info) this.agentInfo = info
+  }
+
+  async setAgentAccess(access: AgentAccess) {
+    if ((await this.guard(() => api.setAgentAccess(access))) === undefined) return
+    const key = { off: 'agent.accessOff', readOnly: 'agent.accessReadOnly', standard: 'agent.accessStandard', full: 'agent.accessFull' } as const
+    this.toast(t('agent.accessSaved', { level: t(key[access]) }))
+    await this.loadAgentInfo()
+  }
+
+  /** An agent changed something (usually through `leveret --mcp`): tell the user and show the result. */
+  private async onAgentActivity(entries: AgentActivity[]) {
+    for (const a of entries.slice(-3)) {
+      const params = { client: a.client, tool: a.tool }
+      this.toast(a.ok ? t('agent.didTool', params) : t('agent.toolFailed', params), a.ok ? 'info' : 'error')
+    }
+    if (this.agentOpen) void this.loadAgentInfo()
+    // Agents may have registered repositories or changed the current one.
+    if (this.busy === null) {
+      await this.reloadRepos()
+      await this.refreshAfterChange()
+    }
   }
 
   // --- history --------------------------------------------------------------

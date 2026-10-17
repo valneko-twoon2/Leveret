@@ -8,6 +8,7 @@
   import { layout } from './lib/layout.svelte'
   import { menu } from './lib/menu.svelte'
   import { app, describeError } from './lib/state.svelte'
+  import AgentDialog from './lib/components/AgentDialog.svelte'
   import BranchesDialog from './lib/components/BranchesDialog.svelte'
   import ChangesPane from './lib/components/ChangesPane.svelte'
   import CloneDialog from './lib/components/CloneDialog.svelte'
@@ -245,6 +246,9 @@
 {/if}
 {#if app.newBranch}
   <NewBranchDialog />
+{/if}
+{#if app.agentOpen}
+  <AgentDialog />
 {/if}
 {#if github.cloneOpen}
   <CloneDialog />

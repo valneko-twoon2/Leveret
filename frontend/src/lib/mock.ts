@@ -2,6 +2,10 @@
 // screenshots (`leveret --capture <dir> --mock`). It mimics the Tauri commands
 // in backend/src/lib.rs closely enough to exercise every screen.
 import type {
+  AgentAccess,
+  AgentActivity,
+  AgentInfo,
+  AgentTool,
   AppError,
   Branch,
   CloneProgress,
@@ -225,6 +229,26 @@ let account: GithubAccount | null = null
 let pollCount = 0
 const cloneListeners = new Set<(p: CloneProgress) => void>()
 const remoteListeners = new Set<(p: RemoteProgress) => void>()
+const agentListeners = new Set<(entries: AgentActivity[]) => void>()
+let agentAccess: AgentAccess = 'standard'
+
+const AGENT_TOOLS: AgentTool[] = [
+  ...['list_repositories', 'get_status', 'get_diff', 'get_log', 'get_commit', 'list_branches', 'list_stashes'].map((name) => ({ name, level: 'read' as const })),
+  ...['add_repository', 'clone_repository', 'commit', 'undo_last_commit', 'fetch', 'pull', 'push', 'create_branch', 'switch_branch', 'checkout_commit', 'merge_branch', 'rebase_branch', 'revert_commit', 'cherry_pick', 'mark_resolved', 'continue_operation', 'stash_save', 'stash_pop', 'ignore_path'].map((name) => ({ name, level: 'write' as const })),
+  ...['discard_changes', 'delete_branch', 'abort_operation', 'skip_operation', 'stash_drop'].map((name) => ({ name, level: 'destructive' as const })),
+].map((t) => ({ ...t, title: t.name }))
+
+const AGENT_ACTIVITY: AgentActivity[] = [
+  { time: (NOW - 3600 * 5) * 1000, client: 'claude-code', tool: 'create_branch', repo: 'Leveret', ok: true, message: 'done' },
+  { time: (NOW - 3600 * 4) * 1000, client: 'claude-code', tool: 'commit', repo: 'Leveret', ok: true, message: 'committed' },
+  { time: (NOW - 3600 * 2) * 1000, client: 'codex-mcp-client', tool: 'push', repo: 'web-app', ok: false, message: 'push was rejected' },
+  { time: (NOW - 1200) * 1000, client: 'Visual Studio Code', tool: 'stash_save', repo: 'Leveret', ok: true, message: 'done' },
+]
+
+export function onAgentActivity(handler: (entries: AgentActivity[]) => void): () => void {
+  agentListeners.add(handler)
+  return () => agentListeners.delete(handler)
+}
 
 const GITHUB_REPOS: GithubRepo[] = [
   ['dutch', 'Leveret', 'A small, friendly Git client for Windows', false],
@@ -708,6 +732,18 @@ export async function handle(cmd: string, args: Record<string, unknown>): Promis
       }
       return 'done' satisfies Outcome
     }
+    case 'agent_info':
+      return {
+        exePath: 'C:\\Users\\dutch\\Apps\\Leveret\\Leveret.exe',
+        access: agentAccess,
+        tools: AGENT_TOOLS,
+        activity: AGENT_ACTIVITY,
+      } satisfies AgentInfo
+    case 'set_agent_access':
+      agentAccess = args.access as AgentAccess
+      return null
+    case 'agent_call':
+      return { text: `mock: ${String(args.name)}`, isError: false }
     case 'github_state':
       return { account, deviceFlow: true } satisfies GithubState
     case 'github_start_sign_in':
