@@ -34,6 +34,7 @@
 | **やり直しやすい** | 破棄した変更はごみ箱へ。直前のコミットの修正や取り消し、任意のコミットのリバートやチェリーピック。 |
 | **競合が分かりやすい** | 止まったマージ・リベース・リバートをバナーで表示し、解決済みにする / 続行 / スキップ / 中止。 |
 | **スタッシュ** | 作業中の変更を一時的に退避して、あとで戻せます。 |
+| **Issue** | GitHub の Issue とローカルの Issue を並べて扱えます。まずローカルに書き留め、必要になったら GitHub に反映（任意）。 |
 | **使いやすさ** | 各領域の幅を変更可能、右クリックメニュー、キーボードショートカット、履歴の検索。 |
 | **読みやすい差分** | 行番号・ハンク見出し付き。Shift_JIS のファイルも文字化けせずに表示。 |
 | **グラフ付きの履歴** | ブランチのレーン、ブランチ / リモート / タグのラベル、コミット詳細とファイルごとの差分。 |
@@ -114,6 +115,22 @@
       <p align="center"><b>ようこそ</b> — 最初のリポジトリを追加・クローン</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/17-issues.png">
+        <img alt="GitHub とローカルの Issue を表示した Issue タブ" src="docs/screenshots/light/17-issues.png">
+      </picture>
+      <p align="center"><b>Issue</b> — GitHub とローカル。準備ができたら反映</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/16-performance.png">
+        <img alt="処理ごとの時間を表示したパフォーマンスパネル" src="docs/screenshots/light/16-performance.png">
+      </picture>
+      <p align="center"><b>パフォーマンス</b> — すべての処理を計測（Ctrl+Shift+D）</p>
+    </td>
+  </tr>
 </table>
 
 ## 仕組み
@@ -167,11 +184,11 @@ args = ["--mcp"]
 | 権限 | エージェントにできること |
 |---|---|
 | オフ | なし |
-| 読み取りのみ | 状態・差分・履歴・ブランチ・スタッシュの参照 |
-| **標準**（既定） | さらにコミット、プッシュ / プル / フェッチ、ブランチ、マージ、リベース、リバート、チェリーピック、スタッシュ |
-| すべて | さらに変更の破棄、ブランチの削除、操作の中止 / スキップ、スタッシュの削除 |
+| 読み取りのみ | 状態・差分・履歴・ブランチ・スタッシュ・Issue の参照 |
+| **標準**（既定） | さらにコミット、プッシュ / プル / フェッチ、ブランチ、マージ、リベース、リバート、チェリーピック、スタッシュ、Issue の作成 / 編集 / コメント / GitHub への反映 |
+| すべて | さらに変更の破棄、ブランチの削除、操作の中止 / スキップ、スタッシュの削除、ローカル Issue の削除 |
 
-- **31 個のツール**: JSON スキーマと MCP のアノテーション（読み取り専用 / 破壊的 / 外部通信）付きで、モデルが使いやすい作りです。
+- **38 個のツール**: JSON スキーマと MCP のアノテーション（読み取り専用 / 破壊的 / 外部通信）付きで、モデルが使いやすい作りです。
   リポジトリは名前でもパスでも（その中の作業ディレクトリでも）指定でき、ブランチは `main` や `origin/main`、リビジョンは `HEAD~1`
   のように書けます。結果は簡潔な JSON で、次にすべきこと（リベースが止まったときの競合ファイルなど）も返します。
 - **ユーザーから見える**: エージェントの変更はすべて記録され、アプリに通知が出て表示も自動で更新されます。
@@ -219,7 +236,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret.exe と Leveret_
 
 | キー | 操作 |
 |---|---|
-| `Ctrl+1` / `Ctrl+2` | 変更 / 履歴 |
+| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | 変更 / 履歴 / Issue |
 | `Ctrl+Enter` | コミット |
 | `Ctrl+B` | ブランチ |
 | `Ctrl+Shift+N` | 新しいブランチ |
@@ -297,7 +314,7 @@ Leveret は自分自身の WebView を信頼せず、Rust のバックエンド�
 ```text
 frontend/                 Svelte の UI（package.json、vite.config.ts、tsconfig はここ）
   src/lib/state.svelte.ts   app ストア: リポジトリ、状態、操作を1つずつ実行するガード
-  src/lib/changes.svelte.ts 変更タブ、コミット欄、スタッシュ（ほかに history / branches / agents ストア）
+  src/lib/changes.svelte.ts 変更タブ、コミット欄、スタッシュ（ほかに history / issues / branches / agents ストア）
   src/lib/github.svelte.ts  GitHub アカウント、サインイン、クローンの状態
   src/lib/api.ts            バックエンド呼び出しの型付きラッパー（往復時間を計測）
   src/lib/perf.ts           計測値、目安、パフォーマンスパネルのデータ
@@ -314,6 +331,7 @@ backend/                  Rust / Tauri（Cargo.toml、tauri.conf.json はここ�
   src/git/                  status、diff、log + グラフ、commit、clone、remote、branch、
                             operation（マージ / リベース / リバート）、discard、stash
   src/agent/                AI エージェント用ツール（tools/、領域ごとのモジュール）と MCP サーバー（mcp.rs）
+  src/issues/               ローカルの Issue（.git/leveret/issues.json）と GitHub の Issue
   src/perf.rs               計測値の記録、perf.jsonl
   src/settings.rs           settings.json（エージェントの権限）
   src/github.rs             デバイスフロー、トークン保存、リポジトリ一覧
@@ -342,6 +360,7 @@ docs/screenshots/         README で使う画像
 - [x] ブランチ作成 / 切り替え / 削除、チェックアウト
 - [x] リバート、チェリーピック、マージ、リベース、スタッシュ
 - [x] AI エージェント向け MCP サーバー
+- [x] Issue（GitHub とローカル、GitHub への反映）
 - [ ] アプリ内エージェント（Claude、Codex、GitHub Copilot、Ollama）
 - [ ] WinMerge で差分を開く
 - [ ] 英語 UI

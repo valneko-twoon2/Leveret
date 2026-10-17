@@ -34,6 +34,7 @@ Pick a repository from your list, review the changes, commit. That's it.
 | **Undo-friendly** | Discarded changes go to the Recycle Bin; amend or undo the last commit; revert or cherry-pick any commit. |
 | **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. |
 | **Stash** | Put work aside and bring it back later. |
+| **Issues** | GitHub issues and local issues side by side: jot an issue down locally, publish it to GitHub when you want (optional). |
 | **Comfortable** | Resizable panes, right-click menus, keyboard shortcuts and history search. |
 | **Readable diffs** | Line numbers, hunk headers, and Shift_JIS files decoded correctly. |
 | **History with a graph** | Branch lanes, branch / remote / tag labels, commit details and per-file diffs. |
@@ -114,6 +115,22 @@ Pick a repository from your list, review the changes, commit. That's it.
       <p align="center"><b>Welcome</b> — add or clone your first repository</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/17-issues.png">
+        <img alt="Issues tab with GitHub and local issues" src="docs/screenshots/light/17-issues.png">
+      </picture>
+      <p align="center"><b>Issues</b> — GitHub and local, publish when ready</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/16-performance.png">
+        <img alt="Performance panel with timings per step" src="docs/screenshots/light/16-performance.png">
+      </picture>
+      <p align="center"><b>Performance</b> — every step timed (Ctrl+Shift+D)</p>
+    </td>
+  </tr>
 </table>
 
 ## How it works
@@ -167,11 +184,11 @@ args = ["--mcp"]
 | Access level | Agents may |
 |---|---|
 | Off | nothing |
-| Read-only | read status, diffs, history, branches and stashes |
-| **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash |
-| Full | also discard changes, delete branches, abort / skip operations, drop stashes |
+| Read-only | read status, diffs, history, branches, stashes and issues |
+| **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash, create / edit / comment on / publish issues |
+| Full | also discard changes, delete branches, abort / skip operations, drop stashes, delete local issues |
 
-- **31 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
+- **38 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
   repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
   revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
 - **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.
@@ -219,7 +236,7 @@ so it never appears on a command line or in a repository's config.
 
 | Keys | Action |
 |---|---|
-| `Ctrl+1` / `Ctrl+2` | Changes / History |
+| `Ctrl+1` / `Ctrl+2` / `Ctrl+3` | Changes / History / Issues |
 | `Ctrl+Enter` | Commit |
 | `Ctrl+B` | Branches |
 | `Ctrl+Shift+N` | New branch |
@@ -297,7 +314,7 @@ Leveret treats its own webview as untrusted and keeps the Rust backend as the tr
 ```text
 frontend/                 Svelte UI (its own package.json, vite.config.ts, tsconfig)
   src/lib/state.svelte.ts   app store: repositories, status, the one-at-a-time action guard
-  src/lib/changes.svelte.ts changes tab, commit form, stash (also history / branches / agents stores)
+  src/lib/changes.svelte.ts changes tab, commit form, stash (also history / issues / branches / agents stores)
   src/lib/github.svelte.ts  GitHub account, sign-in and clone state
   src/lib/api.ts            typed wrappers for backend commands (round trips are timed)
   src/lib/perf.ts           timings, budgets, the performance panel's data
@@ -314,6 +331,7 @@ backend/                  Rust / Tauri (its own Cargo.toml, tauri.conf.json)
   src/git/                  status, diff, log + graph, commit, clone, remote, branch,
                             operation (merge / rebase / revert), discard, stash
   src/agent/                tools for AI agents (tools/, one module per area) and the MCP server (mcp.rs)
+  src/issues/               local issues (.git/leveret/issues.json) and GitHub issues
   src/perf.rs               timing samples, perf.jsonl
   src/settings.rs           settings.json (agent access level)
   src/github.rs             device flow, token storage, repository list
@@ -342,6 +360,7 @@ Backend errors arrive as `{ code, detail }` and are shown through the `errors.<c
 - [x] Branch create / switch / delete, checkout
 - [x] Revert, cherry-pick, merge, rebase, stash
 - [x] MCP server for AI agents
+- [x] Issues: GitHub and local, with publishing
 - [ ] In-app agents (Claude, Codex, GitHub Copilot, Ollama)
 - [ ] Open diffs in WinMerge
 - [ ] English UI
