@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Runs tests and static checks (file sizes, svelte-check, frontend build, cargo test, cargo clippy).
+  Runs tests and static checks (file sizes, svelte-check, frontend build, rustfmt, cargo test, cargo clippy).
 .PARAMETER Fast
   Skip clippy.
 #>
@@ -20,6 +20,9 @@ Invoke-Native npm @('run', 'check') $Frontend
 
 Write-Step 'Building the frontend'
 Invoke-Native npm @('run', 'build') $Frontend
+
+Write-Step 'Checking the backend formatting (cargo fmt)'
+Invoke-Native cargo @('fmt', '--check') $Backend
 
 Write-Step 'Testing the backend (cargo test)'
 Invoke-Native cargo @('test') $Backend
