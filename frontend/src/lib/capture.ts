@@ -11,6 +11,7 @@ import { branches } from './branches.svelte'
 import { changes } from './changes.svelte'
 import { github } from './github.svelte'
 import { history } from './history.svelte'
+import { issues } from './issues.svelte'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
 import { app } from './state.svelte'
@@ -194,6 +195,29 @@ export const scenes: Scene[] = [
       app.perfOpen = true
     },
   },
+  {
+    id: '17-issues',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('issues')
+      const issue = issues.list.find((i) => i.source === 'github' && i.comments > 1) ?? issues.list[0]
+      if (issue) await issues.select(issue)
+    },
+  },
+  {
+    id: '18-new-issue',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('issues')
+      issues.openNew()
+      if (issues.draft) {
+        issues.draft.title = 'コミット前にフックの結果を表示する'
+        issues.draft.body = 'pre-commit フックが失敗したとき、出力をそのままダイアログに出したい。\n\n- 失敗した行を強調する\n- もう一度実行するボタン'
+      }
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
@@ -201,6 +225,7 @@ function closeOverlays() {
   menu.close()
   agents.closeAgent()
   app.perfOpen = false
+  issues.closeDraft()
   app.error = null
   branches.closeNewBranch()
   branches.closeBranches()

@@ -10,6 +10,7 @@
   import { afterPaint, perf } from './lib/perf'
   import { github } from './lib/github.svelte'
   import { t } from './lib/i18n/index.svelte'
+  import { issues } from './lib/issues.svelte'
   import { layout } from './lib/layout.svelte'
   import { menu } from './lib/menu.svelte'
   import { app, describeError } from './lib/state.svelte'
@@ -23,12 +24,16 @@
   import ErrorDialog from './lib/components/ErrorDialog.svelte'
   import FileRow from './lib/components/FileRow.svelte'
   import HistoryPane from './lib/components/HistoryPane.svelte'
+  import IssueEditor from './lib/components/IssueEditor.svelte'
+  import IssuesPane from './lib/components/IssuesPane.svelte'
+  import IssueView from './lib/components/IssueView.svelte'
   import Icon from './lib/components/Icon.svelte'
   import NewBranchDialog from './lib/components/NewBranchDialog.svelte'
   import OperationBanner from './lib/components/OperationBanner.svelte'
   import PerfPanel from './lib/components/PerfPanel.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
+  import RepoTabs from './lib/components/RepoTabs.svelte'
   import SignInDialog from './lib/components/SignInDialog.svelte'
   import Splitter from './lib/components/Splitter.svelte'
   import Toasts from './lib/components/Toasts.svelte'
@@ -168,6 +173,7 @@
       : {
           Digit1: () => app.setTab('changes'),
           Digit2: () => app.setTab('history'),
+          Digit3: () => app.setTab('issues'),
           KeyB: () => branches.openBranches(),
           KeyF: async () => {
             await app.setTab('history')
@@ -224,32 +230,14 @@
         <OperationBanner />
         <div class="body">
           <section class="column" style:width="{layout.sizes.column}px">
-            <div class="tabs" role="tablist">
-              <button
-                role="tab"
-                class:active={app.tab === 'changes'}
-                aria-selected={app.tab === 'changes'}
-                title={t('shortcuts.changes')}
-                onclick={() => app.setTab('changes')}
-              >
-                {t('tabs.changes')}
-                {#if app.files.length}<span class="count">{app.files.length}</span>{/if}
-              </button>
-              <button
-                role="tab"
-                class:active={app.tab === 'history'}
-                aria-selected={app.tab === 'history'}
-                title={t('shortcuts.history')}
-                onclick={() => app.setTab('history')}
-              >
-                {t('tabs.history')}
-              </button>
-            </div>
+            <RepoTabs />
             <div class="column-body">
               {#if app.tab === 'changes'}
                 <ChangesPane />
-              {:else}
+              {:else if app.tab === 'history'}
                 <HistoryPane />
+              {:else}
+                <IssuesPane />
               {/if}
             </div>
           </section>
@@ -268,8 +256,10 @@
                   {app.files.length ? t('changes.selectFile') : t('changes.noneBody')}
                 </div>
               {/if}
-            {:else}
+            {:else if app.tab === 'history'}
               <CommitView />
+            {:else}
+              <IssueView />
             {/if}
           </section>
         </div>
@@ -287,6 +277,9 @@
 {/if}
 {#if branches.newBranch}
   <NewBranchDialog />
+{/if}
+{#if issues.draft}
+  <IssueEditor />
 {/if}
 {#if agents.agentOpen}
   <AgentDialog />
@@ -335,43 +328,6 @@
     flex-direction: column;
     flex: none;
     min-width: 0;
-  }
-
-  .tabs {
-    display: flex;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .tabs button {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    height: 36px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: transparent;
-    color: var(--fg-muted);
-  }
-
-  .tabs button:hover {
-    color: var(--fg);
-  }
-
-  .tabs button.active {
-    border-bottom-color: var(--attention);
-    color: var(--fg);
-    font-weight: 600;
-  }
-
-  .count {
-    min-width: 18px;
-    padding: 0 5px;
-    border-radius: 999px;
-    background: var(--bg-muted);
-    font-size: 11px;
-    line-height: 18px;
   }
 
   .column-body {

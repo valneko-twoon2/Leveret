@@ -8,6 +8,7 @@ import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
 import { branches } from './branches.svelte'
 import { changes } from './changes.svelte'
 import { history } from './history.svelte'
+import { issues } from './issues.svelte'
 import { perf, summarize } from './perf'
 import { app } from './state.svelte'
 
@@ -50,6 +51,8 @@ async function benchRepo(path: string) {
   branches.closeBranches()
   await agents.openAgent()
   agents.closeAgent()
+  await app.setTab('issues')
+  for (const i of issues.list.slice(0, PICKS)) await issues.select(i)
   await app.setTab('changes')
 
   if (app.status?.hasRemote) await app.remote('fetch', { quiet: true })

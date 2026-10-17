@@ -4,17 +4,18 @@
 // `app` holds what every screen shares (repositories, selection, status, busy
 // state, toasts, errors) plus remote actions and stopped operations. The tabs and
 // dialogs have their own stores that build on it: changes.svelte.ts,
-// history.svelte.ts, branches.svelte.ts and agents.svelte.ts.
+// history.svelte.ts, issues.svelte.ts, branches.svelte.ts and agents.svelte.ts.
 import { api, isAppError, type Outcome, type RemoteOp, type RemoteProgress, type RepoEntry, type RepoStatus } from './api'
 import { agents } from './agents.svelte'
 import { branches } from './branches.svelte'
 import { changes } from './changes.svelte'
 import { confirmDialog } from './dialogs'
 import { history } from './history.svelte'
+import { issues } from './issues.svelte'
 import { t, type MessageKey } from './i18n/index.svelte'
 import { perf } from './perf'
 
-export type Tab = 'changes' | 'history'
+export type Tab = 'changes' | 'history' | 'issues'
 
 /** A long-running action; while one runs, other git actions are disabled. */
 export type Busy = RemoteOp | 'commit' | 'branch' | 'operation' | 'discard' | 'stash'
@@ -211,6 +212,7 @@ class AppState {
     changes.resetRepoView()
     history.resetRepoView()
     branches.resetRepoView()
+    issues.resetRepoView()
   }
 
   /** Reloads status (and history when it is visible) for the current repository. */
@@ -222,6 +224,8 @@ class AppState {
         changes.loadStashes(),
         this.tab === 'history' ? history.loadLog() : Promise.resolve(),
         branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
+        // Issues reload only after a repository switch cleared them (GitHub rate limits).
+        this.tab === 'issues' && !issues.loaded ? issues.load() : Promise.resolve(),
       ])
     })
   }
@@ -255,6 +259,7 @@ class AppState {
     await perf.view(`tab.${tab}`, async () => {
       this.tab = tab
       if (tab === 'history' && history.log.length === 0) await history.loadLog()
+      if (tab === 'issues' && !issues.loaded) await issues.load()
     })
   }
 

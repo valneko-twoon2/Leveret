@@ -2,6 +2,7 @@
 // components) so capture scenes can drive it.
 import { api, type CloneProgress, type DeviceCode, type GithubAccount, type GithubRepo } from './api'
 import { t } from './i18n/index.svelte'
+import { issues } from './issues.svelte'
 import { app, describeError } from './state.svelte'
 
 export type SignInTab = 'browser' | 'token'
@@ -172,6 +173,8 @@ class GithubStore {
     this.closeSignIn()
     app.toast(t('github.signedIn', { login: account.login }))
     if (this.cloneOpen) void this.loadRepos()
+    // Signing in makes GitHub issues writable (and private ones visible).
+    if (issues.loaded) void issues.load()
   }
 
   async signOut() {
@@ -179,6 +182,7 @@ class GithubStore {
       await api.githubSignOut()
       this.account = null
       this.repos = []
+      if (issues.loaded) void issues.load()
     } catch (e) {
       app.error = describeError(e)
     }

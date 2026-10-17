@@ -306,7 +306,7 @@ export function usingMock(): boolean {
 const UNTIMED = new Set(['perf_samples', 'perf_report'])
 
 /** Calls a backend command, timing the round trip. */
-function call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
+export function call<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
   const send = () => (mock ? (mock.handle(cmd, args) as Promise<T>) : invoke<T>(cmd, args))
   return UNTIMED.has(cmd) ? send() : perf.time('ipc', cmd, send)
 }

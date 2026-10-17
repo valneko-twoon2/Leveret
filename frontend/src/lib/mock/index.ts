@@ -9,6 +9,7 @@ import type { AgentActivity, CloneProgress, RemoteProgress } from '../api'
 import { appCommands } from './appCommands'
 import { branchCommands } from './branchCommands'
 import { MOCK_ACCOUNT } from './data'
+import { issueCommands, resetIssues } from './issueCommands'
 import { makeRepos } from './repo'
 import { repoCommands } from './repoCommands'
 import { agentListeners, cloneListeners, db, delay, fail, remoteListeners, UNHANDLED } from './state'
@@ -24,6 +25,7 @@ export function reset(options: { empty?: boolean; signedIn?: boolean } = {}): vo
   db.selected = options.empty ? null : 'E:\\Code\\Leveret'
   db.account = options.signedIn ? MOCK_ACCOUNT : null
   db.pollCount = 0
+  resetIssues()
 }
 
 export function onCloneProgress(handler: (p: CloneProgress) => void): () => void {
@@ -38,7 +40,7 @@ export function onRemoteProgress(handler: (p: RemoteProgress) => void): () => vo
 
 export async function handle(cmd: string, args: Record<string, unknown>): Promise<unknown> {
   await delay(30)
-  for (const commands of [repoCommands, branchCommands, appCommands]) {
+  for (const commands of [repoCommands, branchCommands, issueCommands, appCommands]) {
     const result = await commands(cmd, args)
     if (result !== UNHANDLED) return result
   }

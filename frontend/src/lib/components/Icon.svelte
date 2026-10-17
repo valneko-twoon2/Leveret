@@ -28,6 +28,13 @@
     chevronDown: 'M6 9l6 6 6-6',
     archive: 'M3.5 4.5h17v4h-17zM5 8.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.5M10 12.5h4',
     undo: 'M9 14L4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+    issue: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 13.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    issueClosed: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 12l2.5 2.5 4.5-5',
+    laptop: 'M4.5 6a1 1 0 0 1 1-1h13a1 1 0 0 1 1 1v9h-15zM2.5 18.5h19',
+    comment: 'M4 5h16v11H9.5L4 20z',
+    edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
+    trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
+    upload: 'M12 20V9M7 13.5l5-5 5 5M5 4h14',
     sync: 'M4 12a8 8 0 0 1 13.66-5.66L20 8.5M20 4v4.5h-4.5M20 12a8 8 0 0 1-13.66 5.66L4 15.5M4 20v-4.5h4.5',
   } as const
   export type IconName = keyof typeof PATHS
