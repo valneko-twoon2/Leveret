@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Runs tests and static checks (file sizes, svelte-check, frontend build, rustfmt, cargo test, cargo clippy).
+  Runs tests and static checks (file sizes, the license list, svelte-check, frontend build, rustfmt, cargo test, cargo clippy).
 .PARAMETER Fast
   Skip clippy.
 #>
@@ -14,6 +14,8 @@ Initialize-Frontend
 & "$PSScriptRoot\security.ps1" -Offline -NoTests
 
 Test-FileSizes
+
+& "$PSScriptRoot\licenses.ps1" -Check
 
 Write-Step 'Type-checking the frontend (svelte-check)'
 Invoke-Native npm @('run', 'check') $Frontend
