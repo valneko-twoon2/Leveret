@@ -74,7 +74,7 @@ pub enum AppError {
 }
 
 impl AppError {
-    fn code(&self) -> &'static str {
+    pub(crate) fn code(&self) -> &'static str {
         match self {
             AppError::GitNotFound => "gitNotFound",
             AppError::NotARepository(_) => "notARepository",

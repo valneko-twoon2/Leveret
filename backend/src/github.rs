@@ -304,6 +304,17 @@ pub fn git_auth_env(url: &str) -> Vec<(String, String)> {
     ]
 }
 
+/// [`git_auth_env`] for fetch / pull / push in `repo`: the token is added when a
+/// remote is on github.com (the header is scoped to that URL, so other remotes never see it).
+pub fn git_auth_env_for_repo(repo: &std::path::Path) -> Vec<(String, String)> {
+    crate::git::remote::remote_urls(repo)
+        .unwrap_or_default()
+        .iter()
+        .find(|u| u.starts_with("https://github.com/"))
+        .map(|u| git_auth_env(u))
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

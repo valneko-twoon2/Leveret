@@ -128,6 +128,16 @@ pub fn revision(rev: &str) -> Result<&str> {
     }
 }
 
+/// A revision expression for `git rev-parse` such as `HEAD~2`, `main^`, `v1.0` or a hash.
+/// No options, ranges (`..`), paths (`:`) or whitespace.
+pub fn revision_expr(rev: &str) -> Result<&str> {
+    let ok_char = |c: char| c.is_alphanumeric() || "._/~^@{}-+".contains(c);
+    if rev.is_empty() || rev.len() > 255 || rev.starts_with('-') || rev.contains("..") || !rev.chars().all(ok_char) {
+        return Err(invalid("revision", rev));
+    }
+    Ok(rev)
+}
+
 /// Only GitHub pages may be opened in the user's browser from the app.
 pub fn github_web_url(url: &str) -> Result<&str> {
     if (url.starts_with("https://github.com/") || url == "https://github.com") && !has_control_chars(url) {
@@ -232,6 +242,25 @@ mod tests {
         assert!(revision("refs/heads/main").is_ok());
         assert!(revision("HEAD~1").is_err());
         assert!(revision("--orphan").is_err());
+    }
+
+    #[test]
+    fn revision_exprs() {
+        for ok in [
+            "HEAD",
+            "HEAD~2",
+            "main^",
+            "v1.0",
+            "abc1234",
+            "origin/feature/x",
+            "HEAD@{1}",
+            "機能",
+        ] {
+            assert!(revision_expr(ok).is_ok(), "{ok:?} should be accepted");
+        }
+        for bad in ["", "-n", "--all", "a..b", "HEAD:file", "a b", "a;b", "$(x)", "a\nb"] {
+            assert!(revision_expr(bad).is_err(), "{bad:?} should be rejected");
+        }
     }
 
     #[test]
