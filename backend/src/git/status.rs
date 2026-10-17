@@ -125,11 +125,13 @@ fn parse(text: &str) -> RepoStatus {
                 }
             }
             b'?' => {
-                status.files.push(FileChange {
-                    path: tok[2..].into(),
-                    orig_path: None,
-                    kind: ChangeKind::Untracked,
-                });
+                if let Some(path) = tok.get(2..).filter(|p| !p.is_empty()) {
+                    status.files.push(FileChange {
+                        path: path.into(),
+                        orig_path: None,
+                        kind: ChangeKind::Untracked,
+                    });
+                }
             }
             _ => {}
         }
@@ -196,6 +198,112 @@ mod tests {
         assert_eq!(s.files[1].orig_path.as_deref(), Some("b.txt"));
         assert_eq!(s.files[1].kind, ChangeKind::Renamed);
         assert_eq!(s.files[2].kind, ChangeKind::Untracked);
+    }
+
+    #[test]
+    fn change_kinds_table() {
+        use ChangeKind::*;
+        for (xy, kind) in [
+            (".M", Modified),
+            ("M.", Modified),
+            ("MM", Modified),
+            ("A.", Added),
+            ("AM", Added),
+            (".A", Added),
+            ("D.", Deleted),
+            (".D", Deleted),
+            ("AD", Deleted),
+            ("R.", Renamed),
+            ("RM", Renamed),
+            ("RD", Renamed),
+            ("C.", Copied),
+            (".T", TypeChanged),
+            ("T.", TypeChanged),
+        ] {
+            assert_eq!(kind_of(xy), kind, "{xy}");
+        }
+    }
+
+    #[test]
+    fn entries_table() {
+        use ChangeKind::*;
+        type Entry<'a> = (&'a str, Option<&'a str>, ChangeKind);
+        let cases: &[(&str, &[Entry])] = &[
+            (
+                "1 .M N... 100644 100644 100644 a a 名前 空白.txt",
+                &[("名前 空白.txt", None, Modified)],
+            ),
+            ("1 A. N... 000000 100644 100644 0 a new.rs", &[("new.rs", None, Added)]),
+            (
+                "1 .D N... 100644 100644 000000 a a gone.rs",
+                &[("gone.rs", None, Deleted)],
+            ),
+            (
+                "2 R. N... 100644 100644 100644 a a R087 dir/new name.rs\0dir/old name.rs",
+                &[("dir/new name.rs", Some("dir/old name.rs"), Renamed)],
+            ),
+            (
+                "2 C. N... 100644 100644 100644 a a C100 copy.rs\0orig.rs",
+                &[("copy.rs", Some("orig.rs"), Copied)],
+            ),
+            (
+                "u UU N... 100644 100644 100644 100644 a b c both.rs",
+                &[("both.rs", None, Conflicted)],
+            ),
+            (
+                "u AA N... 000000 100644 100644 100644 0 b c added by both.rs",
+                &[("added by both.rs", None, Conflicted)],
+            ),
+            (
+                "? untracked dir/ファイル.txt",
+                &[("untracked dir/ファイル.txt", None, Untracked)],
+            ),
+            // Sorted by path whatever order git prints them in.
+            (
+                concat!("? z.txt\0", "1 .M N... 100644 100644 100644 a a b.txt\0", "? a.txt"),
+                &[
+                    ("a.txt", None, Untracked),
+                    ("b.txt", None, Modified),
+                    ("z.txt", None, Untracked),
+                ],
+            ),
+        ];
+        for (text, expected) in cases {
+            let files = parse(text).files;
+            let got: Vec<Entry> = files
+                .iter()
+                .map(|f| (f.path.as_str(), f.orig_path.as_deref(), f.kind))
+                .collect();
+            assert_eq!(&got[..], *expected, "{text:?}");
+        }
+    }
+
+    #[test]
+    fn malformed_output_never_panics() {
+        for text in [
+            "",
+            "\0\0",
+            "?",
+            "? ",
+            "1",
+            "1 .M",
+            "2 R.",
+            "2 R. N... 1 2 3 a b R100 only-path",
+            "u",
+            "u UU",
+            "x y z",
+            "# branch.ab",
+            "# branch.ab +x -y",
+            "# branch.ab +999999999999999999999 -1",
+            "# ",
+            "#",
+            "あ",
+            "1\u{fffd}",
+        ] {
+            let _ = parse(text);
+        }
+        let s = parse("# branch.ab +x -3");
+        assert_eq!((s.ahead, s.behind), (0, 3));
     }
 
     #[test]

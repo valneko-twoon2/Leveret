@@ -230,4 +230,91 @@ mod tests {
         assert_eq!(c("fatal: something else"), "gitFailed");
         assert_eq!(AppError::NoRemote.classify_git().code(), "noRemote");
     }
+
+    #[test]
+    fn classify_git_table() {
+        for (message, code) in [
+            (
+                "error: Your local changes to the following files would be overwritten by merge:",
+                "localChangesConflict",
+            ),
+            (
+                "error: The following untracked working tree files would be overwritten by checkout:",
+                "localChangesConflict",
+            ),
+            (
+                "Please commit your changes or stash them before you switch branches.",
+                "localChangesConflict",
+            ),
+            (" ! [rejected]        main -> main (non-fast-forward)", "pushRejected"),
+            (
+                " ! [remote rejected] main -> main (protected branch hook declined)",
+                "pushRejected",
+            ),
+            (
+                "hint: Updates were rejected because the remote contains work (fetch first)",
+                "pushRejected",
+            ),
+            (
+                "fatal: could not read Username for 'https://github.com': terminal prompts disabled",
+                "remoteAuthFailed",
+            ),
+            (
+                "fatal: could not read Password for 'https://x@github.com': No such device",
+                "remoteAuthFailed",
+            ),
+            ("git@github.com: Permission denied (publickey).", "remoteAuthFailed"),
+            (
+                "fatal: unable to access 'https://x/': The requested URL returned error: 403",
+                "remoteAuthFailed",
+            ),
+            (
+                "fatal: unable to access 'https://x/': The requested URL returned error: 401",
+                "remoteAuthFailed",
+            ),
+            (
+                "fatal: unable to access 'https://x/': Failed to connect to x port 443",
+                "network",
+            ),
+            ("ssh: connect to host x port 22: Connection timed out", "network"),
+            ("fatal: Could not read from remote repository.", "network"),
+            (
+                "fatal: unable to access 'https://x/': SSL certificate problem",
+                "network",
+            ),
+            ("*** Please tell me who you are.", "identityMissing"),
+            (
+                "fatal: empty ident name (for <>) not allowed; set user.name",
+                "identityMissing",
+            ),
+            (
+                "fatal: not a git repository (or any of the parent directories): .git",
+                "gitFailed",
+            ),
+            ("", "gitFailed"),
+        ] {
+            assert_eq!(
+                AppError::GitFailed(message.into()).classify_git().code(),
+                code,
+                "{message:?}"
+            );
+        }
+        // Only GitFailed is reclassified.
+        for e in [
+            AppError::NoUpstream,
+            AppError::Other("Authentication failed".into()),
+            AppError::DetachedHead,
+        ] {
+            let code = e.code();
+            assert_eq!(e.classify_git().code(), code);
+        }
+    }
+
+    #[test]
+    fn serializes_as_code_and_detail() {
+        let json = serde_json::to_value(AppError::TagExists("v1".into())).unwrap();
+        assert_eq!(json, serde_json::json!({ "code": "tagExists", "detail": "v1" }));
+        let json = serde_json::to_value(AppError::NoRemote).unwrap();
+        assert_eq!(json, serde_json::json!({ "code": "noRemote", "detail": "" }));
+    }
 }

@@ -15,19 +15,34 @@ fn has_control_chars(s: &str) -> bool {
     s.chars().any(char::is_control)
 }
 
-/// A path relative to the repository root that cannot escape it
-/// (no absolute paths, drive letters or `..`).
+/// A path relative to the repository root that cannot escape it: no absolute
+/// paths, drive letters, alternate data streams (`:`) or `..`, and no parts that
+/// Windows would rewrite (trailing dots or spaces, so `.. ` can't become `..`)
+/// or that name a device (`NUL`, `com1.txt`).
 pub fn relative_path(path: &str) -> Result<&str> {
-    if path.is_empty() || has_control_chars(path) || path.contains(':') || path.starts_with('-') {
+    if path.is_empty() || path.len() > 4096 || has_control_chars(path) || path.contains(':') || path.starts_with('-') {
         return Err(invalid("path", path));
     }
     let normal = Path::new(path)
         .components()
         .all(|c| matches!(c, Component::Normal(_) | Component::CurDir));
-    if !normal {
+    let parts_ok = path
+        .split(['/', '\\'])
+        .all(|part| part.is_empty() || part == "." || (!part.ends_with(['.', ' ']) && !is_device_name(part)));
+    if !normal || !parts_ok {
         return Err(invalid("path", path));
     }
     Ok(path)
+}
+
+/// Windows device names (`CON`, `nul.txt`, `COM1 .log`), which can't be files.
+fn is_device_name(name: &str) -> bool {
+    const RESERVED: [&str; 22] = [
+        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1",
+        "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+    ];
+    let stem = name.split('.').next().unwrap_or_default().trim_end();
+    RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem))
 }
 
 /// A full or abbreviated object id. Rejecting anything else also prevents
@@ -63,12 +78,7 @@ fn is_scp_like(url: &str) -> bool {
 
 /// A single folder name for a new clone (no separators, reserved characters or names).
 pub fn folder_name(name: &str) -> Result<&str> {
-    const RESERVED: [&str; 22] = [
-        "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1",
-        "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
-    ];
     let bad_char = name.chars().any(|c| c.is_control() || r#"\/:*?"<>|"#.contains(c));
-    let stem = name.split('.').next().unwrap_or_default();
     if name.is_empty()
         || name.len() > 255
         || bad_char
@@ -77,7 +87,7 @@ pub fn folder_name(name: &str) -> Result<&str> {
         || name.ends_with('.')
         || name.ends_with(' ')
         || name.starts_with('-')
-        || RESERVED.iter().any(|r| r.eq_ignore_ascii_case(stem))
+        || is_device_name(name)
     {
         return Err(invalid("folder name", name));
     }
@@ -202,6 +212,10 @@ pub fn issue_id(id: u64) -> Result<u64> {
         Err(AppError::InvalidInput(format!("issue id: {id}")))
     }
 }
+
+#[cfg(test)]
+#[path = "security_tables.rs"]
+mod tables;
 
 #[cfg(test)]
 mod tests {
