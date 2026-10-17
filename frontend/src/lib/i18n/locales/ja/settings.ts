@@ -22,6 +22,7 @@ export default {
     languageHint: '表示言語です。今後ほかの言語にも対応する予定です。',
     git: {
       identity: 'コミットに記録される名前とメールアドレス',
+      openSettings: 'Git の設定を開く',
       identityHint: 'git config --global に保存され、ほかの Git ツールでも使われます。',
       userName: '名前',
       userEmail: 'メールアドレス',

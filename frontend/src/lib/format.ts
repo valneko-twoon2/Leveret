@@ -1,4 +1,4 @@
-import { i18n, t } from './i18n/index.svelte'
+import { i18n, t, type MessageKey } from './i18n/index.svelte'
 
 export function formatDateTime(unixSeconds: number): string {
   return new Intl.DateTimeFormat(i18n.locale, { dateStyle: 'medium', timeStyle: 'short' }).format(unixSeconds * 1000)
@@ -30,4 +30,20 @@ export const shortHash = (hash: string) => hash.slice(0, 7)
 export function splitPath(path: string): [string, string] {
   const i = path.lastIndexOf('/')
   return i < 0 ? ['', path] : [path.slice(0, i + 1), path.slice(i + 1)]
+}
+
+const PHASES: Record<string, MessageKey> = {
+  'Counting objects': 'phase.counting',
+  'Compressing objects': 'phase.compressing',
+  'Writing objects': 'phase.writing',
+  'Receiving objects': 'phase.receiving',
+  'Resolving deltas': 'phase.resolving',
+  'Updating files': 'phase.updating',
+  'Enumerating objects': 'phase.enumerating',
+}
+
+/** A git progress phase ("Receiving objects") in the UI language; unknown ones as they are. */
+export function phaseLabel(phase: string): string {
+  const key = PHASES[phase]
+  return key ? t(key) : phase
 }

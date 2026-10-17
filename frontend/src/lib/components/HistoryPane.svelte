@@ -71,7 +71,7 @@
         id="history-search"
         type="text"
         placeholder={t('history.search')}
-        title={`${t('history.search')} (${t('shortcuts.search')})`}
+        title={`${t('history.searchHint')} (${t('shortcuts.search')})`}
         bind:value={history.logFilter}
         onkeydown={clearOnEscape}
         aria-label={t('history.search')}
@@ -84,7 +84,9 @@
   </div>
 
   <div class="list">
-    {#if !history.logLoading && history.log.length === 0}
+    {#if history.logLoading && history.log.length === 0}
+      <div class="empty">{t('common.loading')}</div>
+    {:else if history.log.length === 0}
       <div class="empty">{t('history.empty')}</div>
     {:else if list.length === 0}
       <div class="empty">{t('history.noMatches')}</div>

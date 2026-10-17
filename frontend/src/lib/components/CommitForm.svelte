@@ -11,6 +11,14 @@
     return branch ? t('commit.button', { branch }) : t('commit.buttonDetached')
   })
 
+  /** Why committing isn't possible right now (shown instead of the file count). */
+  const reason = $derived.by(() => {
+    if (app.busy !== null || app.commitBlocked) return null
+    if (!changes.amend && changes.includedFiles.length === 0) return t('commit.needFiles')
+    if (changes.summary.trim() === '') return t('commit.needSummary')
+    return null
+  })
+
   const amendTitle = $derived(
     app.status?.upstream && app.status.ahead === 0 && app.status.headOid ? t('commit.amendPushed') : t('commit.amendHint'),
   )
@@ -42,7 +50,7 @@
     disabled={app.commitBlocked}
   />
   <textarea
-    rows="4"
+    rows="3"
     placeholder={t('commit.description')}
     bind:value={changes.description}
     {onkeydown}
@@ -61,7 +69,9 @@
   <button class="btn primary" type="submit" disabled={!changes.canCommit} title={t('commit.shortcut')}>
     <span class="label">{label}</span>
   </button>
-  <div class="hint">{t('commit.selected', { count: changes.includedFiles.length })} · {t('commit.shortcut')}</div>
+  <div class="hint" class:reason={reason !== null}>
+    {reason ?? `${t('commit.selected', { count: changes.includedFiles.length })} · ${t('commit.shortcut')}`}
+  </div>
 </form>
 
 <style>
@@ -114,5 +124,9 @@
     font-size: 11px;
     color: var(--fg-subtle);
     text-align: center;
+  }
+
+  .hint.reason {
+    color: var(--fg-muted);
   }
 </style>

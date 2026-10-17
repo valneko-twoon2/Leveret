@@ -31,6 +31,8 @@ export interface Toast {
 export interface ErrorInfo {
   message: string
   detail: string
+  /** The backend error code, for one-click fixes in the error dialog. */
+  code?: string
 }
 
 /** How often to check whether a background fetch is due (see prefs.autoFetchMinutes). */
@@ -43,7 +45,7 @@ export function describeError(e: unknown): ErrorInfo {
     const message = t(key, { detail: e.detail })
     // Show the raw detail separately unless the message already embeds it.
     const detail = message.includes(e.detail) ? '' : e.detail
-    return { message: message === key ? t('errors.other') : message, detail }
+    return { message: message === key ? t('errors.other') : message, detail, code: e.code }
   }
   return { message: t('errors.other'), detail: e instanceof Error ? e.message : String(e) }
 }
@@ -54,6 +56,9 @@ class AppState {
   loaded = $state(false)
   tab = $state<Tab>('changes')
   busy = $state<Busy | null>(null)
+  /** A quiet fetch running outside the action lock (see startAutoFetch). */
+  backgroundFetching = $state(false)
+  private backgroundFetch: Promise<void> | null = null
   remoteProgress = $state.raw<RemoteProgress | null>(null)
   status = $state.raw<RepoStatus | null>(null)
 
@@ -114,6 +119,8 @@ class AppState {
     work: (repo: string) => Promise<T>,
     options: { quiet?: boolean; name?: string } = {},
   ): Promise<T | undefined> {
+    // Let a background fetch finish first instead of ignoring the action.
+    if (this.backgroundFetch) await this.backgroundFetch
     const repo = this.selectedPath
     if (!repo || this.busy !== null) return undefined
     this.busy = busy
@@ -173,10 +180,29 @@ class AppState {
     this.autoFetchTimer = setInterval(() => {
       const st = this.status
       const every = prefs.autoFetchMinutes * 60 * 1000
-      if (!every || !st?.hasRemote || this.busy !== null || document.visibilityState !== 'visible') return
+      if (!every || !st?.hasRemote || this.busy !== null || this.backgroundFetch) return
+      if (document.visibilityState !== 'visible') return
       if (st.lastFetched !== null && Date.now() - st.lastFetched * 1000 < every) return
-      void this.remote('fetch', { quiet: true })
+      this.backgroundFetch = this.fetchInBackground().finally(() => (this.backgroundFetch = null))
     }, AUTO_FETCH_CHECK_MS)
+  }
+
+  /**
+   * Fetches without taking the action lock, so the user can keep working; an
+   * action started meanwhile waits for it (see `run`). Failures are silent.
+   */
+  private async fetchInBackground() {
+    const repo = this.selectedPath
+    if (!repo) return
+    this.backgroundFetching = true
+    try {
+      await this.track(perf.time('action', 'remote.fetch.background', () => api.remote(repo, 'fetch')))
+      if (repo === this.selectedPath) await this.loadStatus()
+    } catch {
+      // Offline or signed out: try again at the next interval.
+    } finally {
+      this.backgroundFetching = false
+    }
   }
 
   async addRepo(path: string) {
@@ -223,7 +249,8 @@ class AppState {
   }
 
   /** Reloads status (and history when it is visible) for the current repository. */
-  async refresh() {
+  /** Reloads what's shown. `explicit` (F5, the refresh button) also reloads loaded issues. */
+  async refresh(options: { explicit?: boolean } = {}) {
     if (!this.selectedPath) return
     await perf.view('refresh', async () => {
       await Promise.all([
@@ -231,8 +258,8 @@ class AppState {
         changes.loadStashes(),
         this.tab === 'history' ? history.loadLog() : Promise.resolve(),
         branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
-        // Issues reload only after a repository switch cleared them (GitHub rate limits).
-        this.tab === 'issues' && !issues.loaded ? issues.load() : Promise.resolve(),
+        // Issues reload after a repository switch cleared them, or on F5 (GitHub rate limits).
+        this.tab === 'issues' && (!issues.loaded || options.explicit) ? issues.load() : Promise.resolve(),
       ])
     })
   }

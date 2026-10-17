@@ -57,6 +57,21 @@ class Layout {
     this.save()
   }
 
+  /**
+   * Shrinks panes that don't fit the window, so the diff keeps a usable width
+   * (at the minimum window size too). Not saved: the remembered sizes come back
+   * when the window is wide enough again.
+   */
+  fit(windowWidth: number) {
+    const saved = load()
+    const want = (name: PaneName) => clamp(name, saved[name] ?? PANES[name].default)
+    const fitted = (name: PaneName, room: number) =>
+      Math.round(Math.max(PANES[name].min, Math.min(want(name), room)))
+    this.sizes.sidebar = fitted('sidebar', windowWidth * 0.22)
+    this.sizes.column = fitted('column', windowWidth - this.sizes.sidebar - 400)
+    this.sizes.commitFiles = fitted('commitFiles', windowWidth - this.sizes.sidebar - this.sizes.column - 320)
+  }
+
   resetAll() {
     for (const name of Object.keys(PANES) as PaneName[]) this.sizes[name] = PANES[name].default
     this.save()

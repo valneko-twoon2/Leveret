@@ -1,7 +1,27 @@
 <script lang="ts">
-  import { t } from '../i18n/index.svelte'
+  import { changes } from '../changes.svelte'
+  import { github } from '../github.svelte'
+  import { t, type MessageKey } from '../i18n/index.svelte'
+  import { settings } from '../settings.svelte'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
+
+  /** One-click fixes for well-known errors, shown next to OK. */
+  const FIXES: Record<string, { label: MessageKey; run: () => unknown }> = {
+    identityMissing: { label: 'settings.git.openSettings', run: () => settings.openSettings('git') },
+    pushRejected: { label: 'remote.pull', run: () => app.remote('pull') },
+    localChangesConflict: { label: 'stash.save', run: () => changes.stashSave() },
+    githubNotSignedIn: { label: 'github.signIn', run: () => github.openSignIn() },
+    githubUnauthorized: { label: 'github.signIn', run: () => github.openSignIn() },
+    noUpstream: { label: 'remote.publish', run: () => app.remote('push') },
+  }
+  const fix = $derived(app.error?.code ? FIXES[app.error.code] : undefined)
+
+  function runFix() {
+    const action = fix
+    close()
+    if (action) void action.run()
+  }
 
   let button = $state<HTMLButtonElement>()
   $effect(() => {
@@ -31,7 +51,10 @@
         <pre class="detail">{app.error.detail}</pre>
       {/if}
       <div class="actions">
-        <button class="btn primary" bind:this={button} onclick={close}>OK</button>
+        {#if fix}
+          <button class="btn" onclick={runFix}>{t(fix.label)}</button>
+        {/if}
+        <button class="btn primary" bind:this={button} onclick={close}>{t('common.ok')}</button>
       </div>
     </div>
   </div>

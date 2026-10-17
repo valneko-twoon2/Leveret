@@ -14,6 +14,8 @@ export default {
     showInExplorer: 'エクスプローラーで表示',
     openInExplorer: 'エクスプローラーで開く',
     resize: 'ドラッグで幅を変更（ダブルクリックで元に戻す）',
+    ok: 'OK',
+    close: '閉じる',
   },
   welcome: {
     title: 'Leveret へようこそ',
@@ -44,6 +46,28 @@ export default {
   },
   time: {
     justNow: 'たった今',
+  },
+  busy: {
+    commit: 'コミット中…',
+    branch: 'ブランチを切り替え中…',
+    operation: '処理中…',
+    discard: '変更を破棄中…',
+    stash: 'スタッシュ中…',
+    tag: 'タグを更新中…',
+    fetch: 'フェッチ中…',
+    pull: 'プル中…',
+    push: 'プッシュ中…',
+    sync: '同期中…',
+    backgroundFetch: 'バックグラウンドでフェッチ中…',
+  },
+  phase: {
+    counting: 'オブジェクトを数えています',
+    compressing: 'オブジェクトを圧縮しています',
+    writing: 'オブジェクトを送信しています',
+    receiving: 'オブジェクトを受信しています',
+    resolving: '差分を解決しています',
+    updating: 'ファイルを更新しています',
+    enumerating: 'オブジェクトを列挙しています',
   },
   shortcuts: {
     changes: 'Ctrl+1',

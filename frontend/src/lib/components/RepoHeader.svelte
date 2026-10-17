@@ -6,6 +6,7 @@
   import { changes } from '../changes.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
+  import { phaseLabel } from '../format'
   import { layout } from '../layout.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
@@ -126,7 +127,7 @@
         <span class="value">{remoteBusy ? busyLabel : action.label}</span>
         <span class="label">
           {#if remoteBusy && app.remoteProgress}
-            {app.remoteProgress.phase} {app.remoteProgress.percent}%
+            {phaseLabel(app.remoteProgress.phase)} {app.remoteProgress.percent}%
           {:else}
             {action.detail}
           {/if}
@@ -145,15 +146,27 @@
 
   <div class="spacer"></div>
 
+  {#if app.busy && !remoteBusy}
+    <span class="busy" role="status">{t(`busy.${app.busy}`)}</span>
+  {:else if app.backgroundFetching}
+    <span class="busy subtle" role="status">{t('busy.backgroundFetch')}</span>
+  {/if}
+
   <button class="icon-btn" title={t('common.more')} aria-label={t('common.more')} onclick={moreMenu}>
     <Icon name="more" size={18} />
   </button>
-  <button class="icon-btn refresh" title={`${t('common.refresh')} (F5)`} aria-label={t('common.refresh')} onclick={() => app.refresh()}>
+  <button
+    class="icon-btn refresh"
+    class:spinning={app.busy !== null || app.backgroundFetching}
+    title={`${t('common.refresh')} (F5)`}
+    aria-label={t('common.refresh')}
+    onclick={() => app.refresh({ explicit: true })}
+  >
     <Icon name="refresh" />
   </button>
 
-  {#if remoteBusy}
-    <div class="progress" class:indeterminate={!app.remoteProgress}>
+  {#if app.busy}
+    <div class="progress" class:indeterminate={!remoteBusy || !app.remoteProgress}>
       <div class="bar" style:width="{app.remoteProgress?.percent ?? 30}%"></div>
     </div>
   {/if}
@@ -194,14 +207,37 @@
     flex: none;
   }
 
+  /* Their usual width, shrinking only when the window is narrow. */
   .branch {
-    min-width: 200px;
+    flex: 0 1 auto;
+    width: max-content;
+    min-width: min(200px, 100%);
     max-width: 360px;
   }
 
   .remote {
-    min-width: 190px;
+    flex: 0 1 auto;
+    width: max-content;
+    min-width: min(190px, 100%);
     max-width: 320px;
+  }
+
+  @media (max-width: 1100px) {
+    .branch,
+    .remote {
+      min-width: 130px;
+    }
+  }
+
+  /* Narrow windows: keep every button reachable. */
+  @media (max-width: 1100px) {
+    .remote .label {
+      display: none;
+    }
+
+    .busy {
+      display: none;
+    }
   }
 
   .text {
@@ -283,6 +319,27 @@
     }
     to {
       transform: translateX(340%);
+    }
+  }
+
+  .busy {
+    margin-right: 8px;
+    color: var(--fg-muted);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .busy.subtle {
+    color: var(--fg-subtle);
+  }
+
+  .refresh.spinning :global(svg) {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>

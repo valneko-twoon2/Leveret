@@ -12,7 +12,7 @@
   }
 </script>
 
-<Modal title={t('github.dialogTitle')} width={480} onclose={() => github.closeSignIn()}>
+<Modal closeOnBackdrop={false} title={t('github.dialogTitle')} width={480} onclose={() => github.closeSignIn()}>
   <div class="tabs" role="tablist">
     <button
       role="tab"

@@ -18,7 +18,9 @@
   })
   // Current branch first, then by most recent commit (the backend's order).
   const local = $derived(filtered.filter((b) => b.kind === 'local').sort((a, b) => Number(b.current) - Number(a.current)))
-  const remote = $derived(filtered.filter((b) => b.kind === 'remote'))
+  // A remote branch a local branch already tracks is reached through that local branch.
+  const tracked = $derived(new Set(branches.branches.map((b) => b.upstream).filter(Boolean)))
+  const remote = $derived(filtered.filter((b) => b.kind === 'remote' && !tracked.has(b.name)))
 
   function branchMenu(b: Branch, e: MouseEvent | KeyboardEvent, anchor?: HTMLElement) {
     const idle = app.busy === null
@@ -32,7 +34,7 @@
         { label: t('branches.rebase'), action: () => branches.rebaseOnto(b), disabled: !idle || b.current || !onBranch },
         { label: t('branches.createFrom'), action: () => branches.openNewBranch(b.fullRef, b.name), disabled: !idle },
         'separator',
-        { label: t('common.copy'), action: () => app.copy(b.name) },
+        { label: t('branches.copyName'), action: () => app.copy(b.name) },
         ...(b.kind === 'local'
           ? ['separator' as const, { label: t('branches.delete'), action: () => branches.deleteBranch(b), disabled: !idle || b.current, danger: true }]
           : []),
@@ -127,7 +129,9 @@
           {#each remote as b (b.fullRef)}{@render item(b)}{/each}
         </ul>
       {/if}
-      {#if !local.length && !remote.length}
+      {#if !branches.branchesLoaded}
+        <div class="none">{t('common.loading')}</div>
+      {:else if !local.length && !remote.length}
         <div class="none">{t('branches.none')}</div>
       {/if}
     </div>

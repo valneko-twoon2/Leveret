@@ -87,6 +87,7 @@
   })
 
   onMount(() => {
+    layout.fit(window.innerWidth)
     let unlistenDrop: (() => void) | undefined
     let stopForwarding: (() => void) | undefined
     perf.observeLongTasks()
@@ -163,7 +164,7 @@
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'F5') {
       e.preventDefault()
-      void app.refresh()
+      void app.refresh({ explicit: true })
       return
     }
     if (inTauri && e.ctrlKey && e.shiftKey && e.code === 'KeyS') {
@@ -216,7 +217,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} {onfocus} />
+<svelte:window {onkeydown} {onfocus} onresize={() => layout.fit(window.innerWidth)} />
 
 {#snippet crashed(error: unknown, reset: () => void)}
   <div class="crashed">

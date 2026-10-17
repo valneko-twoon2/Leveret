@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../i18n/index.svelte'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
 </script>
@@ -8,7 +9,7 @@
     <div class="toast {toast.kind}">
       <Icon name={toast.kind === 'error' ? 'alert' : 'check'} size={15} />
       <span>{toast.message}</span>
-      <button class="icon-btn" aria-label="close" onclick={() => app.dismissToast(toast.id)}>
+      <button class="icon-btn" title={t('common.close')} aria-label={t('common.close')} onclick={() => app.dismissToast(toast.id)}>
         <Icon name="x" size={13} />
       </button>
     </div>

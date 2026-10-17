@@ -21,6 +21,7 @@ export default {
     rebased: '「{branch}」の上にリベースしました',
     createFrom: 'ここから新しいブランチを作成',
     delete: 'ブランチを削除',
+    copyName: 'ブランチ名をコピー',
     deleteConfirm: 'ブランチ「{branch}」を削除しますか？',
     forceDeleteConfirm: 'ブランチ「{branch}」にはどこにもマージされていないコミットがあります。\nそれでも削除しますか？（コミットは失われます）',
     deleted: 'ブランチ「{branch}」を削除しました',

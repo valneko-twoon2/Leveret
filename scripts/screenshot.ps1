@@ -16,6 +16,8 @@
 .PARAMETER Scenes
   Scene ids to capture (e.g. 02-changes,04-history). All scenes when omitted.
   See frontend/src/lib/capture.ts.
+.PARAMETER Size
+  Window size for -Browser, e.g. 900x560 (the app's minimum) to check narrow layouts. Default 1280x800.
 .PARAMETER OutDir
   Output folder.
 .PARAMETER Open
@@ -27,6 +29,7 @@ param(
     [ValidateSet('light', 'dark', 'both')][string]$Theme,
     [switch]$Build,
     [string[]]$Scenes,
+    [ValidatePattern('^\d{3,4}x\d{3,4}$')][string]$Size = '1280x800',
     [string]$OutDir,
     [switch]$Open
 )
@@ -78,7 +81,7 @@ function Invoke-BrowserCapture([string]$BaseUrl, [string]$Dir, [string]$ThemeNam
             if ($ThemeName) { $url += "&theme=$ThemeName" }
             $edgeArgs = @(
                 '--headless=new', '--disable-gpu', '--hide-scrollbars', '--no-first-run',
-                '--force-device-scale-factor=1', '--window-size=1280,800', '--virtual-time-budget=15000',
+                '--force-device-scale-factor=1', "--window-size=$($Size -replace 'x', ',')", '--virtual-time-budget=15000',
                 "--user-data-dir=`"$profileDir`"", "--screenshot=`"$png`"", "`"$url`""
             )
             Start-Process -FilePath $edge -ArgumentList $edgeArgs -Wait -WindowStyle Hidden

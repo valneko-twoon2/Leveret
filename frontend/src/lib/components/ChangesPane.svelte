@@ -115,6 +115,7 @@
         onselect={(i) => app.files[i] && changes.selectFile(app.files[i].path)}
         oncontext={(i, e) => app.files[i] && fileMenu(app.files[i], e)}
         onactivate={(i) => app.files[i] && diffTool.openWorking(app.files[i])}
+        ontoggle={(i) => app.files[i] && changes.toggleFile(app.files[i].path)}
       >
         {#snippet row(file)}
           <FileRow
@@ -194,7 +195,8 @@
 
   .list {
     flex: 1;
-    min-height: 0;
+    /* Keep a few files visible in short windows (the stash list and form shrink first). */
+    min-height: 96px;
   }
 
   .stashes {
@@ -225,7 +227,7 @@
   }
 
   ul {
-    max-height: 160px;
+    max-height: min(160px, 18vh);
     margin: 0;
     padding: 4px 0;
     overflow-y: auto;

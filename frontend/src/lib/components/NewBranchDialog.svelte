@@ -22,7 +22,7 @@
   <button class="btn primary" disabled={!canCreate} onclick={() => branches.createBranch()}>{t('newBranch.submit')}</button>
 {/snippet}
 
-<Modal title={t('newBranch.title')} width={460} onclose={() => branches.closeNewBranch()} {footer}>
+<Modal closeOnBackdrop={false} title={t('newBranch.title')} width={460} onclose={() => branches.closeNewBranch()} {footer}>
   <form
     onsubmit={(e) => {
       e.preventDefault()

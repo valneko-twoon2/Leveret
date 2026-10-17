@@ -32,6 +32,7 @@ class BranchesState {
   /** Which list the branches dialog shows. */
   dialogTab = $state<'branches' | 'tags'>('branches')
   branches = $state.raw<Branch[]>([])
+  branchesLoaded = $state(false)
   branchFilter = $state('')
   newBranch = $state.raw<NewBranchRequest | null>(null)
   newBranchName = $state('')
@@ -49,6 +50,7 @@ class BranchesState {
   resetRepoView() {
     this.branchesOpen = false
     this.branches = []
+    this.branchesLoaded = false
     this.newBranch = null
   }
 
@@ -73,7 +75,10 @@ class BranchesState {
     const repo = app.selectedPath
     if (!repo) return
     const branches = await app.guard(() => api.listBranches(repo))
-    if (branches && repo === app.selectedPath) this.branches = branches
+    if (branches && repo === app.selectedPath) {
+      this.branches = branches
+      this.branchesLoaded = true
+    }
   }
 
   async switchBranch(b: Branch) {

@@ -16,6 +16,8 @@
     oncontext?: (index: number, e: MouseEvent | KeyboardEvent) => void
     /** Double click on a row (not on a checkbox in it). */
     onactivate?: (index: number) => void
+    /** Space on the selected row (e.g. to check / uncheck it). */
+    ontoggle?: (index: number) => void
     row: Snippet<[T, number]>
     footer?: Snippet
   }
@@ -31,6 +33,7 @@
     onreachend,
     oncontext,
     onactivate,
+    ontoggle,
     row,
     footer,
   }: Props = $props()
@@ -60,6 +63,11 @@
       e.preventDefault()
       const rowEl = viewport.querySelector<HTMLElement>('.row.selected')
       oncontext(selectedIndex, rowEl ? new MouseEvent('contextmenu', rowCenter(rowEl)) : e)
+      return
+    }
+    if (ontoggle && selectedIndex >= 0 && e.key === ' ') {
+      e.preventDefault()
+      ontoggle(selectedIndex)
       return
     }
     if (!selectable || !onselect || items.length === 0) return

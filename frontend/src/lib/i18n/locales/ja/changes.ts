@@ -31,6 +31,8 @@ export default {
     mergeInToolHint: 'WinMerge の 3 方向マージで競合を解決します。保存すると作業ツリーのファイルに書き込まれます',
   },
   commit: {
+    needSummary: '概要を入力するとコミットできます',
+    needFiles: 'コミットするファイルにチェックを入れてください',
     summary: '概要（必須）',
     description: '説明',
     button: '{branch} にコミット',

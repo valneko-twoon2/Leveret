@@ -26,7 +26,7 @@
 {/snippet}
 
 {#if draft}
-  <Modal title={draft.mode === 'edit' ? t('issues.editTitle') : t('issues.newTitle')} width={620} onclose={() => issues.closeDraft()} {footer}>
+  <Modal closeOnBackdrop={false} title={draft.mode === 'edit' ? t('issues.editTitle') : t('issues.newTitle')} width={620} onclose={() => issues.closeDraft()} {footer}>
     <form onsubmit={save}>
       <label class="field">
         <span>{t('issues.titleLabel')}</span>

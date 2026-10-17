@@ -21,7 +21,7 @@
   <button class="btn primary" disabled={!canCreate} onclick={() => tags.create()}>{t('tags.submit')}</button>
 {/snippet}
 
-<Modal title={t('tags.newTitle')} width={480} onclose={() => tags.closeNewTag()} {footer}>
+<Modal closeOnBackdrop={false} title={t('tags.newTitle')} width={480} onclose={() => tags.closeNewTag()} {footer}>
   <form
     onsubmit={(e) => {
       e.preventDefault()
