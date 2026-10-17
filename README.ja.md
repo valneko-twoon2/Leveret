@@ -29,12 +29,19 @@
 | **リポジトリ一覧** | フォルダ選択やドラッグ＆ドロップで登録し、ワンクリックで切り替え。 |
 | **GitHub サインインとクローン** | ブラウザ（またはトークン）でサインインし、自分のリポジトリを選んで進捗バー付きでクローン。 |
 | **選んだファイルだけコミット** | 含めるファイルにチェックを入れ、概要と説明を書いて `Ctrl+Enter`。 |
+| **フェッチ / プル / プッシュ** | ツールバーのボタン1つで、そのとき必要な操作（プル、プッシュ、公開、同期）を進捗付きで実行。10 分ごとにバックグラウンドでフェッチ。 |
+| **ブランチ** | 切り替え、作成、マージ、リベース、削除を1つのダイアログで。リモートブランチは追跡ブランチとしてチェックアウト。 |
+| **やり直しやすい** | 破棄した変更はごみ箱へ。直前のコミットの修正や取り消し、任意のコミットのリバートやチェリーピック。 |
+| **競合が分かりやすい** | 止まったマージ・リベース・リバートをバナーで表示し、解決済みにする / 続行 / スキップ / 中止。 |
+| **スタッシュ** | 作業中の変更を一時的に退避して、あとで戻せます。 |
+| **使いやすさ** | 各領域の幅を変更可能、右クリックメニュー、キーボードショートカット、履歴の検索。 |
 | **読みやすい差分** | 行番号・ハンク見出し付き。Shift_JIS のファイルも文字化けせずに表示。 |
 | **グラフ付きの履歴** | ブランチのレーン、ブランチ / リモート / タグのラベル、コミット詳細とファイルごとの差分。 |
 | **ライト / ダーク** | Windows のテーマに追従。 |
 | **多言語化に対応した作り** | UI の文言はすべて型付きのメッセージカタログで管理（現在は日本語）。 |
 | **撮影機能を内蔵** | 全画面をバックグラウンドで撮影。ドキュメントやレビューに便利。 |
 | **しっかり封じ込め** | ブラウザのタブではなくデスクトップアプリとして動作。開発者ツール・再読み込み・印刷・ズームは無効、バックエンドで入力を厳しく検証。 |
+| **落ちにくい** | git の操作が重なることはなく、表示のエラーはその場で復帰。クラッシュはログに残ります。 |
 
 > [!NOTE]
 > Leveret はインストール済みの `git.exe` を呼び出すので、git の設定・資格情報ヘルパー・SSH 鍵・フックはコマンドラインと同じように動きます。
@@ -61,11 +68,36 @@
   <tr>
     <td width="50%">
       <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/10-branches.png">
+        <img alt="ローカルとリモートのブランチ一覧" src="docs/screenshots/light/10-branches.png">
+      </picture>
+      <p align="center"><b>ブランチ</b> — 切り替え、マージ、リベース</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/13-rebase-conflict.png">
+        <img alt="競合で止まったリベース" src="docs/screenshots/light/13-rebase-conflict.png">
+      </picture>
+      <p align="center"><b>競合</b> — 解決して続行、または中止</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/12-history-menu.png">
+        <img alt="コミットの右クリックメニュー" src="docs/screenshots/light/12-history-menu.png">
+      </picture>
+      <p align="center"><b>右クリック</b> — リバート、チェリーピック、ブランチ作成</p>
+    </td>
+    <td width="50%">
+      <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/08-clone.png">
         <img alt="GitHub のリポジトリをクローン" src="docs/screenshots/light/08-clone.png">
       </picture>
       <p align="center"><b>クローン</b> — GitHub アカウントから直接</p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/07-sign-in.png">
@@ -73,21 +105,12 @@
       </picture>
       <p align="center"><b>サインイン</b> — ブラウザで承認するだけ</p>
     </td>
-  </tr>
-  <tr>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/01-welcome.png">
         <img alt="ようこそ画面" src="docs/screenshots/light/01-welcome.png">
       </picture>
       <p align="center"><b>ようこそ</b> — 最初のリポジトリを追加・クローン</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/06-error.png">
-        <img alt="エラーダイアログ" src="docs/screenshots/light/06-error.png">
-      </picture>
-      <p align="center"><b>エラー</b> — 分かりやすいメッセージと git の出力</p>
     </td>
   </tr>
 </table>
@@ -102,7 +125,7 @@ flowchart LR
         A -. ブラウザ / --mock .-> M[mock.ts]
     end
     subgraph Core["backend/ — Rust + Tauri 2"]
-        V{{入力の検証}} --> G[git ラッパー<br>status · diff · log · commit · clone]
+        V{{入力の検証}} --> G[git ラッパー<br>status · diff · log · commit<br>remote · branch · rebase · stash]
         V --> R[リポジトリ一覧<br>repos.json]
         V --> H[GitHub API<br>デバイスフロー · リポジトリ一覧]
         V --> P[WebView2 撮影]
@@ -133,7 +156,7 @@ scripts\dev.bat       :: ホットリロードで起動（-Mock でダミーデ�
 ### リリースビルド
 
 ```bat
-scripts\publish.bat   :: -> artifacts\<バージョン>\ (exe、NSIS インストーラー、MSI)
+scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret_<バージョン>.exe とその zip
 ```
 
 ### GitHub サインイン
@@ -150,6 +173,20 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\ (exe、NSIS インス�
 トークンは Windows 資格情報マネージャーに保存され、git には環境変数経由でのみ渡されます。
 コマンドラインやリポジトリの設定ファイルに残ることはありません。
 
+## キーボードショートカット
+
+| キー | 操作 |
+|---|---|
+| `Ctrl+1` / `Ctrl+2` | 変更 / 履歴 |
+| `Ctrl+Enter` | コミット |
+| `Ctrl+B` | ブランチ |
+| `Ctrl+Shift+N` | 新しいブランチ |
+| `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+P` | フェッチ / プル / プッシュ |
+| `Ctrl+F` | 履歴を検索 |
+| `F5` | 最新の状態に更新 |
+| `Shift+F10`、アプリケーションキー、右クリック | コンテキストメニュー |
+| `Ctrl+Shift+S` | 画面を保存 |
+
 ## スクリプト
 
 `.bat` はターミナルからでもダブルクリックでも実行でき、引数は対応する `.ps1` に渡されます。
@@ -161,7 +198,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\ (exe、NSIS インス�
 | `scripts\preview.bat [-Scene <id>] [-Theme light\|dark] [-App]` | 画面だけ確認（ブラウザ + ダミーデータ。`-App` でデスクトップアプリとして表示） |
 | `scripts\test.bat [-Fast]` | セキュリティの静的チェック、`svelte-check`、フロントのビルド、`cargo test`、`cargo clippy` |
 | `scripts\security.bat [-Offline]` | セキュリティの静的チェック、`npm audit`、`cargo audit`、バックエンドのセキュリティテスト |
-| `scripts\publish.bat [-NoBundle] [-SkipTests]` | `artifacts\<バージョン>\` にリリースビルドを出力 |
+| `scripts\publish.bat [-SkipTests]` | リリースビルド。`artifacts\<バージョン>\` に exe とその zip を出力 |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | 全画面を `artifacts\screenshots\` に撮影 |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | バージョンを一括変更（引数なしなら入力を求めます） |
 | `scripts\clean.ps1 [-All]` | ビルド成果物を削除 |
@@ -191,6 +228,14 @@ Leveret は自分自身の WebView を信頼せず、Rust のバックエンド�
   ネットワーク通信はすべて Rust 側で行います。
 - **継続的なチェック**: `scripts\security.bat` で静的ルール、依存関係の監査、セキュリティテストを実行します。
 
+## 信頼性
+
+- **git の操作は1つずつ**: 実行中はボタンやショートカットが無効になるので、ダブルクリックでコマンドが重なることはありません。
+- **黙って消えない**: 破棄したファイルはごみ箱へ移動し、止まった操作はいつでも中止できます。リポジトリ一覧は安全に書き込まれ、
+  読めなくなった一覧は `repos.json.bak` として残します。
+- **障害を閉じ込める**: 画面の表示でエラーが起きても真っ白にはならず「表示し直す」で復帰します。バックエンドのコマンド内で
+  panic が起きてもそのコマンドが失敗するだけで、内容は `%LOCALAPPDATA%\com.leveret.desktop\logs\crash.log` に記録されます。
+
 ## フォルダ構成
 
 ```text
@@ -201,13 +246,17 @@ frontend/                 Svelte の UI（package.json、vite.config.ts、tsconf
   src/lib/mock.ts           ブラウザ / --mock 用のダミーバックエンド
   src/lib/capture.ts        撮影シーンの定義
   src/lib/lockdown.ts       ブラウザのショートカットや操作を無効化
+  src/lib/layout.svelte.ts  幅を変えられる領域のサイズ
+  src/lib/menu.svelte.ts    アプリ独自の右クリックメニュー
   src/lib/i18n/             メッセージカタログ（locales/ja.ts がキーの定義元）
 backend/                  Rust / Tauri（Cargo.toml、tauri.conf.json はここ）
-  src/git/                  status、diff、log + グラフ、commit、clone
+  src/git/                  status、diff、log + グラフ、commit、clone、remote、branch、
+                            operation（マージ / リベース / リバート）、discard、stash
   src/github.rs             デバイスフロー、トークン保存、リポジトリ一覧
   src/security.rs           WebView から来る入力の検証
   src/lockdown.rs           WebView2 の封じ込め設定
   src/capture.rs            WebView2 による画面撮影
+  src/crash.rs              クラッシュログと致命的エラーの表示
   icons/generate_icon.py    icons/leveret.svg（アプリアイコン）を描くスクリプト
 scripts/                  開発用スクリプト
 docs/screenshots/         README で使う画像
@@ -225,11 +274,13 @@ docs/screenshots/         README で使う画像
 - [x] リポジトリ一覧、変更、コミット
 - [x] グラフ付きの履歴とコミット詳細
 - [x] GitHub サインインとクローン
-- [ ] フェッチ / プル / プッシュ / 同期
-- [ ] ブランチ作成 / 切り替え、チェックアウト
-- [ ] 取り消し（revert）、リベース
+- [x] フェッチ / プル / プッシュ / 同期
+- [x] ブランチ作成 / 切り替え / 削除、チェックアウト
+- [x] リバート、チェリーピック、マージ、リベース、スタッシュ
 - [ ] WinMerge で差分を開く
 - [ ] 英語 UI
+- [ ] タグ
+- [ ] 対話的リベース
 
 ## コントリビュート
 

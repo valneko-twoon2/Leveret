@@ -29,12 +29,19 @@ Pick a repository from your list, review the changes, commit. That's it.
 | **Repository list** | Register repositories by folder picker or drag & drop, switch with one click. |
 | **GitHub sign-in & clone** | Sign in through the browser (or with a token), pick one of your repositories, clone it with a progress bar. |
 | **Commit what you pick** | Check the files to include, write a summary and description, `Ctrl+Enter`. |
+| **Fetch, pull, push** | One toolbar button that does the right thing (pull, push, publish, sync) with progress; fetches in the background every 10 minutes. |
+| **Branches** | Switch, create, merge, rebase and delete from one dialog; remote branches become tracking branches. |
+| **Undo-friendly** | Discarded changes go to the Recycle Bin; amend or undo the last commit; revert or cherry-pick any commit. |
+| **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. |
+| **Stash** | Put work aside and bring it back later. |
+| **Comfortable** | Resizable panes, right-click menus, keyboard shortcuts and history search. |
 | **Readable diffs** | Line numbers, hunk headers, and Shift_JIS files decoded correctly. |
 | **History with a graph** | Branch lanes, branch / remote / tag labels, commit details and per-file diffs. |
 | **Light & dark** | Follows the Windows theme. |
 | **Ready for translation** | All UI text lives in typed message catalogs (Japanese today). |
 | **Built-in screenshots** | Captures every screen in the background — great for docs and reviews. |
 | **Locked down** | A desktop app, not a browser tab: no devtools, reload, print or zoom; strict input validation in the backend. |
+| **Sturdy** | Git actions never overlap, a failing view recovers in place, and crashes are logged instead of lost. |
 
 > [!NOTE]
 > Leveret drives your installed `git.exe`, so your config, credential helpers, SSH keys and hooks work exactly as on the command line.
@@ -61,11 +68,36 @@ Pick a repository from your list, review the changes, commit. That's it.
   <tr>
     <td width="50%">
       <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/10-branches.png">
+        <img alt="Branch dialog with local and remote branches" src="docs/screenshots/light/10-branches.png">
+      </picture>
+      <p align="center"><b>Branches</b> — switch, merge, rebase</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/13-rebase-conflict.png">
+        <img alt="A rebase stopped on conflicts" src="docs/screenshots/light/13-rebase-conflict.png">
+      </picture>
+      <p align="center"><b>Conflicts</b> — resolve, continue or abort</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/12-history-menu.png">
+        <img alt="Context menu on a commit" src="docs/screenshots/light/12-history-menu.png">
+      </picture>
+      <p align="center"><b>Right-click</b> — revert, cherry-pick, branch off</p>
+    </td>
+    <td width="50%">
+      <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/08-clone.png">
         <img alt="Cloning one of your GitHub repositories" src="docs/screenshots/light/08-clone.png">
       </picture>
       <p align="center"><b>Clone</b> — straight from your GitHub account</p>
     </td>
+  </tr>
+  <tr>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/07-sign-in.png">
@@ -73,21 +105,12 @@ Pick a repository from your list, review the changes, commit. That's it.
       </picture>
       <p align="center"><b>Sign in</b> — approve in your browser</p>
     </td>
-  </tr>
-  <tr>
     <td width="50%">
       <picture>
         <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/01-welcome.png">
         <img alt="Welcome screen" src="docs/screenshots/light/01-welcome.png">
       </picture>
       <p align="center"><b>Welcome</b> — add or clone your first repository</p>
-    </td>
-    <td width="50%">
-      <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dark/06-error.png">
-        <img alt="Error dialog" src="docs/screenshots/light/06-error.png">
-      </picture>
-      <p align="center"><b>Errors</b> — a clear message plus git's own output</p>
     </td>
   </tr>
 </table>
@@ -102,7 +125,7 @@ flowchart LR
         A -. browser / --mock .-> M[mock.ts]
     end
     subgraph Core["backend/ — Rust + Tauri 2"]
-        V{{input validation}} --> G[git wrapper<br>status · diff · log · commit · clone]
+        V{{input validation}} --> G[git wrapper<br>status · diff · log · commit<br>remote · branch · rebase · stash]
         V --> R[repository list<br>repos.json]
         V --> H[GitHub API<br>device flow · repos]
         V --> P[WebView2 capture]
@@ -133,7 +156,7 @@ Just want to look at the UI? `scripts\preview.bat` opens it in your browser with
 ### Build a release
 
 ```bat
-scripts\publish.bat   :: -> artifacts\<version>\ (exe, NSIS installer, MSI)
+scripts\publish.bat   :: -> artifacts\<version>\Leveret_<version>.exe and a zip of it
 ```
 
 ### GitHub sign-in
@@ -150,6 +173,20 @@ Signing in **through the browser** (the OAuth device flow, like GitHub Desktop) 
 The token is stored in Windows Credential Manager and handed to git only through environment variables,
 so it never appears on a command line or in a repository's config.
 
+## Keyboard shortcuts
+
+| Keys | Action |
+|---|---|
+| `Ctrl+1` / `Ctrl+2` | Changes / History |
+| `Ctrl+Enter` | Commit |
+| `Ctrl+B` | Branches |
+| `Ctrl+Shift+N` | New branch |
+| `Ctrl+Shift+F` / `Ctrl+Shift+L` / `Ctrl+Shift+P` | Fetch / Pull / Push |
+| `Ctrl+F` | Search the history |
+| `F5` | Refresh |
+| `Shift+F10`, menu key, right click | Context menu |
+| `Ctrl+Shift+S` | Save a screenshot |
+
 ## Scripts
 
 Every `.bat` works from a terminal or by double-clicking, and forwards its arguments to the matching `.ps1`.
@@ -161,7 +198,7 @@ Every `.bat` works from a terminal or by double-clicking, and forwards its argum
 | `scripts\preview.bat [-Scene <id>] [-Theme light\|dark] [-App]` | UI only, in a browser with sample data (`-App`: as the desktop app) |
 | `scripts\test.bat [-Fast]` | Static security rules, `svelte-check`, frontend build, `cargo test`, `cargo clippy` |
 | `scripts\security.bat [-Offline]` | Static security rules, `npm audit`, `cargo audit`, backend security tests |
-| `scripts\publish.bat [-NoBundle] [-SkipTests]` | Release build into `artifacts\<version>\` |
+| `scripts\publish.bat [-SkipTests]` | Release build: `artifacts\<version>\Leveret_<version>.exe` and `Leveret_<version>_x64.zip` |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | Captures every screen into `artifacts\screenshots\` |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | Bumps the version everywhere (prompts when run without arguments) |
 | `scripts\clean.ps1 [-All]` | Removes build outputs |
@@ -191,6 +228,14 @@ Leveret treats its own webview as untrusted and keeps the Rust backend as the tr
   all network access happens in Rust.
 - **Checked continuously**: `scripts\security.bat` runs static rules, dependency audits and security tests.
 
+## Reliability
+
+- **One git action at a time**: buttons and shortcuts are disabled while an action runs, so double clicks never start overlapping commands.
+- **Nothing is lost silently**: discarded files go to the Recycle Bin, stopped operations can always be aborted, and the repository
+  list is written atomically (an unreadable one is kept as `repos.json.bak`).
+- **Contained failures**: an error inside a view shows a "show again" panel instead of a blank window; a panic inside a backend command
+  fails only that command and is written to `%LOCALAPPDATA%\com.leveret.desktop\logs\crash.log`.
+
 ## Project layout
 
 ```text
@@ -201,13 +246,17 @@ frontend/                 Svelte UI (its own package.json, vite.config.ts, tscon
   src/lib/mock.ts           sample-data backend for the browser and --mock
   src/lib/capture.ts        screenshot scenes
   src/lib/lockdown.ts       blocks browser shortcuts and gestures
+  src/lib/layout.svelte.ts  resizable pane sizes
+  src/lib/menu.svelte.ts    the app's own context menu
   src/lib/i18n/             message catalogs (locales/ja.ts defines the keys)
 backend/                  Rust / Tauri (its own Cargo.toml, tauri.conf.json)
-  src/git/                  status, diff, log + graph, commit, clone
+  src/git/                  status, diff, log + graph, commit, clone, remote, branch,
+                            operation (merge / rebase / revert), discard, stash
   src/github.rs             device flow, token storage, repository list
   src/security.rs           validation of everything coming from the webview
   src/lockdown.rs           WebView2 hardening
   src/capture.rs            WebView2 screen capture
+  src/crash.rs              crash log and fatal error message
   icons/generate_icon.py    draws icons/leveret.svg (the app icon)
 scripts/                  developer scripts
 docs/screenshots/         images used by this README
@@ -225,11 +274,13 @@ Backend errors arrive as `{ code, detail }` and are shown through the `errors.<c
 - [x] Repository list, changes, commit
 - [x] History with graph and commit details
 - [x] GitHub sign-in and clone
-- [ ] Fetch / pull / push / sync
-- [ ] Branch create / switch, checkout
-- [ ] Revert, rebase
+- [x] Fetch / pull / push / sync
+- [x] Branch create / switch / delete, checkout
+- [x] Revert, cherry-pick, merge, rebase, stash
 - [ ] Open diffs in WinMerge
 - [ ] English UI
+- [ ] Tags
+- [ ] Interactive rebase
 
 ## Contributing
 

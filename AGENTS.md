@@ -25,8 +25,19 @@ Users register repositories in a list and commit / browse history from there.
 
 - Short imperative summary, at most 72 characters, optionally prefixed with a Conventional Commits type:
   `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `build:`, `chore:`.
-- Wrap the body at 72 characters and explain *why* when it is not obvious.
+- Keep the body short: a few `- ` bullet points with the key changes (at most 8 lines). No paragraphs.
+- No trailers such as `Co-Authored-By:` or `Signed-off-by:`.
 - One logical change per commit. Run `scripts\test.bat` before committing.
+
+Example:
+
+```
+feat: add fetch, pull and push
+
+- Toolbar buttons with progress and ahead/behind counts
+- Publish branches without an upstream
+- Use the GitHub token for https://github.com remotes
+```
 
 ## Conventions
 
@@ -35,7 +46,13 @@ Users register repositories in a list and commit / browse history from there.
 - **Backend errors** are `AppError` variants serialized as `{ code, detail }` (`backend/src/error.rs`).
   When adding a variant, add a matching `errors.<code>` message.
 - **Git access** goes through `git::Git` (`backend/src/git/mod.rs`), which sets safe defaults
-  (no console window, literal pathspecs, no prompts). Prefer `-z` / porcelain output and parse it in Rust.
+  (no console window, literal pathspecs, no prompts, `LC_ALL=C`). Prefer `-z` / porcelain output and parse it in Rust.
+  Map well-known git failures with `AppError::classify_git`; decide "stopped on conflicts" from the repository
+  state (`git::operation::run_stoppable`), not from message text.
+- **Actions that change a repository** run through `AppState.run()` in `state.svelte.ts`, which allows one at a time.
+  Destructive actions ask for confirmation, and discarded files go to the Recycle Bin.
+- **Robustness**: no `unwrap()` / `expect()` outside tests; long work runs in `blocking()` so a panic only fails that
+  command (it is logged by `crash.rs`). Persist files atomically (write a temporary file, then rename).
 - Keep the mock backend (`frontend/src/lib/mock.ts`) in sync with new commands so the UI preview and
   screenshots keep working.
 - **New screens or states** get a capture scene in `frontend/src/lib/capture.ts`; check them with
