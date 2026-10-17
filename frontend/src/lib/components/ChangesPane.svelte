@@ -1,6 +1,7 @@
 <!-- Left column of the Changes tab: changed files with checkboxes, stashes, and the commit form. -->
 <script lang="ts">
   import type { FileChange } from '../api'
+  import { changes } from '../changes.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
@@ -10,9 +11,9 @@
   import Icon from './Icon.svelte'
   import VirtualList from './VirtualList.svelte'
 
-  const all = $derived(app.files.length > 0 && app.includedFiles.length === app.files.length)
-  const some = $derived(app.includedFiles.length > 0 && !all)
-  const selectedIndex = $derived(app.files.findIndex((f) => f.path === app.selectedFile))
+  const all = $derived(app.files.length > 0 && changes.includedFiles.length === app.files.length)
+  const some = $derived(changes.includedFiles.length > 0 && !all)
+  const selectedIndex = $derived(app.files.findIndex((f) => f.path === changes.selectedFile))
   let stashOpen = $state(false)
 
   function extension(path: string): string | null {
@@ -23,20 +24,20 @@
 
   function fileMenu(file: FileChange, e: MouseEvent | KeyboardEvent) {
     const idle = app.busy === null
-    const checked = app.includedFiles.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
+    const checked = changes.includedFiles.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
     const ext = extension(file.path)
     const items: MenuItem[] = []
     if (file.kind === 'conflicted') {
-      items.push({ label: t('discard.markResolved'), action: () => app.markResolved([file.path]), disabled: !idle })
+      items.push({ label: t('discard.markResolved'), action: () => changes.markResolved([file.path]), disabled: !idle })
     } else {
-      items.push({ label: t('discard.one'), action: () => app.discard([file.path]), disabled: !idle, danger: true })
+      items.push({ label: t('discard.one'), action: () => changes.discard([file.path]), disabled: !idle, danger: true })
       if (checked.length > 1) {
-        items.push({ label: t('discard.checked', { count: checked.length }), action: () => app.discard(checked), disabled: !idle, danger: true })
+        items.push({ label: t('discard.checked', { count: checked.length }), action: () => changes.discard(checked), disabled: !idle, danger: true })
       }
     }
     if (file.kind === 'untracked') {
-      items.push('separator', { label: t('discard.ignore'), action: () => app.ignore(file.path, false), disabled: !idle })
-      if (ext) items.push({ label: t('discard.ignoreExtension', { ext }), action: () => app.ignore(file.path, true), disabled: !idle })
+      items.push('separator', { label: t('discard.ignore'), action: () => changes.ignore(file.path, false), disabled: !idle })
+      if (ext) items.push({ label: t('discard.ignoreExtension', { ext }), action: () => changes.ignore(file.path, true), disabled: !idle })
     }
     items.push(
       'separator',
@@ -52,8 +53,8 @@
     menu.open(
       e,
       [
-        { label: t('discard.all'), action: () => app.discard(discardable), disabled: !idle || discardable.length === 0, danger: true },
-        { label: t('stash.save'), action: () => app.stashSave(), disabled: !idle || app.files.length === 0 },
+        { label: t('discard.all'), action: () => changes.discard(discardable), disabled: !idle || discardable.length === 0, danger: true },
+        { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
       ],
       e.currentTarget as HTMLElement,
     )
@@ -67,7 +68,7 @@
       checked={all}
       indeterminate={some}
       disabled={app.files.length === 0}
-      onchange={() => app.toggleAll()}
+      onchange={() => changes.toggleAll()}
       title={t('changes.selectAll')}
       aria-label={t('changes.selectAll')}
     />
@@ -89,7 +90,7 @@
         rowHeight={30}
         {selectedIndex}
         label={t('tabs.changes')}
-        onselect={(i) => app.files[i] && app.selectFile(app.files[i].path)}
+        onselect={(i) => app.files[i] && changes.selectFile(app.files[i].path)}
         oncontext={(i, e) => app.files[i] && fileMenu(app.files[i], e)}
       >
         {#snippet row(file)}
@@ -97,36 +98,36 @@
             path={file.path}
             origPath={file.origPath}
             kind={file.kind}
-            checked={!app.excluded.has(file.path)}
-            ontoggle={() => app.toggleFile(file.path)}
+            checked={!changes.excluded.has(file.path)}
+            ontoggle={() => changes.toggleFile(file.path)}
           />
         {/snippet}
       </VirtualList>
     {/if}
   </div>
 
-  {#if app.stashes.length}
+  {#if changes.stashes.length}
     <div class="stashes" class:open={stashOpen}>
       <button class="stash-header" onclick={() => (stashOpen = !stashOpen)} aria-expanded={stashOpen}>
         <Icon name="archive" size={14} />
-        <span>{t('stash.count', { count: app.stashes.length })}</span>
+        <span>{t('stash.count', { count: changes.stashes.length })}</span>
         <Icon name="chevronDown" size={14} />
       </button>
       {#if stashOpen}
         <ul>
-          {#each app.stashes as s (s.index)}
+          {#each changes.stashes as s (s.index)}
             <li>
               <div class="stash-text">
                 <span class="stash-message" title={s.message}>{s.message}</span>
                 <span class="stash-time">{formatRelative(s.time)}</span>
               </div>
-              <button class="btn small" disabled={app.busy !== null} onclick={() => app.stashPop(s.index)}>{t('stash.pop')}</button>
+              <button class="btn small" disabled={app.busy !== null} onclick={() => changes.stashPop(s.index)}>{t('stash.pop')}</button>
               <button
                 class="icon-btn"
                 disabled={app.busy !== null}
                 title={t('stash.drop')}
                 aria-label={t('stash.drop')}
-                onclick={() => app.stashDrop(s)}
+                onclick={() => changes.stashDrop(s)}
               >
                 <Icon name="x" size={14} />
               </button>

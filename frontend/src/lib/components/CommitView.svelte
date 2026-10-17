@@ -1,6 +1,7 @@
 <!-- Main area of the History tab: commit message, metadata, files and the diff. -->
 <script lang="ts">
   import { formatDateTime, shortHash } from '../format'
+  import { history } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
   import { menu } from '../menu.svelte'
@@ -11,10 +12,10 @@
   import Splitter from './Splitter.svelte'
   import VirtualList from './VirtualList.svelte'
 
-  const detail = $derived(app.detail)
+  const detail = $derived(history.detail)
   const subject = $derived(detail?.message.split('\n')[0] ?? '')
   const body = $derived(detail?.message.split('\n').slice(1).join('\n').trim() ?? '')
-  const selectedIndex = $derived(detail?.files.findIndex((f) => f.path === app.detailFile) ?? -1)
+  const selectedIndex = $derived(detail?.files.findIndex((f) => f.path === history.detailFile) ?? -1)
 
   let copied = $state(false)
   async function copyHash() {
@@ -60,7 +61,7 @@
             rowHeight={30}
             {selectedIndex}
             label={t('history.filesChanged', { count: detail.files.length })}
-            onselect={(i) => detail.files[i] && app.selectCommitFile(detail.files[i].path)}
+            onselect={(i) => detail.files[i] && history.selectCommitFile(detail.files[i].path)}
             oncontext={(i, e) => menu.open(e, [{ label: t('common.copyPath'), action: () => app.copy(detail.files[i]?.path ?? '') }])}
           >
             {#snippet row(f)}
@@ -71,7 +72,7 @@
       </div>
       <Splitter pane="commitFiles" />
       <div class="diff">
-        <DiffView diff={app.commitDiff} />
+        <DiffView diff={history.commitDiff} />
       </div>
     </div>
   </div>

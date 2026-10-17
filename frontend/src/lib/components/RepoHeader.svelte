@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { RemoteOp } from '../api'
+  import { branches } from '../branches.svelte'
+  import { changes } from '../changes.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
@@ -74,9 +76,9 @@
         },
         { label: t('remote.sync'), action: () => app.remote('sync'), disabled: !idle || !st?.upstream || !onBranch },
         'separator',
-        { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => app.openNewBranch(), disabled: !idle || !st?.headOid },
-        { label: t('stash.save'), action: () => app.stashSave(), disabled: !idle || app.files.length === 0 },
-        { label: t('commit.undo'), action: () => app.undoLastCommit(), disabled: !idle || !app.canRewriteHead },
+        { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => branches.openNewBranch(), disabled: !idle || !st?.headOid },
+        { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
+        { label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead },
         'separator',
         { label: t('common.openInExplorer'), action: () => app.showInExplorer() },
       ],
@@ -94,7 +96,7 @@
     </div>
   </div>
 
-  <button class="cell branch" title={`${t('branches.open')} (${t('shortcuts.branches')})`} onclick={() => app.openBranches()}>
+  <button class="cell branch" title={`${t('branches.open')} (${t('shortcuts.branches')})`} onclick={() => branches.openBranches()}>
     <Icon name="branch" />
     <div class="text">
       <span class="label">{t('repo.branch')}</span>

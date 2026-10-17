@@ -1,5 +1,6 @@
 <!-- Shown while a merge / rebase / revert / cherry-pick is stopped, or files are conflicted. -->
 <script lang="ts">
+  import { changes } from '../changes.svelte'
   import { t } from '../i18n/index.svelte'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
@@ -31,7 +32,7 @@
       </span>
     </div>
     {#if conflicts}
-      <button class="btn" disabled={!idle} onclick={() => app.markResolved(app.conflicted.map((f) => f.path))}>
+      <button class="btn" disabled={!idle} onclick={() => changes.markResolved(app.conflicted.map((f) => f.path))}>
         {t('discard.markResolved')} ({conflicts})
       </button>
     {/if}

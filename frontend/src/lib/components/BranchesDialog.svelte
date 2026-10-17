@@ -1,6 +1,7 @@
 <!-- Branch list: switch with a click; merge, rebase, branch off or delete from the "..." menu. -->
 <script lang="ts">
   import type { Branch } from '../api'
+  import { branches } from '../branches.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
@@ -9,8 +10,8 @@
   import Modal from './Modal.svelte'
 
   const filtered = $derived.by(() => {
-    const q = app.branchFilter.trim().toLowerCase()
-    return q ? app.branches.filter((b) => b.name.toLowerCase().includes(q)) : app.branches
+    const q = branches.branchFilter.trim().toLowerCase()
+    return q ? branches.branches.filter((b) => b.name.toLowerCase().includes(q)) : branches.branches
   })
   // Current branch first, then by most recent commit (the backend's order).
   const local = $derived(filtered.filter((b) => b.kind === 'local').sort((a, b) => Number(b.current) - Number(a.current)))
@@ -22,15 +23,15 @@
     menu.open(
       e,
       [
-        { label: t('branches.switch'), action: () => app.switchBranch(b), disabled: !idle || b.current },
+        { label: t('branches.switch'), action: () => branches.switchBranch(b), disabled: !idle || b.current },
         'separator',
-        { label: t('branches.merge'), action: () => app.mergeBranch(b), disabled: !idle || b.current || !onBranch },
-        { label: t('branches.rebase'), action: () => app.rebaseOnto(b), disabled: !idle || b.current || !onBranch },
-        { label: t('branches.createFrom'), action: () => app.openNewBranch(b.fullRef, b.name), disabled: !idle },
+        { label: t('branches.merge'), action: () => branches.mergeBranch(b), disabled: !idle || b.current || !onBranch },
+        { label: t('branches.rebase'), action: () => branches.rebaseOnto(b), disabled: !idle || b.current || !onBranch },
+        { label: t('branches.createFrom'), action: () => branches.openNewBranch(b.fullRef, b.name), disabled: !idle },
         'separator',
         { label: t('common.copy'), action: () => app.copy(b.name) },
         ...(b.kind === 'local'
-          ? ['separator' as const, { label: t('branches.delete'), action: () => app.deleteBranch(b), disabled: !idle || b.current, danger: true }]
+          ? ['separator' as const, { label: t('branches.delete'), action: () => branches.deleteBranch(b), disabled: !idle || b.current, danger: true }]
           : []),
       ],
       anchor,
@@ -40,14 +41,14 @@
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && filtered.length > 0) {
       e.preventDefault()
-      void app.switchBranch(local[0] ?? remote[0])
+      void branches.switchBranch(local[0] ?? remote[0])
     }
   }
 </script>
 
 {#snippet item(b: Branch)}
   <li class:current={b.current}>
-    <button class="row" disabled={app.busy !== null} onclick={() => app.switchBranch(b)} oncontextmenu={(e) => branchMenu(b, e)}>
+    <button class="row" disabled={app.busy !== null} onclick={() => branches.switchBranch(b)} oncontextmenu={(e) => branchMenu(b, e)}>
       <span class="check">{#if b.current}<Icon name="check" size={14} />{/if}</span>
       <span class="name">{b.name}</span>
       {#if b.upstreamGone}<span class="tag">{t('branches.gone')}</span>{/if}
@@ -70,13 +71,13 @@
   </li>
 {/snippet}
 
-<Modal title={t('branches.title')} width={560} onclose={() => app.closeBranches()}>
+<Modal title={t('branches.title')} width={560} onclose={() => branches.closeBranches()}>
   <div class="top">
     <div class="search">
       <Icon name="search" size={14} />
-      <input type="text" placeholder={t('branches.filter')} bind:value={app.branchFilter} {onkeydown} aria-label={t('branches.filter')} />
+      <input type="text" placeholder={t('branches.filter')} bind:value={branches.branchFilter} {onkeydown} aria-label={t('branches.filter')} />
     </div>
-    <button class="btn" disabled={app.busy !== null || !app.status?.headOid} onclick={() => app.openNewBranch()}>
+    <button class="btn" disabled={app.busy !== null || !app.status?.headOid} onclick={() => branches.openNewBranch()}>
       <Icon name="plus" size={14} />
       {t('branches.new')}
     </button>

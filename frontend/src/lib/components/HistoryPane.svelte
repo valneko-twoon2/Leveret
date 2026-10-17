@@ -1,7 +1,10 @@
 <!-- Left column of the History tab: the commit list with its graph, search and a context menu. -->
 <script lang="ts">
   import type { LogEntry, LogScope } from '../api'
+  import { branches } from '../branches.svelte'
+  import { changes } from '../changes.svelte'
   import { formatDateTime, formatRelative, shortHash } from '../format'
+  import { history } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
@@ -12,16 +15,16 @@
 
   const ROW = 52
   const MAX_LANES = 8
-  const lanes = $derived(Math.min(MAX_LANES, Math.max(1, ...app.log.map((c) => c.graph.width))))
-  const list = $derived(app.filteredLog)
+  const lanes = $derived(Math.min(MAX_LANES, Math.max(1, ...history.log.map((c) => c.graph.width))))
+  const list = $derived(history.filteredLog)
   // The graph only makes sense for the unfiltered history.
-  const showGraph = $derived(app.logFilter.trim() === '')
-  const selectedIndex = $derived(list.findIndex((c) => c.hash === app.selectedCommit))
+  const showGraph = $derived(history.logFilter.trim() === '')
+  const selectedIndex = $derived(list.findIndex((c) => c.hash === history.selectedCommit))
 
   function clearOnEscape(e: KeyboardEvent) {
-    if (e.key === 'Escape' && app.logFilter) {
+    if (e.key === 'Escape' && history.logFilter) {
       e.preventDefault()
-      app.logFilter = ''
+      history.logFilter = ''
     }
   }
 
@@ -30,12 +33,12 @@
     const isHead = c.hash === app.status?.headOid
     const busyOp = !idle || app.operation !== null
     menu.open(e, [
-      { label: t('history.createBranch'), hint: isHead ? t('shortcuts.newBranch') : undefined, action: () => app.openNewBranch(c.hash, shortHash(c.hash)), disabled: !idle },
-      { label: t('history.checkout'), action: () => app.checkoutCommit(c), disabled: busyOp || isHead },
+      { label: t('history.createBranch'), hint: isHead ? t('shortcuts.newBranch') : undefined, action: () => branches.openNewBranch(c.hash, shortHash(c.hash)), disabled: !idle },
+      { label: t('history.checkout'), action: () => history.checkoutCommit(c), disabled: busyOp || isHead },
       'separator',
-      { label: t('history.revert'), action: () => app.revertCommit(c), disabled: busyOp },
-      { label: t('history.cherryPick'), action: () => app.cherryPick(c), disabled: busyOp || isHead },
-      ...(isHead ? [{ label: t('commit.undo'), action: () => app.undoLastCommit(), disabled: !idle || !app.canRewriteHead }] : []),
+      { label: t('history.revert'), action: () => history.revertCommit(c), disabled: busyOp },
+      { label: t('history.cherryPick'), action: () => history.cherryPick(c), disabled: busyOp || isHead },
+      ...(isHead ? [{ label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead }] : []),
       'separator',
       { label: t('history.copySha'), action: () => app.copy(c.hash) },
       { label: t('history.copySubject'), action: () => app.copy(c.subject) },
@@ -45,7 +48,7 @@
 
 <div class="pane">
   <div class="toolbar">
-    <select value={app.scope} onchange={(e) => app.setScope(e.currentTarget.value as LogScope)} aria-label={t('tabs.history')}>
+    <select value={history.scope} onchange={(e) => history.setScope(e.currentTarget.value as LogScope)} aria-label={t('tabs.history')}>
       <option value="head">{t('history.scopeHead')}</option>
       <option value="all">{t('history.scopeAll')}</option>
     </select>
@@ -56,19 +59,19 @@
         type="text"
         placeholder={t('history.search')}
         title={`${t('history.search')} (${t('shortcuts.search')})`}
-        bind:value={app.logFilter}
+        bind:value={history.logFilter}
         onkeydown={clearOnEscape}
         aria-label={t('history.search')}
         spellcheck="false"
       />
-      {#if app.logFilter}
+      {#if history.logFilter}
         <span class="matches">{t('history.matches', { count: list.length })}</span>
       {/if}
     </div>
   </div>
 
   <div class="list">
-    {#if !app.logLoading && app.log.length === 0}
+    {#if !history.logLoading && history.log.length === 0}
       <div class="empty">{t('history.empty')}</div>
     {:else if list.length === 0}
       <div class="empty">{t('history.noMatches')}</div>
@@ -78,8 +81,8 @@
         rowHeight={ROW}
         {selectedIndex}
         label={t('tabs.history')}
-        onselect={(i) => list[i] && app.selectCommit(list[i].hash)}
-        onreachend={() => showGraph && app.loadMoreLog()}
+        onselect={(i) => list[i] && history.selectCommit(list[i].hash)}
+        onreachend={() => showGraph && history.loadMoreLog()}
         oncontext={(i, e) => list[i] && commitMenu(list[i], e)}
       >
         {#snippet row(c)}
@@ -97,7 +100,7 @@
           </div>
         {/snippet}
         {#snippet footer()}
-          {#if app.logLoading && app.log.length > 0}
+          {#if history.logLoading && history.log.length > 0}
             <div class="more">{t('history.loadingMore')}</div>
           {/if}
         {/snippet}

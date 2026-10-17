@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Shows the UI only: opens the frontend in a browser without building Rust.
-  In a browser the app runs on mock data (frontend/src/lib/mock.ts) instead of real git.
+  In a browser the app runs on mock data (frontend/src/lib/mock/) instead of real git.
 .PARAMETER Scene
   Capture scene to show first (e.g. 04-history). See frontend/src/lib/capture.ts.
 .PARAMETER Theme

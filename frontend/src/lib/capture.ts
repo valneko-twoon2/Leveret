@@ -5,8 +5,12 @@
 // - In a browser: `?scene=<id>` applies one scene and sets
 //   `<html data-capture-ready>` when it is done (used by scripts/screenshot.ps1).
 import { tick } from 'svelte'
+import { agents } from './agents.svelte'
 import { api, usingMock, type CaptureRequest } from './api'
+import { branches } from './branches.svelte'
+import { changes } from './changes.svelte'
 import { github } from './github.svelte'
+import { history } from './history.svelte'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
 import { app } from './state.svelte'
@@ -28,7 +32,7 @@ export const scenes: Scene[] = [
     id: '01-welcome',
     mockOnly: true,
     run: async () => {
-      const mock = await import('./mock')
+      const mock = await import('./mock/index')
       mock.reset({ empty: true })
       await app.init()
       mock.reset()
@@ -41,7 +45,7 @@ export const scenes: Scene[] = [
       await openRepo('Leveret')
       await app.setTab('changes')
       const file = app.files.find((f) => f.kind === 'modified') ?? app.files[0]
-      if (file) await app.selectFile(file.path)
+      if (file) await changes.selectFile(file.path)
     },
   },
   {
@@ -50,30 +54,30 @@ export const scenes: Scene[] = [
       await app.setTab('changes')
       const untracked = app.files.find((f) => f.kind === 'untracked')
       if (untracked) {
-        if (!app.excluded.has(untracked.path)) app.toggleFile(untracked.path)
-        await app.selectFile(untracked.path)
+        if (!changes.excluded.has(untracked.path)) changes.toggleFile(untracked.path)
+        await changes.selectFile(untracked.path)
       }
-      app.summary = 'ブランチ作成ダイアログを追加'
-      app.description = 'ログ画面の右クリックメニューから新しいブランチを作成できるようにした。\n作成後にそのままチェックアウトすることもできる。'
+      changes.summary = 'ブランチ作成ダイアログを追加'
+      changes.description = 'ログ画面の右クリックメニューから新しいブランチを作成できるようにした。\n作成後にそのままチェックアウトすることもできる。'
     },
   },
   {
     id: '04-history',
     run: async () => {
-      app.summary = ''
-      app.description = ''
+      changes.summary = ''
+      changes.description = ''
       await app.setTab('history')
-      await app.setScope('head')
-      const merge = app.log.find((c) => c.parents.length > 1)
-      await app.selectCommit((merge ? app.log[app.log.indexOf(merge) + 1] : app.log[1])?.hash ?? null)
+      await history.setScope('head')
+      const merge = history.log.find((c) => c.parents.length > 1)
+      await history.selectCommit((merge ? history.log[history.log.indexOf(merge) + 1] : history.log[1])?.hash ?? null)
     },
   },
   {
     id: '05-history-all-branches',
     run: async () => {
       await app.setTab('history')
-      await app.setScope('all')
-      await app.selectCommit(app.log[0]?.hash ?? null)
+      await history.setScope('all')
+      await history.selectCommit(history.log[0]?.hash ?? null)
     },
   },
   {
@@ -100,7 +104,7 @@ export const scenes: Scene[] = [
     mockOnly: true,
     run: async () => {
       github.closeSignIn()
-      const mock = await import('./mock')
+      const mock = await import('./mock/index')
       mock.reset({ signedIn: true })
       await github.load()
       await github.openClone()
@@ -122,15 +126,15 @@ export const scenes: Scene[] = [
       closeOverlays()
       await openRepo('Leveret')
       await app.setTab('changes')
-      await app.openBranches()
+      await branches.openBranches()
     },
   },
   {
     id: '11-new-branch',
     run: async () => {
       closeOverlays()
-      app.openNewBranch()
-      app.newBranchName = 'feature/stash-ui'
+      branches.openNewBranch()
+      branches.newBranchName = 'feature/stash-ui'
     },
   },
   {
@@ -139,8 +143,8 @@ export const scenes: Scene[] = [
       closeOverlays()
       await openRepo('Leveret')
       await app.setTab('history')
-      await app.setScope('head')
-      await app.selectCommit(app.log[1]?.hash ?? null)
+      await history.setScope('head')
+      await history.selectCommit(history.log[1]?.hash ?? null)
       await settle()
       openContextMenuOnSelectedRow()
     },
@@ -156,7 +160,7 @@ export const scenes: Scene[] = [
       await app.setTab('changes')
       await app.refresh()
       const conflicted = app.files.find((f) => f.kind === 'conflicted')
-      if (conflicted) await app.selectFile(conflicted.path)
+      if (conflicted) await changes.selectFile(conflicted.path)
     },
   },
   {
@@ -178,7 +182,7 @@ export const scenes: Scene[] = [
       closeOverlays()
       app.busy = null
       app.remoteProgress = null
-      await app.openAgent()
+      await agents.openAgent()
     },
   },
   {
@@ -195,11 +199,11 @@ export const scenes: Scene[] = [
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
-  app.closeAgent()
+  agents.closeAgent()
   app.perfOpen = false
   app.error = null
-  app.closeNewBranch()
-  app.closeBranches()
+  branches.closeNewBranch()
+  branches.closeBranches()
   github.closeSignIn()
   github.cloning = false
   github.progress = null

@@ -1,9 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte'
   import { getCurrentWebview } from '@tauri-apps/api/webview'
+  import { agents } from './lib/agents.svelte'
   import { api, inTauri, syncBackendPerf, useMockBackend } from './lib/api'
   import { runBenchRequest } from './lib/bench'
+  import { branches } from './lib/branches.svelte'
   import { runCaptureRequest, runUrlScene } from './lib/capture'
+  import { changes } from './lib/changes.svelte'
   import { afterPaint, perf } from './lib/perf'
   import { github } from './lib/github.svelte'
   import { t } from './lib/i18n/index.svelte'
@@ -157,7 +160,7 @@
     if (!e.ctrlKey || e.altKey || !app.repo || overlayOpen()) return
     const shortcuts: Record<string, () => unknown> = e.shiftKey
       ? {
-          KeyN: () => app.status?.headOid && app.openNewBranch(),
+          KeyN: () => app.status?.headOid && branches.openNewBranch(),
           KeyF: () => app.status?.hasRemote && app.remote('fetch'),
           KeyL: () => app.status?.upstream && app.remote('pull'),
           KeyP: () => app.status?.hasRemote && app.status.branch && app.remote('push'),
@@ -165,7 +168,7 @@
       : {
           Digit1: () => app.setTab('changes'),
           Digit2: () => app.setTab('history'),
-          KeyB: () => app.openBranches(),
+          KeyB: () => branches.openBranches(),
           KeyF: async () => {
             await app.setTab('history')
             document.getElementById('history-search')?.focus()
@@ -254,11 +257,11 @@
 
           <section class="main">
             {#if app.tab === 'changes'}
-              {#if app.selectedChange}
+              {#if changes.selectedChange}
                 <div class="file-header">
-                  <FileRow path={app.selectedChange.path} origPath={app.selectedChange.origPath} kind={app.selectedChange.kind} />
+                  <FileRow path={changes.selectedChange.path} origPath={changes.selectedChange.origPath} kind={changes.selectedChange.kind} />
                 </div>
-                <div class="main-body"><DiffView diff={app.workingDiff} /></div>
+                <div class="main-body"><DiffView diff={changes.workingDiff} /></div>
               {:else if app.status}
                 <div class="empty">
                   <Icon name="file" size={32} />
@@ -279,13 +282,13 @@
   <div class="drop"><div>{t('repos.dropHint')}</div></div>
 {/if}
 
-{#if app.branchesOpen}
+{#if branches.branchesOpen}
   <BranchesDialog />
 {/if}
-{#if app.newBranch}
+{#if branches.newBranch}
   <NewBranchDialog />
 {/if}
-{#if app.agentOpen}
+{#if agents.agentOpen}
   <AgentDialog />
 {/if}
 {#if github.cloneOpen}

@@ -1,9 +1,13 @@
 // Benchmark for `leveret --bench <dir> [--runs N]` (run by scripts/benchmark.ps1).
 // Walks through the screens of every registered repository the way a user would,
 // `runs` times, and saves every timing (frontend and backend) to `<dir>/perf.json`.
-// The steps go through the same `app` methods as the UI, so their `perf.view`
+// The steps go through the same store methods as the UI, so their `perf.view`
 // spans are what gets measured. Add a step here for every new screen.
+import { agents } from './agents.svelte'
 import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
+import { branches } from './branches.svelte'
+import { changes } from './changes.svelte'
+import { history } from './history.svelte'
 import { perf, summarize } from './perf'
 import { app } from './state.svelte'
 
@@ -15,13 +19,13 @@ async function benchRepo(path: string) {
   await app.selectRepo(null)
   await app.selectRepo(path)
 
-  for (const f of app.files.slice(0, PICKS)) await app.selectFile(f.path)
+  for (const f of app.files.slice(0, PICKS)) await changes.selectFile(f.path)
   await app.refresh()
 
   await app.setTab('history')
-  for (const c of app.log.slice(1, PICKS + 1)) await app.selectCommit(c.hash)
-  const files = app.detail?.files ?? []
-  for (const f of files.slice(1, PICKS)) await app.selectCommitFile(f.path)
+  for (const c of history.log.slice(1, PICKS + 1)) await history.selectCommit(c.hash)
+  const files = history.detail?.files ?? []
+  for (const f of files.slice(1, PICKS)) await history.selectCommitFile(f.path)
 
   const list = document.querySelector<HTMLElement>('.column-body .viewport')
   if (list) {
@@ -33,19 +37,19 @@ async function benchRepo(path: string) {
     list.scrollTop = 0
   }
   await perf.view('history.filter', async () => {
-    app.logFilter = 'fix'
+    history.logFilter = 'fix'
   })
   await perf.view('history.filter', async () => {
-    app.logFilter = ''
+    history.logFilter = ''
   })
-  await app.loadMoreLog()
-  await app.setScope('all')
-  await app.setScope('head')
+  await history.loadMoreLog()
+  await history.setScope('all')
+  await history.setScope('head')
 
-  await app.openBranches()
-  app.closeBranches()
-  await app.openAgent()
-  app.closeAgent()
+  await branches.openBranches()
+  branches.closeBranches()
+  await agents.openAgent()
+  agents.closeAgent()
   await app.setTab('changes')
 
   if (app.status?.hasRemote) await app.remote('fetch', { quiet: true })

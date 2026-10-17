@@ -1,5 +1,6 @@
 <!-- AI agent integration: access level, how to connect MCP clients, the tools and recent agent activity. -->
 <script lang="ts">
+  import { agents } from '../agents.svelte'
   import type { AgentAccess, AgentLevel } from '../api'
   import { formatDateTime } from '../format'
   import { t, type MessageKey } from '../i18n/index.svelte'
@@ -9,7 +10,7 @@
 
   type Client = 'claudeCode' | 'codex' | 'vscode' | 'claudeDesktop' | 'other'
 
-  const info = $derived(app.agentInfo)
+  const info = $derived(agents.agentInfo)
   let client = $state<Client>('claudeCode')
 
   const levels: { value: AgentAccess; label: MessageKey; hint: MessageKey }[] = [
@@ -62,7 +63,7 @@
   const repoName = (path: string | null) => (path ? (path.split(/[\\/]/).filter(Boolean).pop() ?? path) : '')
 </script>
 
-<Modal title={t('agent.title')} width={720} onclose={() => app.closeAgent()}>
+<Modal title={t('agent.title')} width={720} onclose={() => agents.closeAgent()}>
   <p class="intro">{t('agent.intro')}</p>
 
   <h4>{t('agent.access')}</h4>
@@ -75,7 +76,7 @@
           value={level.value}
           checked={info?.access === level.value}
           disabled={!info}
-          onchange={() => app.setAgentAccess(level.value)}
+          onchange={() => agents.setAgentAccess(level.value)}
         />
         <span class="level-text">
           <strong>{t(level.label)}</strong>

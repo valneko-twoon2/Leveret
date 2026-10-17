@@ -1,10 +1,11 @@
 <script lang="ts">
+  import { changes } from '../changes.svelte'
   import { t } from '../i18n/index.svelte'
   import { app } from '../state.svelte'
 
   const label = $derived.by(() => {
     if (app.busy === 'commit') return t('commit.committing')
-    if (app.amend) return t('commit.amendButton')
+    if (changes.amend) return t('commit.amendButton')
     if (app.operation?.kind === 'merge') return t('commit.mergeButton')
     const branch = app.status?.branch
     return branch ? t('commit.button', { branch }) : t('commit.buttonDetached')
@@ -17,7 +18,7 @@
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault()
-      void app.commit()
+      void changes.commit()
     }
   }
 </script>
@@ -26,7 +27,7 @@
   class="commit-form"
   onsubmit={(e) => {
     e.preventDefault()
-    void app.commit()
+    void changes.commit()
   }}
 >
   {#if app.commitBlocked}
@@ -35,7 +36,7 @@
   <input
     type="text"
     placeholder={t('commit.summary')}
-    bind:value={app.summary}
+    bind:value={changes.summary}
     {onkeydown}
     aria-label={t('commit.summary')}
     disabled={app.commitBlocked}
@@ -43,7 +44,7 @@
   <textarea
     rows="4"
     placeholder={t('commit.description')}
-    bind:value={app.description}
+    bind:value={changes.description}
     {onkeydown}
     aria-label={t('commit.description')}
     disabled={app.commitBlocked}
@@ -51,16 +52,16 @@
   <label class="amend" title={amendTitle}>
     <input
       type="checkbox"
-      checked={app.amend}
+      checked={changes.amend}
       disabled={!app.canRewriteHead || app.busy !== null}
-      onchange={(e) => app.setAmend(e.currentTarget.checked)}
+      onchange={(e) => changes.setAmend(e.currentTarget.checked)}
     />
     {t('commit.amend')}
   </label>
-  <button class="btn primary" type="submit" disabled={!app.canCommit} title={t('commit.shortcut')}>
+  <button class="btn primary" type="submit" disabled={!changes.canCommit} title={t('commit.shortcut')}>
     <span class="label">{label}</span>
   </button>
-  <div class="hint">{t('commit.selected', { count: app.includedFiles.length })} · {t('commit.shortcut')}</div>
+  <div class="hint">{t('commit.selected', { count: changes.includedFiles.length })} · {t('commit.shortcut')}</div>
 </form>
 
 <style>

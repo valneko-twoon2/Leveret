@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { agents } from '../agents.svelte'
   import { confirmDialog, pickFolder } from '../dialogs'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
@@ -39,7 +40,7 @@
   <header>
     <Logo size={22} />
     <span class="title">{t('app.name')}</span>
-    <button class="icon-btn" title={t('agent.open')} aria-label={t('agent.open')} onclick={() => app.openAgent()}>
+    <button class="icon-btn" title={t('agent.open')} aria-label={t('agent.open')} onclick={() => agents.openAgent()}>
       <Icon name="agent" />
     </button>
     <button class="icon-btn" title={t('repos.add')} aria-label={t('repos.add')} onclick={add}>

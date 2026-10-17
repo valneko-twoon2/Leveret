@@ -291,11 +291,11 @@ export function isAppError(e: unknown): e is AppError {
 }
 
 export const inTauri = isTauri()
-let mock: typeof import('./mock') | null = null
+let mock: typeof import('./mock/index') | null = null
 
 /** Routes all following calls to the mock backend. */
 export async function useMockBackend(): Promise<void> {
-  mock ??= await import('./mock')
+  mock ??= await import('./mock/index')
 }
 
 export function usingMock(): boolean {

@@ -189,4 +189,15 @@ mod tests {
         assert!(store.list().repos.is_empty());
         assert!(config.path().join("repos.json.bak").exists());
     }
+
+    #[test]
+    fn unregistered_repositories_are_rejected() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = RepoStore::load(dir.path());
+        assert!(matches!(
+            store.require("C:\\Windows"),
+            Err(AppError::RepoNotRegistered(_))
+        ));
+        assert!(store.select(Some("C:\\Windows".into())).is_err());
+    }
 }
