@@ -65,6 +65,25 @@ feat: add fetch, pull and push
 - Tests: parsing logic gets unit tests; git behaviour gets tests against a temporary repository
   (see `backend/src/git/integration_tests.rs`).
 
+## Performance
+
+Measure, don't guess. Every change that could affect speed is measured before and after.
+
+- **What is measured** (`backend/src/perf.rs`, `frontend/src/lib/perf.ts`): git processes (automatic in `git::Git`),
+  GitHub requests (`github.rs`), agent tools, backend round trips (`api.ts`), screen transitions until painted
+  (`perf.view(...)` in `state.svelte.ts`), user actions such as push (`AppState.run()`), main-thread long tasks and startup.
+  Names never contain paths, arguments or tokens.
+- **While implementing**: `scripts\dev.bat` writes every sample to
+  `%LOCALAPPDATA%\com.leveret.desktop\logs\perf.jsonl` (`LEVERET_PERF=1`); read it after trying a change.
+  `Ctrl+Shift+D` shows the performance panel in any build.
+- **Before committing** a change to git access, parsing, lists, diffs or startup: run `scripts\benchmark.bat` (a large
+  generated repository, off-screen) and compare with the baseline; keep a baseline with `-SaveBaseline` on `main`.
+  Report the numbers that changed in the summary of your work.
+- **Budgets (p95)**: screen transition 100 ms, backend round trip 200 ms, git process 300 ms, GitHub request 1500 ms,
+  startup 1500 ms, no main-thread task over 50 ms. Over-budget steps are shown in red and fail `benchmark.bat -Strict`.
+- **New screens** wrap their loading in `perf.view('<area>.<what>', ...)` and get a step in `frontend/src/lib/bench.ts`.
+  Other long backend work uses `perf::Span` / `perf::time`.
+
 ## Security
 
 The webview is treated as untrusted; the Rust backend is the trust boundary.
@@ -102,5 +121,6 @@ The webview is treated as untrusted; the Rust backend is the trust boundary.
 | All checks | `scripts\test.bat` |
 | Security check (with dependency audits) | `scripts\security.bat` |
 | Screenshots | `scripts\screenshot.bat [-Browser] [-Theme both]` |
+| Benchmark (timings vs. baseline) | `scripts\benchmark.bat [-Runs N] [-SaveBaseline] [-Strict]` |
 | Release build to `artifacts\` | `scripts\publish.bat` |
 | Bump version | `scripts\version.bat <x.y.z \| major \| minor \| patch>` |

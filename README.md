@@ -198,7 +198,7 @@ Just want to look at the UI? `scripts\preview.bat` opens it in your browser with
 ### Build a release
 
 ```bat
-scripts\publish.bat   :: -> artifacts\<version>\Leveret_<version>.exe and a zip of it
+scripts\publish.bat   :: -> artifacts\<version>\Leveret.exe and Leveret_v<version>.zip
 ```
 
 ### GitHub sign-in
@@ -228,6 +228,7 @@ so it never appears on a command line or in a repository's config.
 | `F5` | Refresh |
 | `Shift+F10`, menu key, right click | Context menu |
 | `Ctrl+Shift+S` | Save a screenshot |
+| `Ctrl+Shift+D` | Performance panel |
 
 ## Scripts
 
@@ -240,7 +241,8 @@ Every `.bat` works from a terminal or by double-clicking, and forwards its argum
 | `scripts\preview.bat [-Scene <id>] [-Theme light\|dark] [-App]` | UI only, in a browser with sample data (`-App`: as the desktop app) |
 | `scripts\test.bat [-Fast]` | Static security rules, `svelte-check`, frontend build, `cargo test`, `cargo clippy` |
 | `scripts\security.bat [-Offline]` | Static security rules, `npm audit`, `cargo audit`, backend security tests |
-| `scripts\publish.bat [-SkipTests]` | Release build: `artifacts\<version>\Leveret_<version>.exe` and `Leveret_<version>_x64.zip` |
+| `scripts\publish.bat [-SkipTests]` | Release build: `artifacts\<version>\Leveret.exe` and `Leveret_v<version>.zip` |
+| `scripts\benchmark.bat [-Runs N] [-Repo <path>] [-Mock] [-SaveBaseline] [-Strict]` | Benchmark: times every screen on a large generated repository and compares with the baseline |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | Captures every screen into `artifacts\screenshots\` |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | Bumps the version everywhere (prompts when run without arguments) |
 | `scripts\clean.ps1 [-All]` | Removes build outputs |
@@ -256,6 +258,16 @@ leveret.exe --capture out --mock --theme dark --scenes 02-changes,04-history
 It renders off-screen (no taskbar entry, no focus), walks through the scenes defined in
 [`frontend/src/lib/capture.ts`](frontend/src/lib/capture.ts), writes `out\<scene>.png` and exits.
 While using the app, **Ctrl+Shift+S** saves the current screen to `Pictures\Leveret\`.
+
+## Performance
+
+Speed is measured, not guessed. Git processes, GitHub requests, backend round trips, screen transitions
+(until the result is painted), actions such as push, long main-thread tasks and startup are all timed.
+
+- **Ctrl+Shift+D** opens the performance panel (median / p95 / max per step; over-budget steps in red).
+- `scripts\benchmark.bat` builds a large repository (3000 commits, 1200 files, merges, tags, 200 changed files),
+  walks through every screen off-screen (`leveret.exe --bench`) and compares the result with the baseline.
+- `scripts\dev.bat` writes every timing to `%LOCALAPPDATA%\com.leveret.desktop\logs\perf.jsonl`.
 
 ## Security
 

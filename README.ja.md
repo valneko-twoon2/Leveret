@@ -198,7 +198,7 @@ scripts\dev.bat       :: ホットリロードで起動（-Mock でダミーデ�
 ### リリースビルド
 
 ```bat
-scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret_<バージョン>.exe とその zip
+scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret.exe と Leveret_v<バージョン>.zip
 ```
 
 ### GitHub サインイン
@@ -228,6 +228,7 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret_<バージョン
 | `F5` | 最新の状態に更新 |
 | `Shift+F10`、アプリケーションキー、右クリック | コンテキストメニュー |
 | `Ctrl+Shift+S` | 画面を保存 |
+| `Ctrl+Shift+D` | パフォーマンスパネル |
 
 ## スクリプト
 
@@ -240,7 +241,8 @@ scripts\publish.bat   :: -> artifacts\<バージョン>\Leveret_<バージョン
 | `scripts\preview.bat [-Scene <id>] [-Theme light\|dark] [-App]` | 画面だけ確認（ブラウザ + ダミーデータ。`-App` でデスクトップアプリとして表示） |
 | `scripts\test.bat [-Fast]` | セキュリティの静的チェック、`svelte-check`、フロントのビルド、`cargo test`、`cargo clippy` |
 | `scripts\security.bat [-Offline]` | セキュリティの静的チェック、`npm audit`、`cargo audit`、バックエンドのセキュリティテスト |
-| `scripts\publish.bat [-SkipTests]` | リリースビルド。`artifacts\<バージョン>\` に exe とその zip を出力 |
+| `scripts\publish.bat [-SkipTests]` | リリースビルド。`artifacts\<バージョン>\` に `Leveret.exe` と `Leveret_v<バージョン>.zip` を出力 |
+| `scripts\benchmark.bat [-Runs N] [-Repo <パス>] [-Mock] [-SaveBaseline] [-Strict]` | ベンチマーク。生成した大きなリポジトリで全画面の処理時間を計測し、基準値と比較 |
 | `scripts\screenshot.bat [-Browser] [-Theme light\|dark\|both] [-Real] [-Scenes a,b] [-Open]` | 全画面を `artifacts\screenshots\` に撮影 |
 | `scripts\version.bat [<x.y.z> \| major \| minor \| patch]` | バージョンを一括変更（引数なしなら入力を求めます） |
 | `scripts\clean.ps1 [-All]` | ビルド成果物を削除 |
@@ -256,6 +258,16 @@ leveret.exe --capture out --mock --theme dark --scenes 02-changes,04-history
 画面外で描画し（タスクバーにも出ず、フォーカスも奪いません）、
 [`frontend/src/lib/capture.ts`](frontend/src/lib/capture.ts) のシーンを順に表示して `out\<シーン>.png` に保存し、終了します。
 使用中は **Ctrl+Shift+S** で表示中の画面を `ピクチャ\Leveret\` に保存できます。
+
+## パフォーマンス
+
+速さは推測ではなく計測で確かめます。git のプロセス、GitHub への通信、バックエンドとの往復、画面遷移（描画完了まで）、
+プッシュなどの操作、メインスレッドの長い処理、起動時間をすべて計測しています。
+
+- **Ctrl+Shift+D** でパフォーマンスパネルを表示します（処理ごとの中央値 / p95 / 最大。目安を超えたものは赤字）。
+- `scripts\benchmark.bat` は大きなリポジトリ（3000 コミット、1200 ファイル、マージ、タグ、変更 200 ファイル）を生成し、
+  画面外で全画面を操作して（`leveret.exe --bench`）、基準値と比較します。
+- `scripts\dev.bat` で起動すると、すべての計測値を `%LOCALAPPDATA%\com.leveret.desktop\logs\perf.jsonl` に記録します。
 
 ## セキュリティ
 
