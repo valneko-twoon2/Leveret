@@ -9,6 +9,7 @@
   import { phaseLabel } from '../format'
   import { layout } from '../layout.svelte'
   import { menu } from '../menu.svelte'
+  import { remotes } from '../remotes.svelte'
   import { stash } from '../stash.svelte'
   import { app } from '../state.svelte'
   import Icon, { type IconName } from './Icon.svelte'
@@ -81,6 +82,7 @@
         },
         { label: t('remote.sync'), action: () => app.remote('sync'), disabled: !idle || !st?.upstream || !onBranch },
         { label: t('remote.forcePush'), action: () => app.forcePush(), disabled: !idle || !st?.upstream || !onBranch, danger: true },
+        { label: t('refTree.manageRemotes'), action: () => remotes.openDialog() },
         'separator',
         { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => branches.openNewBranch(), disabled: !idle || !st?.headOid },
         { label: t('tags.new'), action: () => tags.openNewTag(), disabled: !idle || !st?.headOid },
@@ -138,13 +140,13 @@
       </div>
     </button>
   {:else if status}
-    <div class="cell remote static">
+    <button class="cell remote" title={t('remote.addHint')} onclick={() => remotes.openDialog()}>
       <Icon name="cloud" />
       <div class="text">
         <span class="value muted">{t('remote.noRemote')}</span>
-        {#if !status.headOid}<span class="label">{t('repo.noCommits')}</span>{/if}
+        <span class="label">{status.headOid ? t('remote.addRemote') : t('repo.noCommits')}</span>
       </div>
-    </div>
+    </button>
   {/if}
 
   <div class="spacer"></div>

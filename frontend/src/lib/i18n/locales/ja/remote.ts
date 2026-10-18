@@ -18,6 +18,8 @@ export default {
     publishHint: 'このブランチをリモートに公開します',
     syncHint: 'プルしてからプッシュします',
     noRemote: 'リモートなし',
+    addRemote: 'クリックして設定',
+    addHint: 'リモートのURLを設定します',
     fetched: 'フェッチしました',
     pulled: 'プルしました',
     pushed: 'プッシュしました',
