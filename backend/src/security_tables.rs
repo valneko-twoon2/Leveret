@@ -274,4 +274,14 @@ fn messages_table() {
         |s| tag_message(s).is_ok(),
         &["a\0b", "a\u{1b}[31m", "a\u{7}", &"x".repeat(10_001)],
     );
+    accepts(
+        "stash_message",
+        |s| stash_message(s).is_ok(),
+        &["", "作業中", &"x".repeat(1000)],
+    );
+    rejects(
+        "stash_message",
+        |s| stash_message(s).is_ok(),
+        &["line 1\nline 2", "a\tb", "a\0b", &"x".repeat(1001)],
+    );
 }

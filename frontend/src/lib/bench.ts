@@ -11,6 +11,7 @@ import { changes } from './changes.svelte'
 import { history } from './history.svelte'
 import { issues } from './issues.svelte'
 import { perf, summarize } from './perf'
+import { stash } from './stash.svelte'
 import { app } from './state.svelte'
 
 /** Commits and files opened per repository and run. */
@@ -58,6 +59,8 @@ async function benchRepo(path: string) {
   await app.setTab('issues')
   for (const i of issues.list.slice(0, PICKS)) await issues.select(i)
   await app.setTab('changes')
+  if (stash.stashes[0]) await stash.open(stash.stashes[0])
+  stash.close()
 
   if (app.status?.hasRemote) await app.remote('fetch', { quiet: true })
 }

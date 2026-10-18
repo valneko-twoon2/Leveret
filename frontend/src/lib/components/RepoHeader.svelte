@@ -9,6 +9,7 @@
   import { phaseLabel } from '../format'
   import { layout } from '../layout.svelte'
   import { menu } from '../menu.svelte'
+  import { stash } from '../stash.svelte'
   import { app } from '../state.svelte'
   import Icon, { type IconName } from './Icon.svelte'
 
@@ -82,7 +83,7 @@
         { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => branches.openNewBranch(), disabled: !idle || !st?.headOid },
         { label: t('tags.new'), action: () => tags.openNewTag(), disabled: !idle || !st?.headOid },
         { label: t('tags.title'), action: () => branches.openBranches('tags') },
-        { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
+        { label: t('stash.save'), action: () => stash.save(), disabled: !idle || app.files.length === 0 },
         { label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead },
         'separator',
         { label: t('common.openInExplorer'), action: () => app.showInExplorer() },

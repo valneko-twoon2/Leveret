@@ -3,6 +3,7 @@
   import { github } from '../github.svelte'
   import { t, type MessageKey } from '../i18n/index.svelte'
   import { settings } from '../settings.svelte'
+  import { stash } from '../stash.svelte'
   import { app } from '../state.svelte'
   import Icon from './Icon.svelte'
 
@@ -10,7 +11,7 @@
   const FIXES: Record<string, { label: MessageKey; run: () => unknown }> = {
     identityMissing: { label: 'settings.git.openSettings', run: () => settings.openSettings('git') },
     pushRejected: { label: 'remote.pull', run: () => app.remote('pull') },
-    localChangesConflict: { label: 'stash.save', run: () => changes.stashSave() },
+    localChangesConflict: { label: 'stash.save', run: () => stash.save() },
     githubNotSignedIn: { label: 'github.signIn', run: () => github.openSignIn() },
     githubUnauthorized: { label: 'github.signIn', run: () => github.openSignIn() },
     noUpstream: { label: 'remote.publish', run: () => app.remote('push') },

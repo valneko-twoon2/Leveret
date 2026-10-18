@@ -11,6 +11,7 @@ import { branches } from './branches.svelte'
 import { changes } from './changes.svelte'
 import { confirmDialog } from './dialogs'
 import { history } from './history.svelte'
+import { stash } from './stash.svelte'
 import { issues } from './issues.svelte'
 import { tags } from './tags.svelte'
 import { t, type MessageKey } from './i18n/index.svelte'
@@ -243,6 +244,7 @@ class AppState {
     this.status = null
     changes.resetRepoView()
     history.resetRepoView()
+    stash.resetRepoView()
     branches.resetRepoView()
     issues.resetRepoView()
     tags.resetRepoView()
@@ -255,7 +257,7 @@ class AppState {
     await perf.view('refresh', async () => {
       await Promise.all([
         this.loadStatus(),
-        changes.loadStashes(),
+        stash.load(),
         this.tab === 'history' ? history.loadLog() : Promise.resolve(),
         branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
         // Issues reload after a repository switch cleared them, or on F5 (GitHub rate limits).
@@ -269,7 +271,7 @@ class AppState {
     history.resetPaging()
     await Promise.all([
       this.loadStatus(),
-      changes.loadStashes(),
+      stash.load(),
       history.log.length || this.tab === 'history' ? history.loadLog() : Promise.resolve(),
       branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
     ])

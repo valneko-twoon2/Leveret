@@ -1,8 +1,10 @@
 // Types and backend calls for branches, tags, stashes, remotes and stopped
 // operations (backend/src/commands/{branches,tags,stash,remote,operations}.rs).
 // Combined into `api` by api.ts.
+import type { CommitFile } from './historyApi'
 import { call, listenTo, mockBackend } from './ipc'
-import type { Outcome } from './repoApi'
+import { prefs } from './prefs.svelte'
+import type { FileDiff, Outcome } from './repoApi'
 
 export interface Tag {
   name: string
@@ -32,8 +34,19 @@ export interface Branch {
 
 export interface StashEntry {
   index: number
+  /** The stash commit; actions check it so a shifted list can't hit another stash. */
+  oid: string
   message: string
   time: number
+}
+
+/** What a stash holds: tracked changes against `base`, untracked files in `untracked`. */
+export interface StashDetail {
+  oid: string
+  base: string
+  untracked: string | null
+  /** Untracked files have kind `untracked`. */
+  files: CommitFile[]
 }
 
 export type RemoteOp = 'fetch' | 'pull' | 'push' | 'sync'
@@ -65,9 +78,24 @@ export const refApi = {
   pushTag: (repo: string, name: string) => call<void>('push_tag', { repo, name }),
 
   listStashes: (repo: string) => call<StashEntry[]>('list_stashes', { repo }),
-  stashSave: (repo: string, message: string, untracked: boolean) => call<void>('stash_save', { repo, message, untracked }),
-  stashPop: (repo: string, index: number) => call<Outcome>('stash_pop', { repo, index }),
-  stashDrop: (repo: string, index: number) => call<void>('stash_drop', { repo, index }),
+  stashSave: (repo: string, message: string, untracked: boolean, paths: string[] = []) =>
+    call<void>('stash_save', { repo, message, untracked, paths }),
+  getStash: (repo: string, oid: string) => call<StashDetail>('get_stash', { repo, oid }),
+  /** A file of a stash: untracked ones against nothing, others against the stash's base. */
+  getStashDiff: (repo: string, stash: StashDetail, file: CommitFile) => {
+    const untracked = file.kind === 'untracked'
+    return call<FileDiff>('get_commit_diff', {
+      repo,
+      hash: untracked ? stash.untracked : stash.oid,
+      parent: untracked ? null : stash.base,
+      path: file.path,
+      origPath: file.origPath,
+      ignoreWhitespace: prefs.ignoreWhitespace,
+    })
+  },
+  stashApply: (repo: string, s: StashEntry) => call<Outcome>('stash_apply', { repo, index: s.index, oid: s.oid }),
+  stashPop: (repo: string, s: StashEntry) => call<Outcome>('stash_pop', { repo, index: s.index, oid: s.oid }),
+  stashDrop: (repo: string, s: StashEntry) => call<void>('stash_drop', { repo, index: s.index, oid: s.oid }),
 
   remote: (repo: string, operation: RemoteOp) => call<Outcome>('remote', { repo, operation }),
   /** Subscribes to fetch / pull / push progress. Returns an unsubscribe function. */

@@ -131,6 +131,8 @@ pub fn run() {
             commands::settings::open_app_folder,
             commands::stash::list_stashes,
             commands::stash::stash_save,
+            commands::stash::get_stash,
+            commands::stash::stash_apply,
             commands::stash::stash_pop,
             commands::stash::stash_drop,
             commands::tags::list_tags,

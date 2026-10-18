@@ -11,6 +11,7 @@
   import { t } from './lib/i18n/index.svelte'
   import { layout } from './lib/layout.svelte'
   import { prefs } from './lib/prefs.svelte'
+  import { stash } from './lib/stash.svelte'
   import { handleShortcut } from './lib/shortcuts'
   import { app, describeError } from './lib/state.svelte'
   import ChangesPane from './lib/components/ChangesPane.svelte'
@@ -27,6 +28,7 @@
   import RepoSidebar from './lib/components/RepoSidebar.svelte'
   import RepoTabs from './lib/components/RepoTabs.svelte'
   import Splitter from './lib/components/Splitter.svelte'
+  import StashView from './lib/components/StashView.svelte'
   import Welcome from './lib/components/Welcome.svelte'
 
   let dragging = $state(false)
@@ -189,7 +191,9 @@
 
           <section class="main">
             {#if app.tab === 'changes'}
-              {#if changes.selectedChange}
+              {#if stash.selected}
+                <StashView />
+              {:else if changes.selectedChange}
                 {@const file = changes.selectedChange}
                 <DiffHeader path={file.path} origPath={file.origPath} kind={file.kind} height={37} onopen={() => diffTool.openWorking(file)} />
                 <div class="main-body"><DiffView diff={changes.workingDiff} picker={changes.picker} /></div>

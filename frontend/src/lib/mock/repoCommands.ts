@@ -1,6 +1,6 @@
 // Mock commands for repositories, status, the commit form, history (including
 // revert / cherry-pick), discard / resolve / ignore and stashes.
-import type { CommitDetail, CommitRequest, LogEntry, LogScope, Outcome, RepoList, RepoStatus } from '../api'
+import type { CommitDetail, CommitRequest, LogEntry, LogScope, Outcome, RepoList, RepoStatus, StashDetail } from '../api'
 import { sampleDiff } from './data'
 import { addCommit, buildGraph, extras, makeHistory, moveBranchLabel } from './repo'
 import { db, fail, find, UNHANDLED } from './state'
@@ -165,21 +165,46 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       return find(args.repo).stashes
     case 'stash_save': {
       const r = find(args.repo)
-      const keep = args.untracked === false ? r.files.filter((f) => f.kind === 'untracked') : []
+      const paths = (args.paths as string[] | undefined) ?? []
+      // Kept: hidden untracked files, or with `paths` everything else.
+      const keep = paths.length
+        ? r.files.filter((f) => !paths.includes(f.path))
+        : args.untracked === false
+          ? r.files.filter((f) => f.kind === 'untracked')
+          : []
       if (r.files.length === keep.length) fail('noChanges')
       const message = String(args.message).trim() || `WIP on ${r.branch ?? '(no branch)'}: ${r.commits[0]?.subject ?? ''}`
-      r.stashes = [{ index: 0, message: `On ${r.branch ?? '(no branch)'}: ${message}`, time: Math.floor(Date.now() / 1000) }, ...r.stashes].map((x, i) => ({ ...x, index: i }))
+      const oid = Date.now().toString(16).padEnd(40, '0')
+      const entry = { index: 0, oid, message: `On ${r.branch ?? '(no branch)'}: ${message}`, time: Math.floor(Date.now() / 1000) }
+      r.stashes = [entry, ...r.stashes].map((x, i) => ({ ...x, index: i }))
       r.files = keep
       return null
     }
+    case 'get_stash': {
+      const r = find(args.repo)
+      if (!r.stashes.some((s) => s.oid === args.oid)) fail('gitFailed', `bad revision '${String(args.oid)}'`)
+      return {
+        oid: String(args.oid),
+        base: r.commits[0]?.hash ?? '0'.repeat(40),
+        untracked: 'ba5e0000'.padEnd(40, '0'),
+        files: [
+          { path: 'src/ui/diff.css', origPath: null, kind: 'modified' },
+          { path: 'src/ui/theme.rs', origPath: null, kind: 'modified' },
+          { path: 'docs/配色メモ.md', origPath: null, kind: 'untracked' },
+        ],
+      } satisfies StashDetail
+    }
+    case 'stash_apply':
     case 'stash_pop':
     case 'stash_drop': {
       const r = find(args.repo)
       const index = Number(args.index)
-      if (!r.stashes[index]) fail('gitFailed', `stash@{${index}} is not a valid reference`)
-      if (cmd === 'stash_pop') r.files.push({ path: 'src/ui/diff.css', origPath: null, kind: 'modified' })
-      r.stashes = r.stashes.filter((x) => x.index !== index).map((x, i) => ({ ...x, index: i }))
-      return cmd === 'stash_pop' ? ('done' satisfies Outcome) : null
+      if (!r.stashes[index] || r.stashes[index].oid !== args.oid) fail('invalidInput', 'the stash list has changed; reload it')
+      if (cmd !== 'stash_drop' && !r.files.some((f) => f.path === 'src/ui/diff.css')) {
+        r.files.push({ path: 'src/ui/diff.css', origPath: null, kind: 'modified' })
+      }
+      if (cmd !== 'stash_apply') r.stashes = r.stashes.filter((x) => x.index !== index).map((x, i) => ({ ...x, index: i }))
+      return cmd === 'stash_drop' ? null : ('done' satisfies Outcome)
     }
     default:
       return UNHANDLED

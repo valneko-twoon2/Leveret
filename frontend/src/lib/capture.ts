@@ -15,6 +15,7 @@ import { issues } from './issues.svelte'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
 import { settings } from './settings.svelte'
+import { stash } from './stash.svelte'
 import { app } from './state.svelte'
 import { tags } from './tags.svelte'
 
@@ -280,11 +281,23 @@ export const scenes: Scene[] = [
       changes.picker.setLines([[0, 2], [0, 8], [0, 9], [0, 10]], false)
     },
   },
+  {
+    id: '25-stash',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('changes')
+      changes.picks.clear()
+      if (stash.stashes[0]) await stash.open(stash.stashes[0])
+      await stash.selectFile('src/ui/diff.css')
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
+  stash.close()
   tags.closeNewTag()
   settings.close()
   agents.closeAgent()

@@ -113,6 +113,14 @@ pub fn tag_message(text: &str) -> Result<&str> {
     Ok(text)
 }
 
+/// A stash message: one line, at most 1000 characters.
+pub fn stash_message(text: &str) -> Result<&str> {
+    if text.chars().count() > 1000 || text.chars().any(char::is_control) {
+        return Err(invalid("stash message", ""));
+    }
+    Ok(text)
+}
+
 fn ref_name(name: &str) -> Result<&str> {
     let bad_char = name
         .chars()

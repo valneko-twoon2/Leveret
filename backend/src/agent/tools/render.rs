@@ -125,6 +125,25 @@ pub(super) fn commit_diff(repo: &Path, hash: &str, max: usize) -> Result<String>
     Ok(truncate(decode(&out.stdout), max))
 }
 
+/// A stash as unified diff text: tracked changes against the commit it was made
+/// on, then untracked files stashed with it.
+pub(super) fn stash_diff(repo: &Path, oid: &str, max: usize) -> Result<String> {
+    let d = git::stash::detail(repo, oid)?;
+    let diff = |from: &str, to: &str| {
+        Git::new(repo)
+            .args(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M", from, to])
+            .run()
+    };
+    let mut text = decode(&diff(&d.base, &d.oid)?.stdout);
+    if let Some(u) = &d.untracked {
+        text.push_str(&decode(&diff(&git::empty_tree(repo)?, u)?.stdout));
+    }
+    if text.is_empty() {
+        text = "The stash holds no changes.\n".into();
+    }
+    Ok(truncate(text, max))
+}
+
 /// Unix seconds as an RFC 3339 UTC timestamp.
 pub(super) fn iso8601(secs: i64) -> String {
     let days = secs.div_euclid(86_400);

@@ -1,8 +1,9 @@
 // The changes tab: file selection (whole files or picked lines) and the
-// working-tree diff, the commit form, discard / resolve / ignore and stashes.
-// Builds on `app` (state.svelte.ts), which loads the status these act on.
+// working-tree diff, the commit form, and discard / resolve / ignore (stashes
+// are in stash.svelte.ts). Builds on `app` (state.svelte.ts), which loads the
+// status these act on.
 import { SvelteMap, SvelteSet } from 'svelte/reactivity'
-import { api, isAppError, type FileChange, type FileDiff, type LineSelection, type RepoStatus, type StashEntry } from './api'
+import { api, isAppError, type FileChange, type FileDiff, type LineSelection, type RepoStatus } from './api'
 import type { LinePicker } from './components/DiffView.svelte'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
@@ -40,7 +41,6 @@ class ChangesState {
   summary = $state('')
   description = $state('')
   amend = $state(false)
-  stashes = $state.raw<StashEntry[]>([])
 
   includedFiles = $derived(app.files.filter((f) => !this.excluded.has(f.path)))
   selectedChange = $derived(app.files.find((f) => f.path === this.selectedFile) ?? null)
@@ -65,7 +65,6 @@ class ChangesState {
     this.description = ''
     this.amend = false
     this.amendPrefill = null
-    this.stashes = []
   }
 
   /** Brings the tab in line with a freshly loaded status (called by `app.loadStatus`). */
@@ -77,14 +76,6 @@ class ChangesState {
     for (const p of [...this.picks.keys()]) if (!present.has(p)) this.picks.delete(p)
     const keep = this.selectedFile && present.has(this.selectedFile) ? this.selectedFile : (status.files[0]?.path ?? null)
     await this.selectFile(keep)
-  }
-
-  async loadStashes() {
-    const repo = app.selectedPath
-    if (!repo) return
-    // Not worth an error dialog: the list just stays as it was.
-    const stashes = await app.track(api.listStashes(repo)).catch(() => null)
-    if (stashes && repo === app.selectedPath) this.stashes = stashes
   }
 
   async selectFile(path: string | null) {
@@ -317,36 +308,6 @@ class ChangesState {
     if (done === undefined) return
     app.toast(t('discard.ignored'))
     await app.loadStatus()
-  }
-
-  // --- stash ----------------------------------------------------------------
-
-  async stashSave() {
-    if (app.files.length === 0) {
-      app.toast(t('stash.noChanges'))
-      return
-    }
-    const done = await app.run('stash', (repo) => api.stashSave(repo, this.summary.trim(), prefs.showUntracked))
-    if (done === undefined) return
-    app.toast(t('stash.saved'))
-    await Promise.all([app.loadStatus(), this.loadStashes()])
-  }
-
-  async stashPop(index: number) {
-    const outcome = await app.run('stash', (repo) => api.stashPop(repo, index))
-    if (!outcome) return
-    if (outcome === 'conflicts') app.toast(t('operation.stashConflicts'), 'error')
-    else app.toast(t('stash.popped'))
-    await app.setTab('changes')
-    await Promise.all([app.loadStatus(), this.loadStashes()])
-  }
-
-  async stashDrop(entry: StashEntry) {
-    if (!(await confirmDialog(t('stash.dropConfirm', { message: entry.message }), t('stash.drop')))) return
-    const done = await app.run('stash', (repo) => api.stashDrop(repo, entry.index))
-    if (done === undefined) return
-    app.toast(t('stash.dropped'))
-    await this.loadStashes()
   }
 }
 

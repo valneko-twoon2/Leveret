@@ -89,8 +89,4 @@
   .btn {
     flex: none;
   }
-
-  .btn.danger {
-    color: var(--danger);
-  }
 </style>

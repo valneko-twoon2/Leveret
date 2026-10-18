@@ -132,7 +132,7 @@ export function makeRepos(): MockRepo[] {
       localBranches: ['main', 'feature/branch-dialog', 'feature/rebase', 'fix/sjis-diff'],
       remoteBranches: ['origin/main', 'origin/feature/branch-dialog', 'origin/release/0.1'],
       unmerged: ['feature/rebase'],
-      stashes: [{ index: 0, message: 'On main: 差分ビューの配色を試す', time: NOW - 86400 * 2 }],
+      stashes: [{ index: 0, oid: '5a5c0de1'.padEnd(40, '0'), message: 'On main: 差分ビューの配色を試す', time: NOW - 86400 * 2 }],
     },
     {
       entry: { name: 'web-app', path: 'E:\\Code\\web-app' },

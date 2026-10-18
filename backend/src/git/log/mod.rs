@@ -10,7 +10,8 @@ use crate::error::Result;
 mod detail;
 mod graph;
 
-pub use detail::{CommitDetail, detail};
+pub(crate) use detail::parse_name_status;
+pub use detail::{CommitDetail, CommitFile, detail};
 use graph::build_graph;
 
 pub(super) const FIELD: char = '\x1f';

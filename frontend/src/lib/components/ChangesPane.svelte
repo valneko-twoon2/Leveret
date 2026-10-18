@@ -1,12 +1,13 @@
 <!-- Left column of the Changes tab: changed files with checkboxes, stashes, and the commit form. -->
 <script lang="ts">
-  import type { FileChange } from '../api'
+  import type { FileChange, StashEntry } from '../api'
   import { changes } from '../changes.svelte'
   import { diffTool } from '../difftool.svelte'
   import { formatRelative } from '../format'
   import { t } from '../i18n/index.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
   import { prefs } from '../prefs.svelte'
+  import { stash } from '../stash.svelte'
   import { app } from '../state.svelte'
   import CommitForm from './CommitForm.svelte'
   import FileRow from './FileRow.svelte'
@@ -63,14 +64,34 @@
     void app.loadStatus()
   }
 
+  /** The checked files (renames with both paths), for stashing only those. */
+  function checkedPaths(): string[] {
+    return changes.includedFiles.flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path]))
+  }
+
+  function stashMenu(s: StashEntry, e: MouseEvent | KeyboardEvent) {
+    const idle = app.busy === null
+    menu.open(e, [
+      { label: t('stash.show'), action: () => stash.open(s) },
+      'separator',
+      { label: t('stash.apply'), hint: t('stash.applyHint'), action: () => stash.restore(s, true), disabled: !idle },
+      { label: t('stash.pop'), hint: t('stash.popHint'), action: () => stash.restore(s, false), disabled: !idle },
+      'separator',
+      { label: t('stash.drop'), action: () => stash.drop(s), disabled: !idle, danger: true },
+    ])
+  }
+
   function listMenu(e: MouseEvent) {
     const idle = app.busy === null
     const discardable = app.files.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
+    const checked = changes.includedFiles.length
+    const someChecked = checked > 0 && checked < app.files.length
     menu.open(
       e,
       [
         { label: t('discard.all'), action: () => changes.discard(discardable), disabled: !idle || discardable.length === 0, danger: true },
-        { label: t('stash.save'), action: () => changes.stashSave(), disabled: !idle || app.files.length === 0 },
+        { label: t('stash.save'), action: () => stash.save(), disabled: !idle || app.files.length === 0 },
+        ...(someChecked ? [{ label: t('stash.saveChecked', { count: checked }), action: () => stash.save(checkedPaths()), disabled: !idle }] : []),
         'separator',
         { label: t('changes.showUntracked'), checked: prefs.showUntracked, action: () => toggleUntracked() },
       ],
@@ -112,7 +133,10 @@
         rowHeight={30}
         {selectedIndex}
         label={t('tabs.changes')}
-        onselect={(i) => app.files[i] && changes.selectFile(app.files[i].path)}
+        onselect={(i) => {
+          stash.close()
+          if (app.files[i]) void changes.selectFile(app.files[i].path)
+        }}
         oncontext={(i, e) => app.files[i] && fileMenu(app.files[i], e)}
         onactivate={(i) => app.files[i] && diffTool.openWorking(app.files[i])}
         ontoggle={(i) => app.files[i] && changes.toggleFile(app.files[i].path)}
@@ -132,28 +156,28 @@
     {/if}
   </div>
 
-  {#if changes.stashes.length}
+  {#if stash.stashes.length}
     <div class="stashes" class:open={stashOpen}>
       <button class="stash-header" onclick={() => (stashOpen = !stashOpen)} aria-expanded={stashOpen}>
         <Icon name="archive" size={14} />
-        <span>{t('stash.count', { count: changes.stashes.length })}</span>
+        <span>{t('stash.count', { count: stash.stashes.length })}</span>
         <Icon name="chevronDown" size={14} />
       </button>
       {#if stashOpen}
         <ul>
-          {#each changes.stashes as s (s.index)}
-            <li>
-              <div class="stash-text">
-                <span class="stash-message" title={s.message}>{s.message}</span>
+          {#each stash.stashes as s (s.oid)}
+            <li class:selected={stash.selected?.oid === s.oid} oncontextmenu={(e) => stashMenu(s, e)}>
+              <button class="stash-text" title={`${s.message}\n${t('stash.show')}`} onclick={() => stash.open(s)}>
+                <span class="stash-message">{s.message}</span>
                 <span class="stash-time">{formatRelative(s.time)}</span>
-              </div>
-              <button class="btn small" disabled={app.busy !== null} onclick={() => changes.stashPop(s.index)}>{t('stash.pop')}</button>
+              </button>
+              <button class="btn small" disabled={app.busy !== null} title={t('stash.popHint')} onclick={() => stash.restore(s, false)}>{t('stash.pop')}</button>
               <button
                 class="icon-btn"
                 disabled={app.busy !== null}
                 title={t('stash.drop')}
                 aria-label={t('stash.drop')}
-                onclick={() => changes.stashDrop(s)}
+                onclick={() => stash.drop(s)}
               >
                 <Icon name="x" size={14} />
               </button>
@@ -240,7 +264,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 2px 6px 2px 12px;
+    padding: 2px 6px 2px 8px;
   }
 
   .stash-text {
@@ -248,7 +272,21 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+    padding: 2px 4px;
+    border: none;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
     line-height: 1.3;
+    text-align: left;
+  }
+
+  .stash-text:hover {
+    background: var(--bg-hover);
+  }
+
+  li.selected .stash-text {
+    background: var(--bg-selected);
   }
 
   .stash-message {
