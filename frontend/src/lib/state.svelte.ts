@@ -318,11 +318,19 @@ class AppState {
       return true
     }
     if (!options.quiet) {
-      const done = { fetch: t('remote.fetched'), pull: t('remote.pulled'), push: t('remote.pushed'), sync: t('remote.synced') }[op]
+      const done = { fetch: t('remote.fetched'), pull: t('remote.pulled'), push: t('remote.pushed'), forcePush: t('remote.pushed'), sync: t('remote.synced') }[op]
       this.toast(publishing && branch ? t('remote.published', { branch }) : done)
     }
     await this.refreshAfterChange()
     return true
+  }
+
+  /** Pushes over the upstream after asking (the remote loses commits the branch no longer has). */
+  async forcePush() {
+    const branch = this.status?.branch
+    if (!branch || !this.status?.upstream) return
+    if (!(await confirmDialog(t('remote.forcePushConfirm', { branch, upstream: this.status.upstream }), t('remote.forcePush')))) return
+    await this.remote('forcePush')
   }
 
   // --- operations -----------------------------------------------------------

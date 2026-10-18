@@ -180,6 +180,7 @@ const ORDER: &[&str] = &[
     "restore_file",
     "delete_branch",
     "delete_remote_branch",
+    "force_push",
     "resolve_conflict",
     "abort_operation",
     "skip_operation",

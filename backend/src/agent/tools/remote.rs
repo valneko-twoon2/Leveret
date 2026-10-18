@@ -49,6 +49,14 @@ pub(super) fn tools() -> Vec<Tool> {
             "Pushes the current branch, or publishes it (sets the upstream) if it has none.",
             repo_only(),
         ),
+        tool(
+            "force_push",
+            "Force push",
+            Destructive,
+            true,
+            "Pushes the current branch over its upstream even if that removes commits on the remote (--force-with-lease: refused when the remote branch has commits you have not fetched). Use only when the user asked for it, e.g. after rewriting pushed commits.",
+            repo_only(),
+        ),
     ]
 }
 
@@ -95,6 +103,11 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
             let repo = repo(ctx, args)?;
             let o = git::remote::pull(&repo, auth_env(&repo), |_| {})?;
             outcome(&repo, o)
+        }
+        "force_push" => {
+            let repo = repo(ctx, args)?;
+            git::remote::force_push(&repo, auth_env(&repo), |_| {})?;
+            outcome(&repo, Outcome::Done)
         }
         "push" => {
             let repo = repo(ctx, args)?;

@@ -18,6 +18,8 @@ pub enum RemoteOp {
     Fetch,
     Pull,
     Push,
+    /// Push with `--force-with-lease` (asks for confirmation in the app).
+    ForcePush,
     Sync,
 }
 
@@ -55,6 +57,7 @@ pub async fn remote(
             RemoteOp::Fetch => git::remote::fetch(&path, envs, report).map(|()| Outcome::Done),
             RemoteOp::Pull => git::remote::pull(&path, envs, report),
             RemoteOp::Push => git::remote::push(&path, envs, report).map(|()| Outcome::Done),
+            RemoteOp::ForcePush => git::remote::force_push(&path, envs, report).map(|()| Outcome::Done),
             RemoteOp::Sync => git::remote::sync(&path, envs, report),
         }
     })

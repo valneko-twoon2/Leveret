@@ -21,6 +21,8 @@ export default {
     fetched: 'フェッチしました',
     pulled: 'プルしました',
     pushed: 'プッシュしました',
+    forcePush: '強制プッシュ…',
+    forcePushConfirm: '「{branch}」を「{upstream}」に強制プッシュしますか？\nリモートのブランチは、手元のブランチの内容で置き換わり、手元にないコミットはリモートから消えます。\nフェッチしていない新しいコミットがリモートにあるときは、中止されます。',
     synced: '同期しました',
     published: 'ブランチ「{branch}」を公開しました',
   },

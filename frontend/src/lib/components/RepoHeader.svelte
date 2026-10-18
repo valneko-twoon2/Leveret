@@ -15,7 +15,7 @@
 
   const status = $derived(app.status)
   const branchLabel = $derived(status ? (status.branch ?? t('repo.detached')) : '')
-  const remoteBusy = $derived(app.busy === 'fetch' || app.busy === 'pull' || app.busy === 'push' || app.busy === 'sync')
+  const remoteBusy = $derived(app.busy === 'fetch' || app.busy === 'pull' || app.busy === 'push' || app.busy === 'forcePush' || app.busy === 'sync')
 
   interface Action {
     op: RemoteOp
@@ -55,6 +55,7 @@
       case 'pull':
         return t('remote.pulling')
       case 'push':
+      case 'forcePush':
         return t('remote.pushing')
       case 'sync':
         return t('remote.syncing')
@@ -79,6 +80,7 @@
           disabled: !idle || !st?.hasRemote || !onBranch || !st.headOid,
         },
         { label: t('remote.sync'), action: () => app.remote('sync'), disabled: !idle || !st?.upstream || !onBranch },
+        { label: t('remote.forcePush'), action: () => app.forcePush(), disabled: !idle || !st?.upstream || !onBranch, danger: true },
         'separator',
         { label: t('branches.new'), hint: t('shortcuts.newBranch'), action: () => branches.openNewBranch(), disabled: !idle || !st?.headOid },
         { label: t('tags.new'), action: () => tags.openNewTag(), disabled: !idle || !st?.headOid },

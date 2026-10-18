@@ -57,6 +57,7 @@ export default {
     fetch: 'フェッチ中…',
     pull: 'プル中…',
     push: 'プッシュ中…',
+    forcePush: '強制プッシュ中…',
     sync: '同期中…',
     backgroundFetch: 'バックグラウンドでフェッチ中…',
   },

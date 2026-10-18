@@ -133,8 +133,26 @@ pub fn pull(repo: &Path, envs: Vec<(String, String)>, on_progress: impl FnMut(Pr
 /// Pushes the current branch to its upstream, or publishes it (setting the
 /// upstream) when it has none.
 pub fn push(repo: &Path, envs: Vec<(String, String)>, on_progress: impl FnMut(Progress)) -> Result<()> {
+    push_with(repo, envs, false, on_progress)
+}
+
+/// Pushes the current branch over its upstream even when that drops commits there.
+/// `--force-with-lease` still refuses if the remote branch moved since the last
+/// fetch, so somebody else's newer commits are never overwritten unseen.
+pub fn force_push(repo: &Path, envs: Vec<(String, String)>, on_progress: impl FnMut(Progress)) -> Result<()> {
     let branch = current_branch(repo)?;
-    let git = Git::new(repo).envs(envs).args(["push", "--progress"]);
+    if upstream(repo, &branch)?.is_none() {
+        return Err(AppError::NoUpstream);
+    }
+    push_with(repo, envs, true, on_progress)
+}
+
+fn push_with(repo: &Path, envs: Vec<(String, String)>, force: bool, on_progress: impl FnMut(Progress)) -> Result<()> {
+    let branch = current_branch(repo)?;
+    let mut git = Git::new(repo).envs(envs).args(["push", "--progress"]);
+    if force {
+        git = git.arg("--force-with-lease");
+    }
     let git = match upstream(repo, &branch)? {
         Some((remote, merge)) => git.args(["--", &remote]).arg(format!("refs/heads/{branch}:{merge}")),
         None => {
@@ -205,6 +223,22 @@ mod tests {
         assert_eq!(status::get(b.path()).unwrap().behind, 1);
         assert_eq!(pull(b.path(), Vec::new(), |_| {}).unwrap(), Outcome::Done);
         assert!(b.path().join("b.txt").exists());
+    }
+
+    #[test]
+    fn force_push_replaces_the_remote_branch_unless_it_moved() {
+        let (_remote, a, b) = setup();
+        // `a` rewrites its pushed commit; a plain push is rejected, a forced one is not.
+        git(a.path(), &["commit", "-q", "--amend", "-m", "rewritten"]);
+        assert!(push(a.path(), Vec::new(), |_| {}).is_err());
+        force_push(a.path(), Vec::new(), |_| {}).unwrap();
+        assert_eq!(status::get(a.path()).unwrap().ahead, 0);
+
+        // `b` fetched before, and `a` pushed again since: the lease protects that commit.
+        git(a.path(), &["commit", "-q", "--allow-empty", "-m", "newer"]);
+        push(a.path(), Vec::new(), |_| {}).unwrap();
+        git(b.path(), &["commit", "-q", "--allow-empty", "-m", "mine"]);
+        assert!(force_push(b.path(), Vec::new(), |_| {}).is_err());
     }
 
     #[test]

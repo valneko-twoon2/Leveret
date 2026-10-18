@@ -162,7 +162,7 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
       if (op !== 'fetch' && !r.branch) fail('detachedHead')
       if (op === 'pull' && !r.upstream) fail('noUpstream')
       const phases: [string, number][] =
-        op === 'push'
+        op === 'push' || op === 'forcePush'
           ? [['Counting objects', 10], ['Writing objects', 45], ['Writing objects', 100]]
           : [['Receiving objects', 30], ['Receiving objects', 70], ['Resolving deltas', 100]]
       for (const [phase, percent] of phases) {
@@ -171,7 +171,7 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
       }
       r.lastFetched = Math.floor(Date.now() / 1000)
       if (op === 'pull' || op === 'sync') r.behind = 0
-      if (op === 'push' || op === 'sync') {
+      if (op === 'push' || op === 'forcePush' || op === 'sync') {
         r.ahead = 0
         if (!r.upstream && r.branch) {
           r.upstream = `origin/${r.branch}`

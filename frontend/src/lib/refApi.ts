@@ -49,7 +49,7 @@ export interface StashDetail {
   files: CommitFile[]
 }
 
-export type RemoteOp = 'fetch' | 'pull' | 'push' | 'sync'
+export type RemoteOp = 'fetch' | 'pull' | 'push' | 'forcePush' | 'sync'
 
 export interface RemoteProgress {
   repo: string
