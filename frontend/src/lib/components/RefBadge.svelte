@@ -11,13 +11,13 @@
 </span>
 
 <style>
-  /* Badges give way before the commit subject next to them (higher flex-shrink). */
+  /* The commit subject gives way first; a badge never shrinks below a readable stub. */
   .ref {
-    flex: 0 3 auto;
+    flex: 0 1 auto;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    min-width: 0;
+    min-width: 64px;
     max-width: 140px;
     height: 18px;
     padding: 0 6px;
@@ -32,6 +32,7 @@
 
   /* Short names (main, HEAD, v1.2.0) are cheap to show in full. */
   .short {
+    min-width: 0;
     flex: none;
   }
 

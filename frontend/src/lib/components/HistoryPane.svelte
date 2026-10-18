@@ -285,6 +285,7 @@
   }
 
   .summary {
+    flex: 0 5 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

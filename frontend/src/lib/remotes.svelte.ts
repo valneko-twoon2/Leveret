@@ -102,11 +102,13 @@ class RemotesState {
       if (!before) {
         await api.addRemote(repo, name, url)
         if (pushUrl && pushUrl !== url) await api.setRemoteUrl(repo, name, pushUrl, true)
-        return
+        return true
       }
       if (name !== before.name) await api.renameRemote(repo, before.name, name)
       if (url !== before.fetchUrl) await api.setRemoteUrl(repo, name, url, false)
       if (pushUrl !== (before.pushUrl ?? '') && pushUrl) await api.setRemoteUrl(repo, name, pushUrl, true)
+      // `run` reports a failure as undefined, so the callback must return something.
+      return true
     })
     if (done === undefined) return
     this.draft = null
