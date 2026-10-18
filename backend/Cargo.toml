@@ -44,3 +44,11 @@ windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_Sys
 lto = true
 codegen-units = 1
 strip = true
+
+# Debug builds (dev, test, clippy) skip debug information: it made target/ grow to
+# tens of GB and slowed linking. Line tables keep panic backtraces readable.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
