@@ -51,12 +51,14 @@ fn current(repo: &Path, sel: &LineSelection) -> Result<Current> {
     let current = if sel.untracked {
         Current::Untracked(std::fs::read(repo.join(&sel.path))?)
     } else {
-        Current::Tracked(diff::raw_working(repo, &sel.path, None, false)?)
+        let context = diff::token_context(&sel.token).ok_or_else(|| AppError::DiffChanged(sel.path.clone()))?;
+        Current::Tracked(diff::raw_working(repo, &sel.path, None, false, context)?)
     };
     let bytes = match &current {
         Current::Tracked(b) | Current::Untracked(b) => b,
     };
-    if diff::token(bytes) != sel.token {
+    let context = diff::token_context(&sel.token).unwrap_or(diff::DEFAULT_CONTEXT);
+    if diff::token(bytes, context) != sel.token {
         return Err(AppError::DiffChanged(sel.path.clone()));
     }
     let selectable = match &current {

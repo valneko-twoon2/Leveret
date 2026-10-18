@@ -1,7 +1,7 @@
 <!-- Settings: the changes list and diffs. -->
 <script lang="ts">
   import { t } from '../../i18n/index.svelte'
-  import { prefs, TAB_SIZES } from '../../prefs.svelte'
+  import { CONTEXT_LINES, prefs, TAB_SIZES } from '../../prefs.svelte'
   import { settings } from '../../settings.svelte'
   import SettingRow from './SettingRow.svelte'
 </script>
@@ -18,6 +18,14 @@
     onchange={(e) => settings.setIgnoreWhitespace(e.currentTarget.checked)}
     aria-label={t('settings.changes.ignoreWhitespace')}
   />
+</SettingRow>
+
+<SettingRow label={t('settings.changes.contextLines')} hint={t('settings.changes.contextLinesHint')}>
+  <select value={prefs.contextLines} onchange={(e) => settings.setContextLines(Number(e.currentTarget.value))} aria-label={t('settings.changes.contextLines')}>
+    {#each CONTEXT_LINES as lines (lines)}
+      <option value={lines}>{t('settings.changes.contextLinesValue', { lines })}</option>
+    {/each}
+  </select>
 </SettingRow>
 
 <SettingRow label={t('settings.changes.tabSize')}>

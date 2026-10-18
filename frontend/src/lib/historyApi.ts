@@ -140,7 +140,7 @@ export const historyApi = {
       parent: detail.parents[0] ?? null,
       path: file.path,
       origPath: file.origPath,
-      ignoreWhitespace: prefs.ignoreWhitespace,
+      options: prefs.diffOptions,
     }),
 
   /** Files that differ between any two commits. */
@@ -153,7 +153,7 @@ export const historyApi = {
       parent: base,
       path: file.path,
       origPath: file.origPath,
-      ignoreWhitespace: prefs.ignoreWhitespace,
+      options: prefs.diffOptions,
     }),
 
   /** The commits after `base` (null: from the first commit), oldest first. */

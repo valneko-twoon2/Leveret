@@ -4,6 +4,7 @@
 use tauri::State;
 
 use super::blocking;
+use super::changes::DiffOptions;
 use crate::error::Result;
 use crate::git::blame::Blame;
 use crate::git::diff::FileDiff;
@@ -92,7 +93,7 @@ pub async fn get_commit_diff(
     parent: Option<String>,
     path: String,
     orig_path: Option<String>,
-    ignore_whitespace: Option<bool>,
+    options: Option<DiffOptions>,
 ) -> Result<FileDiff> {
     let repo = store.require(&repo)?;
     security::object_id(&hash)?;
@@ -103,7 +104,17 @@ pub async fn get_commit_diff(
     if let Some(o) = &orig_path {
         security::relative_path(o)?;
     }
-    let ws = ignore_whitespace.unwrap_or(false);
-    blocking(move || git::diff::commit_file_with(&repo, &hash, parent.as_deref(), &path, orig_path.as_deref(), ws))
-        .await
+    let (ws, context) = options.unwrap_or_default().checked()?;
+    blocking(move || {
+        git::diff::commit_file_with(
+            &repo,
+            &hash,
+            parent.as_deref(),
+            &path,
+            orig_path.as_deref(),
+            ws,
+            context,
+        )
+    })
+    .await
 }

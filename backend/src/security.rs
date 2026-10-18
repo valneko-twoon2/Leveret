@@ -179,6 +179,15 @@ pub fn remote_name(name: &str) -> Result<&str> {
     }
 }
 
+/// The number of context lines around the changes of a diff: 0 to 100.
+pub fn diff_context(lines: u32) -> Result<u32> {
+    if lines <= crate::git::diff::MAX_CONTEXT {
+        Ok(lines)
+    } else {
+        Err(invalid("context lines", &lines.to_string()))
+    }
+}
+
 /// A remote branch as a full ref (`refs/remotes/<remote>/<branch>`).
 pub fn remote_branch_ref(name: &str) -> Result<&str> {
     if name.starts_with("refs/remotes/") {

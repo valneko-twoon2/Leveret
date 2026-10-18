@@ -295,6 +295,16 @@ fn messages_table() {
         &["a\0b", "a\u{1b}[2J", &"x".repeat(10_001)],
     );
     accepts(
+        "diff_context",
+        |s| s.parse().is_ok_and(|n| diff_context(n).is_ok()),
+        &["0", "3", "25", "100"],
+    );
+    rejects(
+        "diff_context",
+        |s| s.parse().is_ok_and(|n| diff_context(n).is_ok()),
+        &["101", "4000000000"],
+    );
+    accepts(
         "remote_name",
         |s| remote_name(s).is_ok(),
         &["origin", "upstream", "my.fork", "fork-2", "個人"],

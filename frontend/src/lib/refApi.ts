@@ -109,7 +109,7 @@ export const refApi = {
       parent: untracked ? null : stash.base,
       path: file.path,
       origPath: file.origPath,
-      ignoreWhitespace: prefs.ignoreWhitespace,
+      options: prefs.diffOptions,
     })
   },
   stashApply: (repo: string, s: StashEntry) => call<Outcome>('stash_apply', { repo, index: s.index, oid: s.oid }),

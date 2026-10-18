@@ -114,16 +114,29 @@ pub(crate) fn line_kind(line: &[u8]) -> (LineKind, &[u8]) {
     }
 }
 
-/// Identifies diff output; equal tokens mean the same lines.
-pub(crate) fn token(bytes: &[u8]) -> String {
+/// Lines of context around each change, as `git diff` shows by default.
+pub const DEFAULT_CONTEXT: u32 = 3;
+
+/// Identifies diff output; equal tokens mean the same lines. It starts with the
+/// number of context lines the diff was made with, so that picked lines can be
+/// matched against the same diff again (the webview never has to send it back).
+pub(crate) fn token(bytes: &[u8], context: u32) -> String {
     let mut h = DefaultHasher::new();
     bytes.hash(&mut h);
-    format!("{:016x}", h.finish())
+    format!("{context}.{:016x}", h.finish())
 }
+
+/// The context line count a token was made with.
+pub(crate) fn token_context(token: &str) -> Option<u32> {
+    token.split_once('.')?.0.parse().ok().filter(|&c| c <= MAX_CONTEXT)
+}
+
+/// The most context lines asked for (`security::diff_context` enforces the same).
+pub const MAX_CONTEXT: u32 = 100;
 
 /// Diff of a working tree file against HEAD (what committing it would record).
 pub fn working(repo: &Path, path: &str, orig_path: Option<&str>, untracked: bool) -> Result<FileDiff> {
-    working_with(repo, path, orig_path, untracked, false)
+    working_with(repo, path, orig_path, untracked, false, DEFAULT_CONTEXT)
 }
 
 /// `-w`: leave out changes that only touch whitespace (the user's diff setting).
@@ -138,10 +151,12 @@ pub(crate) fn raw_working(
     path: &str,
     orig_path: Option<&str>,
     ignore_whitespace: bool,
+    context: u32,
 ) -> Result<Vec<u8>> {
     let diff = |base: &str| {
         Git::new(repo)
             .args(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-M"])
+            .arg(format!("-U{context}"))
             .args(["--src-prefix=a/", "--dst-prefix=b/"])
             .args(whitespace_arg(ignore_whitespace))
             .args([base, "--", path])
@@ -158,21 +173,23 @@ pub(crate) fn raw_working(
     Ok(out.stdout)
 }
 
-/// Like [`working`]; `ignore_whitespace` hides whitespace-only changes.
+/// Like [`working`]; `ignore_whitespace` hides whitespace-only changes and `context`
+/// is the number of unchanged lines shown around each change.
 pub fn working_with(
     repo: &Path,
     path: &str,
     orig_path: Option<&str>,
     untracked: bool,
     ignore_whitespace: bool,
+    context: u32,
 ) -> Result<FileDiff> {
     if untracked {
-        return untracked_file(&repo.join(path));
+        return untracked_file(&repo.join(path), context);
     }
-    let raw = raw_working(repo, path, orig_path, ignore_whitespace)?;
+    let raw = raw_working(repo, path, orig_path, ignore_whitespace, context)?;
     let mut diff = parse(&raw);
     diff.selectable = !ignore_whitespace && orig_path.is_none() && lines_selectable(&split(&raw), &diff);
-    diff.token = token(&raw);
+    diff.token = token(&raw, context);
     Ok(diff)
 }
 
@@ -206,10 +223,11 @@ pub fn commit_file(
     path: &str,
     orig_path: Option<&str>,
 ) -> Result<FileDiff> {
-    commit_file_with(repo, hash, parent, path, orig_path, false)
+    commit_file_with(repo, hash, parent, path, orig_path, false, DEFAULT_CONTEXT)
 }
 
-/// Like [`commit_file`]; `ignore_whitespace` hides whitespace-only changes.
+/// Like [`commit_file`]; `ignore_whitespace` hides whitespace-only changes and
+/// `context` is the number of unchanged lines shown around each change.
 pub fn commit_file_with(
     repo: &Path,
     hash: &str,
@@ -217,6 +235,7 @@ pub fn commit_file_with(
     path: &str,
     orig_path: Option<&str>,
     ignore_whitespace: bool,
+    context: u32,
 ) -> Result<FileDiff> {
     let parent = match parent {
         Some(p) => p.to_string(),
@@ -224,6 +243,7 @@ pub fn commit_file_with(
     };
     let out = Git::new(repo)
         .args(["diff", "--no-color", "--no-ext-diff", "-M"])
+        .arg(format!("-U{context}"))
         .args(whitespace_arg(ignore_whitespace))
         .args([&parent, hash, "--", path])
         .args(orig_path)
@@ -244,7 +264,7 @@ pub(crate) fn untracked_lines(bytes: &[u8]) -> Option<Vec<&[u8]>> {
     Some(body.split(|&b| b == b'\n').collect())
 }
 
-fn untracked_file(file: &Path) -> Result<FileDiff> {
+fn untracked_file(file: &Path, context: u32) -> Result<FileDiff> {
     let meta = std::fs::metadata(file)?;
     if meta.is_dir() {
         return Ok(FileDiff::default());
@@ -264,7 +284,7 @@ fn untracked_file(file: &Path) -> Result<FileDiff> {
     };
     let mut diff = FileDiff {
         truncated: all.len() > MAX_LINES,
-        token: token(&bytes),
+        token: token(&bytes, context),
         ..Default::default()
     };
     let lines: Vec<DiffLine> = all

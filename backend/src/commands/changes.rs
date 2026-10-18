@@ -20,6 +20,24 @@ pub async fn get_status(store: State<'_, RepoStore>, repo: String, untracked: Op
     blocking(move || git::status::get_with(&repo, untracked.unwrap_or(true))).await
 }
 
+/// What changes the text of a diff, from the user's display settings.
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct DiffOptions {
+    /// Leave out changes that only touch whitespace.
+    pub ignore_whitespace: bool,
+    /// Unchanged lines around each change (default 3).
+    pub context: Option<u32>,
+}
+
+impl DiffOptions {
+    /// `(ignore whitespace, context lines)`, with the lines validated.
+    pub fn checked(&self) -> Result<(bool, u32)> {
+        let context = security::diff_context(self.context.unwrap_or(git::diff::DEFAULT_CONTEXT))?;
+        Ok((self.ignore_whitespace, context))
+    }
+}
+
 #[tauri::command]
 pub async fn get_working_diff(
     store: State<'_, RepoStore>,
@@ -27,15 +45,15 @@ pub async fn get_working_diff(
     path: String,
     orig_path: Option<String>,
     untracked: bool,
-    ignore_whitespace: Option<bool>,
+    options: Option<DiffOptions>,
 ) -> Result<FileDiff> {
     let repo = store.require(&repo)?;
     security::relative_path(&path)?;
     if let Some(o) = &orig_path {
         security::relative_path(o)?;
     }
-    let ws = ignore_whitespace.unwrap_or(false);
-    blocking(move || git::diff::working_with(&repo, &path, orig_path.as_deref(), untracked, ws)).await
+    let (ws, context) = options.unwrap_or_default().checked()?;
+    blocking(move || git::diff::working_with(&repo, &path, orig_path.as_deref(), untracked, ws, context)).await
 }
 
 #[tauri::command]

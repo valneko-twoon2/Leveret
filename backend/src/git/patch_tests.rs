@@ -295,5 +295,40 @@ fn renamed_and_deleted_files_are_whole_file_only() {
     git(p, &["checkout", "--", "f.txt"]);
     git(p, &["mv", "f.txt", "g.txt"]);
     assert!(!diff::working(p, "g.txt", Some("f.txt"), false).unwrap().selectable);
-    assert!(!diff::working_with(p, "g.txt", None, false, true).unwrap().selectable);
+    assert!(
+        !diff::working_with(p, "g.txt", None, false, true, diff::DEFAULT_CONTEXT)
+            .unwrap()
+            .selectable
+    );
+}
+
+#[test]
+fn picks_lines_in_a_diff_with_more_context() {
+    let (dir, mut lines) = repo_with_file("c.txt");
+    let p = dir.path();
+    lines[1] = "changed 2".into();
+    lines[14] = "changed 15".into();
+    let refs: Vec<&str> = lines.iter().map(String::as_str).collect();
+    std::fs::write(p.join("c.txt"), numbered(&refs)).unwrap();
+
+    // With 10 lines of context the two changes (12 lines apart) share one hunk.
+    let wide = diff::working_with(p, "c.txt", None, false, false, 10).unwrap();
+    assert_eq!(wide.hunks.len(), 1);
+    assert_eq!(diff::working(p, "c.txt", None, false).unwrap().hunks.len(), 2);
+    let sel = LineSelection {
+        path: "c.txt".into(),
+        untracked: false,
+        lines: lines_of(&wide, &["-line 15", "+changed 15"]),
+        token: wide.token.clone(),
+    };
+    commit_lines(p, &[], vec![sel], false).unwrap();
+    let committed = git_out(p, &["show", "HEAD:c.txt"]);
+    assert!(committed.contains("changed 15") && committed.contains("line 2") && !committed.contains("changed 2"));
+
+    // The token remembers its context: a diff with other context is a different diff.
+    assert_eq!(diff::token_context(&wide.token), Some(10));
+    let narrow = diff::working_with(p, "c.txt", None, false, false, 3).unwrap();
+    assert_ne!(wide.token, narrow.token);
+    assert_eq!(diff::token_context("garbage"), None);
+    assert_eq!(diff::token_context("4000.abc"), None);
 }

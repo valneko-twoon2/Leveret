@@ -11,6 +11,8 @@ interface Saved {
   theme: Theme
   ignoreWhitespace: boolean
   tabSize: number
+  /** Unchanged lines shown around each change in a diff. */
+  contextLines: number
   /** Minutes between background fetches; 0 turns them off. */
   autoFetchMinutes: number
   /** Push right after each commit. */
@@ -22,11 +24,13 @@ const DEFAULTS: Saved = {
   theme: 'system',
   ignoreWhitespace: false,
   tabSize: 4,
+  contextLines: 3,
   autoFetchMinutes: 10,
   pushAfterCommit: false,
 }
 
 export const TAB_SIZES = [2, 4, 8] as const
+export const CONTEXT_LINES = [0, 1, 3, 5, 10, 25] as const
 export const AUTO_FETCH_MINUTES = [0, 5, 10, 30, 60] as const
 
 /** Saved values that are still valid; anything else falls back to the default. */
@@ -45,6 +49,7 @@ function load(): Saved {
     theme: pick('theme', (v) => v === 'system' || v === 'light' || v === 'dark'),
     ignoreWhitespace: pick('ignoreWhitespace', (v) => typeof v === 'boolean'),
     tabSize: pick('tabSize', (v) => (TAB_SIZES as readonly unknown[]).includes(v)),
+    contextLines: pick('contextLines', (v) => (CONTEXT_LINES as readonly unknown[]).includes(v)),
     autoFetchMinutes: pick('autoFetchMinutes', (v) => (AUTO_FETCH_MINUTES as readonly unknown[]).includes(v)),
     pushAfterCommit: pick('pushAfterCommit', (v) => typeof v === 'boolean'),
   }
@@ -56,6 +61,7 @@ class Prefs {
   theme = $state<Theme>(this.saved.theme)
   ignoreWhitespace = $state(this.saved.ignoreWhitespace)
   tabSize = $state(this.saved.tabSize)
+  contextLines = $state(this.saved.contextLines)
   autoFetchMinutes = $state(this.saved.autoFetchMinutes)
   pushAfterCommit = $state(this.saved.pushAfterCommit)
 
@@ -63,6 +69,11 @@ class Prefs {
   set<K extends keyof Saved>(key: K, value: Saved[K]) {
     ;(this as unknown as Saved)[key] = value
     this.save()
+  }
+
+  /** What changes the text of a diff: sent along with every diff request. */
+  get diffOptions() {
+    return { ignoreWhitespace: this.ignoreWhitespace, context: this.contextLines }
   }
 
   setShowUntracked(show: boolean) {
@@ -80,6 +91,7 @@ class Prefs {
       theme: this.theme,
       ignoreWhitespace: this.ignoreWhitespace,
       tabSize: this.tabSize,
+      contextLines: this.contextLines,
       autoFetchMinutes: this.autoFetchMinutes,
       pushAfterCommit: this.pushAfterCommit,
     }

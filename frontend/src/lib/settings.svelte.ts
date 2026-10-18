@@ -66,6 +66,11 @@ class SettingsState {
     await Promise.all([changes.selectFile(changes.selectedFile), history.reloadCommitFile()])
   }
 
+  async setContextLines(lines: number) {
+    prefs.set('contextLines', lines)
+    await Promise.all([changes.selectFile(changes.selectedFile), history.reloadCommitFile()])
+  }
+
   async resetDisplay() {
     if (!(await confirmDialog(t('settings.advanced.resetConfirm'), t('settings.advanced.reset')))) return
     const untracked = prefs.showUntracked
