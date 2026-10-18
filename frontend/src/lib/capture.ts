@@ -9,9 +9,10 @@ import { t } from './i18n/index.svelte'
 import { app } from './state.svelte'
 import { appScenes } from './scenes/app'
 import { settle, type Scene } from './scenes/helpers'
+import { refScenes } from './scenes/refs'
 import { toolScenes } from './scenes/tools'
 
-export const scenes: Scene[] = [...appScenes, ...toolScenes]
+export const scenes: Scene[] = [...appScenes, ...toolScenes, ...refScenes]
 
 
 function selectScenes(ids: string[] | null): Scene[] {

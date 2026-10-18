@@ -16,22 +16,7 @@
   })
 
   function tagMenu(tag: Tag, e: MouseEvent | KeyboardEvent, anchor?: HTMLElement) {
-    const idle = app.busy === null
-    const remote = app.status?.hasRemote ?? false
-    menu.open(
-      e,
-      [
-        { label: t('tags.checkout'), action: () => tags.checkout(tag), disabled: !idle || app.operation !== null },
-        { label: t('tags.push'), action: () => tags.push(tag), disabled: !idle || !remote },
-        'separator',
-        { label: t('tags.copyName'), action: () => app.copy(tag.name) },
-        { label: t('history.copySha'), action: () => app.copy(tag.target) },
-        'separator',
-        { label: t('tags.delete'), action: () => tags.remove(tag, false), disabled: !idle, danger: true },
-        { label: t('tags.deleteRemote'), action: () => tags.remove(tag, true), disabled: !idle || !remote, danger: true },
-      ],
-      anchor,
-    )
+    menu.open(e, tags.menuItems(tag), anchor)
   }
 </script>
 

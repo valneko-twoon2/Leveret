@@ -7,6 +7,7 @@ import history from './ja/history'
 import branches from './ja/branches'
 import tags from './ja/tags'
 import remote from './ja/remote'
+import refs from './ja/refs'
 import issues from './ja/issues'
 import agent from './ja/agent'
 import errors from './ja/errors'
@@ -19,6 +20,7 @@ export default {
   ...branches,
   ...tags,
   ...remote,
+  ...refs,
   ...issues,
   ...agent,
   ...errors,

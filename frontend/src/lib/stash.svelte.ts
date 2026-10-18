@@ -5,6 +5,7 @@ import { api, type CommitFile, type FileDiff, type StashDetail, type StashEntry 
 import { changes } from './changes.svelte'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
+import type { MenuItem } from './menu.svelte'
 import { perf } from './perf'
 import { prefs } from './prefs.svelte'
 import { app } from './state.svelte'
@@ -31,6 +32,25 @@ class StashState {
     if (!stashes || repo !== app.selectedPath) return
     this.stashes = stashes
     if (this.selected && !stashes.some((s) => s.oid === this.selected?.oid)) this.close()
+  }
+
+  /** The menu of a stash, shared by the Changes tab and the sidebar tree. */
+  menuItems(s: StashEntry): MenuItem[] {
+    const idle = app.busy === null
+    return [
+      { label: t('stash.show'), action: () => this.show(s) },
+      'separator',
+      { label: t('stash.apply'), hint: t('stash.applyHint'), action: () => this.restore(s, true), disabled: !idle },
+      { label: t('stash.pop'), hint: t('stash.popHint'), action: () => this.restore(s, false), disabled: !idle },
+      'separator',
+      { label: t('stash.drop'), action: () => this.drop(s), disabled: !idle, danger: true },
+    ]
+  }
+
+  /** Opens a stash from anywhere: its files are shown on the Changes tab. */
+  async show(entry: StashEntry) {
+    if (app.tab !== 'changes') await app.setTab('changes')
+    await this.open(entry)
   }
 
   /** Shows a stash's files and diffs in the main area. */

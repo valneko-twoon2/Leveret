@@ -8,6 +8,8 @@ import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
 import { blame } from './blame.svelte'
 import { rewrite } from './rewrite.svelte'
 import { branches } from './branches.svelte'
+import { refTree } from './refTree.svelte'
+import { remotes } from './remotes.svelte'
 import { settings } from './settings.svelte'
 import { changes } from './changes.svelte'
 import { history } from './history.svelte'
@@ -58,6 +60,9 @@ async function benchRepo(path: string) {
   await history.setScope('all')
   await history.setScope('head')
 
+  await refTree.load()
+  await remotes.openDialog()
+  remotes.closeDialog()
   await branches.openBranches()
   await branches.setDialogTab('tags')
   branches.closeBranches()

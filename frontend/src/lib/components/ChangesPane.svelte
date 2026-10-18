@@ -74,18 +74,6 @@
     return changes.includedFiles.flatMap((f) => (f.origPath ? [f.path, f.origPath] : [f.path]))
   }
 
-  function stashMenu(s: StashEntry, e: MouseEvent | KeyboardEvent) {
-    const idle = app.busy === null
-    menu.open(e, [
-      { label: t('stash.show'), action: () => stash.open(s) },
-      'separator',
-      { label: t('stash.apply'), hint: t('stash.applyHint'), action: () => stash.restore(s, true), disabled: !idle },
-      { label: t('stash.pop'), hint: t('stash.popHint'), action: () => stash.restore(s, false), disabled: !idle },
-      'separator',
-      { label: t('stash.drop'), action: () => stash.drop(s), disabled: !idle, danger: true },
-    ])
-  }
-
   function listMenu(e: MouseEvent) {
     const idle = app.busy === null
     const discardable = app.files.filter((f) => f.kind !== 'conflicted').map((f) => f.path)
@@ -171,7 +159,7 @@
       {#if stashOpen}
         <ul>
           {#each stash.stashes as s (s.oid)}
-            <li class:selected={stash.selected?.oid === s.oid} oncontextmenu={(e) => stashMenu(s, e)}>
+            <li class:selected={stash.selected?.oid === s.oid} oncontextmenu={(e) => menu.open(e, stash.menuItems(s))}>
               <button class="stash-text" title={`${s.message}\n${t('stash.show')}`} onclick={() => stash.open(s)}>
                 <span class="stash-message">{s.message}</span>
                 <span class="stash-time">{formatRelative(s.time)}</span>

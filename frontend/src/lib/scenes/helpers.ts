@@ -6,6 +6,7 @@ import { branches } from '../branches.svelte'
 import { github } from '../github.svelte'
 import { issues } from '../issues.svelte'
 import { menu } from '../menu.svelte'
+import { remotes } from '../remotes.svelte'
 import { rewrite } from '../rewrite.svelte'
 import { settings } from '../settings.svelte'
 import { stash } from '../stash.svelte'
@@ -39,6 +40,8 @@ export function closeOverlays() {
   app.error = null
   branches.closeNewBranch()
   branches.closeBranches()
+  branches.closeUpstream()
+  remotes.closeDialog()
   github.closeSignIn()
   github.cloning = false
   github.progress = null

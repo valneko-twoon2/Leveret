@@ -1,6 +1,6 @@
 // The mock repository model: generated histories and the helpers the command
 // handlers use to change them (commits, branch labels, stopped operations).
-import type { Branch, CommitFile, Edge, FileChange, LogEntry, Operation, RefLabel, RepoEntry, StashEntry } from '../api'
+import type { Branch, CommitFile, Edge, FileChange, LogEntry, Operation, RefLabel, Remote, RepoEntry, StashEntry } from '../api'
 import { AUTHORS, FILES, NOW, SUBJECTS, fakeHash, rng } from './data'
 
 export interface MockCommit {
@@ -31,6 +31,9 @@ export interface MockRepo {
   operation: Operation | null
   stashes: StashEntry[]
   lastFetched: number | null
+  /** Upstreams set by the user (default: the remote branch of the same name). */
+  upstreamOf?: Record<string, string | null>
+  remotes?: Remote[]
 }
 
 /** Defaults for the branch / remote / stash parts of a mock repository. */
@@ -234,12 +237,19 @@ export function finishOperation(r: MockRepo, commit: boolean) {
   r.operation = null
 }
 
+/** The remotes of a mock repository: `origin` when it has remote branches. */
+export function remotesOf(r: MockRepo): Remote[] {
+  r.remotes ??= r.remoteBranches.length ? [{ name: 'origin', fetchUrl: `https://github.com/valneko-twoon2/${r.entry.name}.git`, pushUrl: null }] : []
+  return r.remotes
+}
+
 export function listBranches(r: MockRepo): Branch[] {
   const head = r.commits[0]
   const make = (name: string, kind: Branch['kind'], i: number): Branch => {
     const c = r.commits[Math.min(r.commits.length - 1, i * 3)] ?? head
     const current = kind === 'local' && name === r.branch
-    const upstream = kind === 'local' && r.remoteBranches.includes(`origin/${name}`) ? `origin/${name}` : null
+    const derived = r.remoteBranches.includes(`origin/${name}`) ? `origin/${name}` : null
+    const upstream = kind === 'local' ? (r.upstreamOf && name in r.upstreamOf ? r.upstreamOf[name] : derived) : null
     return {
       name,
       fullRef: kind === 'local' ? `refs/heads/${name}` : `refs/remotes/${name}`,

@@ -13,6 +13,8 @@ import { confirmDialog } from './dialogs'
 import { history } from './history.svelte'
 import { stash } from './stash.svelte'
 import { issues } from './issues.svelte'
+import { refTree } from './refTree.svelte'
+import { remotes } from './remotes.svelte'
 import { tags } from './tags.svelte'
 import { t, type MessageKey } from './i18n/index.svelte'
 import { perf } from './perf'
@@ -248,6 +250,7 @@ class AppState {
     branches.resetRepoView()
     issues.resetRepoView()
     tags.resetRepoView()
+    remotes.resetRepoView()
   }
 
   /** Reloads status (and history when it is visible) for the current repository. */
@@ -259,7 +262,7 @@ class AppState {
         this.loadStatus(),
         stash.load(),
         this.tab === 'history' ? history.loadLog() : Promise.resolve(),
-        branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
+        refTree.load(),
         // Issues reload after a repository switch cleared them, or on F5 (GitHub rate limits).
         this.tab === 'issues' && (!issues.loaded || options.explicit) ? issues.load() : Promise.resolve(),
       ])
@@ -273,7 +276,7 @@ class AppState {
       this.loadStatus(),
       stash.load(),
       history.log.length || this.tab === 'history' ? history.loadLog() : Promise.resolve(),
-      branches.branchesOpen ? branches.loadBranches() : Promise.resolve(),
+      refTree.load(),
     ])
   }
 

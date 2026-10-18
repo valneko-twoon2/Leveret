@@ -33,6 +33,7 @@ export default {
     conflictsRemain: 'まだ解決されていない競合があります。',
     conflictMarkersRemain: '競合マーカーが残っているファイルがあります:\n{detail}',
     noOperation: '進行中のマージやリベースはありません。',
+    remoteExists: '同じ名前のリモートがすでにあります: {detail}',
     branchExists: '同じ名前のブランチがすでにあります: {detail}',
     branchNotMerged: 'ブランチ「{detail}」はマージされていません。',
     tagExists: '同じ名前のタグがすでにあります: {detail}',

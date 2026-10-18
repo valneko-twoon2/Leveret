@@ -58,6 +58,14 @@ export interface RemoteProgress {
   percent: number
 }
 
+/** A configured remote. */
+export interface Remote {
+  name: string
+  fetchUrl: string
+  /** Only when pushes go to a different URL. */
+  pushUrl: string | null
+}
+
 export const refApi = {
   rebaseBranch: (repo: string, onto: string) => call<Outcome>('rebase_branch', { repo, onto }),
   mergeBranch: (repo: string, branch: string) => call<Outcome>('merge_branch', { repo, branch }),
@@ -71,6 +79,17 @@ export const refApi = {
   switchBranch: (repo: string, branch: string) => call<void>('switch_branch', { repo, branch }),
   checkoutCommit: (repo: string, hash: string) => call<void>('checkout_commit', { repo, hash }),
   deleteBranch: (repo: string, name: string, force: boolean) => call<void>('delete_branch', { repo, name, force }),
+  renameBranch: (repo: string, name: string, newName: string) => call<void>('rename_branch', { repo, name, newName }),
+  /** `upstream`: a full remote ref (`refs/remotes/origin/x`), or null to remove it. */
+  setUpstream: (repo: string, name: string, upstream: string | null) => call<void>('set_upstream', { repo, name, upstream }),
+  /** Deletes the branch on its remote; `branch` is a full `refs/remotes/..` ref. */
+  deleteRemoteBranch: (repo: string, branch: string) => call<void>('delete_remote_branch', { repo, branch }),
+
+  listRemotes: (repo: string) => call<Remote[]>('list_remotes', { repo }),
+  addRemote: (repo: string, name: string, url: string) => call<void>('add_remote', { repo, name, url }),
+  renameRemote: (repo: string, name: string, newName: string) => call<void>('rename_remote', { repo, name, newName }),
+  removeRemote: (repo: string, name: string) => call<void>('remove_remote', { repo, name }),
+  setRemoteUrl: (repo: string, name: string, url: string, push: boolean) => call<void>('set_remote_url', { repo, name, url, push }),
 
   listTags: (repo: string) => call<Tag[]>('list_tags', { repo }),
   createTag: (repo: string, name: string, target: string, message: string) => call<void>('create_tag', { repo, name, target, message }),

@@ -4,7 +4,9 @@ import { api, type Tag } from './api'
 import { isValidBranchName } from './branches.svelte'
 import { confirmDialog } from './dialogs'
 import { shortHash } from './format'
+import { history } from './history.svelte'
 import { t } from './i18n/index.svelte'
+import type { MenuItem } from './menu.svelte'
 import { perf } from './perf'
 import { app } from './state.svelte'
 
@@ -48,6 +50,23 @@ class TagsState {
         this.loaded = true
       }
     })
+  }
+
+  /** The menu of a tag, shared by the tag list and the sidebar tree. */
+  menuItems(tag: Tag): MenuItem[] {
+    const idle = app.busy === null
+    const remote = app.status?.hasRemote ?? false
+    return [
+      { label: t('tags.checkout'), action: () => this.checkout(tag), disabled: !idle || app.operation !== null },
+      { label: t('branches.showInHistory'), action: () => history.jumpTo(tag.target) },
+      { label: t('tags.push'), action: () => this.push(tag), disabled: !idle || !remote },
+      'separator',
+      { label: t('tags.copyName'), action: () => app.copy(tag.name) },
+      { label: t('history.copySha'), action: () => app.copy(tag.target) },
+      'separator',
+      { label: t('tags.delete'), action: () => this.remove(tag, false), disabled: !idle, danger: true },
+      { label: t('tags.deleteRemote'), action: () => this.remove(tag, true), disabled: !idle || !remote, danger: true },
+    ]
   }
 
   /** Opens the "new tag" dialog for a commit (HEAD when omitted). */

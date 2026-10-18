@@ -1,7 +1,7 @@
 // Mock commands for merge / rebase and stopped operations, branches and remote
 // actions (fetch, pull, push, sync).
-import type { Outcome, PlanCommit, RebaseStep, RemoteOp, ResetInfo, Tag } from '../api'
-import { addCommit, finishOperation, listBranches, moveBranchLabel } from './repo'
+import type { Outcome, PlanCommit, RebaseStep, Remote, RemoteOp, ResetInfo, Tag } from '../api'
+import { addCommit, finishOperation, listBranches, moveBranchLabel, remotesOf } from './repo'
 import { delay, fail, find, remoteListeners, UNHANDLED } from './state'
 
 /** Handles one command of this group; `UNHANDLED` for any other command. */
@@ -93,6 +93,59 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
     case 'checkout_commit': {
       const r = find(args.repo)
       Object.assign(r, { branch: null, upstream: null, ahead: 0, behind: 0 })
+      return null
+    }
+    case 'rename_branch': {
+      const r = find(args.repo)
+      const [from, to] = [String(args.name), String(args.newName)]
+      if (r.localBranches.includes(to) && from !== to) fail('branchExists', to)
+      r.localBranches = r.localBranches.map((b) => (b === from ? to : b))
+      if (r.branch === from) r.branch = to
+      return null
+    }
+    case 'set_upstream': {
+      const r = find(args.repo)
+      const name = String(args.name)
+      const upstream = args.upstream ? String(args.upstream).replace(/^refs\/remotes\//, '') : null
+      ;(r.upstreamOf ??= {})[name] = upstream
+      if (r.branch === name) r.upstream = upstream
+      return null
+    }
+    case 'delete_remote_branch': {
+      const r = find(args.repo)
+      await delay(300)
+      const name = String(args.branch).replace(/^refs\/remotes\//, '')
+      r.remoteBranches = r.remoteBranches.filter((b) => b !== name)
+      return null
+    }
+    case 'list_remotes':
+      return remotesOf(find(args.repo)) satisfies Remote[]
+    case 'add_remote': {
+      const r = find(args.repo)
+      const remotes = remotesOf(r)
+      if (remotes.some((x) => x.name === args.name)) fail('remoteExists', String(args.name))
+      remotes.push({ name: String(args.name), fetchUrl: String(args.url), pushUrl: null })
+      return null
+    }
+    case 'rename_remote': {
+      const r = find(args.repo)
+      const [from, to] = [String(args.name), String(args.newName)]
+      const remotes = remotesOf(r)
+      if (remotes.some((x) => x.name === to) && from !== to) fail('remoteExists', to)
+      for (const x of remotes) if (x.name === from) x.name = to
+      r.remoteBranches = r.remoteBranches.map((b) => (b.startsWith(`${from}/`) ? `${to}/${b.slice(from.length + 1)}` : b))
+      return null
+    }
+    case 'remove_remote': {
+      const r = find(args.repo)
+      const name = String(args.name)
+      r.remotes = remotesOf(r).filter((x) => x.name !== name)
+      r.remoteBranches = r.remoteBranches.filter((b) => !b.startsWith(`${name}/`))
+      return null
+    }
+    case 'set_remote_url': {
+      const r = find(args.repo)
+      for (const x of remotesOf(r)) if (x.name === args.name) x[args.push ? 'pushUrl' : 'fetchUrl'] = String(args.url)
       return null
     }
     case 'delete_branch': {

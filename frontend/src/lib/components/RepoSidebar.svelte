@@ -9,6 +9,7 @@
   import AccountBox from './AccountBox.svelte'
   import Icon from './Icon.svelte'
   import Logo from './Logo.svelte'
+  import RefTree from './RefTree.svelte'
 
   async function add() {
     const path = await pickFolder(t('repos.addDialogTitle'))
@@ -52,7 +53,7 @@
     </button>
   </header>
 
-  <ul>
+  <ul class:compact={!!app.repo}>
     {#each app.repos as repo (repo.path)}
       <li class:selected={repo.path === app.selectedPath}>
         <button class="repo" title={repo.path} onclick={() => app.selectRepo(repo.path)} oncontextmenu={(e) => repoMenu(repo, e)}>
@@ -69,6 +70,10 @@
       {/if}
     {/each}
   </ul>
+
+  {#if app.repo}
+    <div class="refs"><RefTree /></div>
+  {/if}
 
   <AccountBox />
 </aside>
@@ -102,6 +107,19 @@
     padding: 6px;
     list-style: none;
     overflow-y: auto;
+  }
+
+  ul.compact {
+    flex: 0 1 auto;
+    max-height: 34%;
+    min-height: 48px;
+  }
+
+  .refs {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 1px solid var(--border-muted);
   }
 
   .repo {

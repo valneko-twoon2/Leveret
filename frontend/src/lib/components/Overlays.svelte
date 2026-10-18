@@ -5,6 +5,7 @@
   import { branches } from '../branches.svelte'
   import { github } from '../github.svelte'
   import { issues } from '../issues.svelte'
+  import { remotes } from '../remotes.svelte'
   import { rewrite } from '../rewrite.svelte'
   import { settings } from '../settings.svelte'
   import { app } from '../state.svelte'
@@ -20,7 +21,9 @@
   import NewTagDialog from './NewTagDialog.svelte'
   import PerfPanel from './PerfPanel.svelte'
   import RebaseDialog from './RebaseDialog.svelte'
+  import RemotesDialog from './RemotesDialog.svelte'
   import ResetDialog from './ResetDialog.svelte'
+  import UpstreamDialog from './UpstreamDialog.svelte'
   import SettingsDialog from './settings/SettingsDialog.svelte'
   import SignInDialog from './SignInDialog.svelte'
   import Toasts from './Toasts.svelte'
@@ -31,6 +34,13 @@
 {/if}
 {#if branches.newBranch}
   <NewBranchDialog />
+{/if}
+
+{#if branches.upstreamFor}
+  <UpstreamDialog />
+{/if}
+{#if remotes.dialogOpen}
+  <RemotesDialog />
 {/if}
 
 {#if rewrite.rebase}

@@ -23,24 +23,7 @@
   const remote = $derived(filtered.filter((b) => b.kind === 'remote' && !tracked.has(b.name)))
 
   function branchMenu(b: Branch, e: MouseEvent | KeyboardEvent, anchor?: HTMLElement) {
-    const idle = app.busy === null
-    const onBranch = !!app.status?.branch
-    menu.open(
-      e,
-      [
-        { label: t('branches.switch'), action: () => branches.switchBranch(b), disabled: !idle || b.current },
-        'separator',
-        { label: t('branches.merge'), action: () => branches.mergeBranch(b), disabled: !idle || b.current || !onBranch },
-        { label: t('branches.rebase'), action: () => branches.rebaseOnto(b), disabled: !idle || b.current || !onBranch },
-        { label: t('branches.createFrom'), action: () => branches.openNewBranch(b.fullRef, b.name), disabled: !idle },
-        'separator',
-        { label: t('branches.copyName'), action: () => app.copy(b.name) },
-        ...(b.kind === 'local'
-          ? ['separator' as const, { label: t('branches.delete'), action: () => branches.deleteBranch(b), disabled: !idle || b.current, danger: true }]
-          : []),
-      ],
-      anchor,
-    )
+    menu.open(e, branches.menuItems(b), anchor)
   }
 
   const onTags = $derived(branches.dialogTab === 'tags')
