@@ -76,8 +76,10 @@ pub fn plan(repo: &Path, base: Option<&str>) -> Result<Vec<PlanCommit>> {
         }
     }
     let r = range(base);
-    let (log, unpushed) = std::thread::scope(|s| {
+    let (log, (unpushed, listed)) = std::thread::scope(|s| {
         let unpushed = s.spawn(|| Git::new(repo).args(["rev-list", &r, "--not", "--remotes"]).run_string());
+        // The commits of the range as git itself lists them: a message can't add one.
+        let listed = s.spawn(|| Git::new(repo).args(["rev-list", &r]).run_string());
         let log = Git::new(repo)
             .args([
                 "log",
@@ -87,16 +89,21 @@ pub fn plan(repo: &Path, base: Option<&str>) -> Result<Vec<PlanCommit>> {
                 "--",
             ])
             .run();
-        (log, super::join(unpushed))
+        (log, (super::join(unpushed), super::join(listed)))
     });
     let unpushed: HashSet<String> = unpushed?.lines().map(String::from).collect();
-    let mut commits = Vec::new();
+    let listed: HashSet<String> = listed?.lines().map(String::from).collect();
+    let mut commits: Vec<PlanCommit> = Vec::new();
     for record in decode(&log?.stdout).split(RECORD) {
         let record = record.trim_start_matches('\n');
         let f: Vec<&str> = record.splitn(6, FIELD).collect();
         let [hash, parents, author, time, subject, message] = f[..] else {
             continue;
         };
+        // Control characters in a message could fake a record; only real commits count.
+        if !listed.contains(hash) || commits.iter().any(|c| c.hash == hash) {
+            continue;
+        }
         if parents.split_whitespace().count() > 1 {
             return Err(AppError::MergesInRange);
         }
@@ -177,7 +184,7 @@ pub fn run(repo: &Path, base: Option<&str>, steps: &[Step]) -> Result<Outcome> {
             }
             let oid = blob(repo, format!("{message}\n"))?;
             todo.push_str(&format!(
-                "exec git cat-file blob {oid} | git commit --amend --only --allow-empty --cleanup=strip --quiet --file=-\n"
+                "exec git cat-file blob {oid} | git commit --amend --only --allow-empty --cleanup=whitespace --quiet --file=-\n"
             ));
         }
     }
@@ -185,7 +192,8 @@ pub fn run(repo: &Path, base: Option<&str>, steps: &[Step]) -> Result<Outcome> {
     let editor = format!("git cat-file blob {todo_oid} >");
     let mut git = Git::new(repo)
         .envs([("GIT_SEQUENCE_EDITOR".to_string(), editor)])
-        .args(["rebase", "-i", "--autostash", "--empty=drop"]);
+        // `keep`: a pick that turns empty must not vanish, or the reword after it would amend the commit before.
+        .args(["rebase", "-i", "--autostash", "--empty=keep"]);
     git = match base {
         Some(b) => git.args(["--end-of-options", b]),
         None => git.arg("--root"),

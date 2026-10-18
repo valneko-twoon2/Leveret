@@ -53,6 +53,29 @@ pub fn reset_info(repo: &Path, target: &str) -> Result<ResetInfo> {
     })
 }
 
+/// An untracked or ignored file (or folder with such files) that a hard reset to
+/// `target` would overwrite, if any.
+fn overwritten_by(repo: &Path, target: &str) -> Result<Option<String>> {
+    let others = Git::new(repo).args(["ls-files", "-o", "--directory", "-z"]).run()?;
+    let others: Vec<String> = decode(&others.stdout)
+        .split('\0')
+        .filter(|p| !p.is_empty())
+        .map(String::from)
+        .collect();
+    if others.is_empty() {
+        return Ok(None);
+    }
+    let tree = Git::new(repo)
+        .args(["ls-tree", "-r", "--name-only", "-z", "--end-of-options", target])
+        .run()?;
+    let tree = decode(&tree.stdout);
+    let tracked: Vec<&str> = tree.split('\0').filter(|p| !p.is_empty()).collect();
+    Ok(others.into_iter().find(|o| match o.strip_suffix('/') {
+        Some(dir) => tracked.iter().any(|t| t.starts_with(o.as_str()) || *t == dir),
+        None => tracked.contains(&o.as_str()),
+    }))
+}
+
 /// Moves the current branch (or a detached HEAD) to `target`. Discarding is
 /// refused while there are uncommitted changes, so it never loses work that
 /// isn't in a commit (the removed commits stay reachable through the reflog).
@@ -69,6 +92,12 @@ pub fn reset(repo: &Path, target: &str, mode: ResetMode) -> Result<()> {
                 return Err(AppError::LocalChangesConflict(
                     "commit or stash the changes first".into(),
                 ));
+            }
+            // `--hard` also overwrites untracked and ignored files the target commit has.
+            if let Some(path) = overwritten_by(repo, target)? {
+                return Err(AppError::LocalChangesConflict(format!(
+                    "'{path}' is not tracked, but the commit has a file of that name"
+                )));
             }
             "--hard"
         }
@@ -255,5 +284,47 @@ mod tests {
         // Undoing it again no longer applies.
         let err = undo_file_change_with(p, &second, "f.txt", None, |_| Ok(())).unwrap_err();
         assert!(matches!(err, AppError::ChangesDontApply(_)), "{err:?}");
+    }
+
+    #[test]
+    fn hard_reset_keeps_untracked_files_the_target_would_overwrite() {
+        let dir = history();
+        let p = dir.path();
+        std::fs::write(
+            p.join("notes.txt"),
+            "old
+",
+        )
+        .unwrap();
+        git(p, &["add", "."]);
+        git(p, &["commit", "-qm", "notes"]);
+        let with_notes = git_out(p, &["rev-parse", "HEAD"]);
+        git(p, &["rm", "-q", "notes.txt"]);
+        git(p, &["commit", "-qm", "remove notes"]);
+        // The file comes back as an untracked one with new content.
+        std::fs::write(
+            p.join("notes.txt"),
+            "mine
+",
+        )
+        .unwrap();
+        assert!(matches!(
+            reset(p, &with_notes, ResetMode::Discard),
+            Err(AppError::LocalChangesConflict(_))
+        ));
+        assert_eq!(
+            std::fs::read_to_string(p.join("notes.txt")).unwrap(),
+            "mine
+"
+        );
+        // Other untracked files don't matter.
+        std::fs::remove_file(p.join("notes.txt")).unwrap();
+        std::fs::write(
+            p.join("other.txt"),
+            "x
+",
+        )
+        .unwrap();
+        reset(p, &with_notes, ResetMode::Discard).unwrap();
     }
 }

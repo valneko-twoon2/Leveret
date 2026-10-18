@@ -49,7 +49,12 @@ enum Current {
 
 fn current(repo: &Path, sel: &LineSelection) -> Result<Current> {
     let current = if sel.untracked {
-        Current::Untracked(std::fs::read(repo.join(&sel.path))?)
+        let file = repo.join(&sel.path);
+        // A link to some other file is not a file of the repository.
+        if !std::fs::symlink_metadata(&file)?.is_file() {
+            return Err(AppError::InvalidInput(format!("'{}' is not a regular file", sel.path)));
+        }
+        Current::Untracked(std::fs::read(&file)?)
     } else {
         let context = diff::token_context(&sel.token).ok_or_else(|| AppError::DiffChanged(sel.path.clone()))?;
         Current::Tracked(diff::raw_working(repo, &sel.path, None, false, context)?)

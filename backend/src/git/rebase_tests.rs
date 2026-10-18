@@ -136,3 +136,48 @@ fn refuses_merges_pushed_commits_and_stale_plans() {
     git(&p, &["switch", "-q", "--detach", &h[2]]);
     assert!(matches!(plan(&p, Some(&side)), Err(AppError::InvalidInput(_))));
 }
+
+#[test]
+fn keeps_hash_lines_in_reworded_messages() {
+    let (_dir, p, h) = repo_with_commits();
+    let mut reword = step(&h[2], Action::Reword);
+    reword.message = Some(
+        "#42 fix login
+
+# not a comment"
+            .into(),
+    );
+    let steps = [step(&h[1], Action::Pick), reword, step(&h[3], Action::Pick)];
+    assert_eq!(run(&p, Some(&h[0]), &steps).unwrap(), Outcome::Done);
+    assert_eq!(
+        git_out(&p, &["log", "-1", "--format=%B", "HEAD~1"]),
+        "#42 fix login
+
+# not a comment"
+    );
+}
+
+#[test]
+fn a_reword_after_an_emptied_pick_does_not_amend_the_commit_before() {
+    let (_dir, p, h) = repo_with_commits();
+    let c1 = commit(
+        &p, "e.txt", "one
+", "c1",
+    );
+    let c2 = commit(
+        &p, "e.txt", "two
+", "c2",
+    );
+    let c3 = commit(
+        &p, "e.txt", "one
+", "c3",
+    );
+    // c3 undoes c2; moved before it, c3 changes nothing and would be dropped.
+    let mut reword = step(&c3, Action::Reword);
+    reword.message = Some("reworded".into());
+    let steps = [step(&c1, Action::Pick), reword, step(&c2, Action::Pick)];
+    let base = &h[3];
+    assert_eq!(run(&p, Some(base), &steps).unwrap(), Outcome::Done);
+    let all = subjects(&p);
+    assert_eq!(all[..3], ["c2", "reworded", "c1"]);
+}
