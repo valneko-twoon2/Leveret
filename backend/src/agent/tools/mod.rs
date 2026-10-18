@@ -161,6 +161,7 @@ const ORDER: &[&str] = &[
     "publish_issue",
     // destructive
     "discard_changes",
+    "discard_hunks",
     "delete_branch",
     "resolve_conflict",
     "abort_operation",

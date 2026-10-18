@@ -13,7 +13,7 @@
   import Icon from './Icon.svelte'
   import VirtualList from './VirtualList.svelte'
 
-  const all = $derived(app.files.length > 0 && changes.includedFiles.length === app.files.length)
+  const all = $derived(app.files.length > 0 && changes.includedFiles.length === app.files.length && changes.picks.size === 0)
   const some = $derived(changes.includedFiles.length > 0 && !all)
   const selectedIndex = $derived(app.files.findIndex((f) => f.path === changes.selectedFile))
   const untrackedCount = $derived(app.files.filter((f) => f.kind === 'untracked').length)
@@ -118,11 +118,13 @@
         ontoggle={(i) => app.files[i] && changes.toggleFile(app.files[i].path)}
       >
         {#snippet row(file)}
+          {@const state = changes.fileState(file.path)}
           <FileRow
             path={file.path}
             origPath={file.origPath}
             kind={file.kind}
-            checked={!changes.excluded.has(file.path)}
+            checked={state === 'all'}
+            indeterminate={state === 'some'}
             ontoggle={() => changes.toggleFile(file.path)}
           />
         {/snippet}

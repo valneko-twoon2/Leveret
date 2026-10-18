@@ -2,6 +2,7 @@ use std::path::Path;
 
 use serde::Deserialize;
 
+use super::patch::{self, LineSelection};
 use super::{Git, PathspecFile, decode, operation, status};
 use crate::error::{AppError, Result};
 
@@ -15,6 +16,9 @@ pub struct CommitRequest {
     /// Replace the last commit instead of creating a new one.
     #[serde(default)]
     pub amend: bool,
+    /// Files of which only some lines are committed (not also in `paths`).
+    #[serde(default)]
+    pub partial: Vec<LineSelection>,
 }
 
 /// Commits exactly the selected paths, regardless of what is currently staged
@@ -26,7 +30,7 @@ pub fn commit(repo: &Path, req: &CommitRequest) -> Result<String> {
         return Err(AppError::EmptySummary);
     }
     // Amending may just reword the last commit.
-    if req.paths.is_empty() && !req.amend {
+    if req.paths.is_empty() && req.partial.is_empty() && !req.amend {
         return Err(AppError::NothingSelected);
     }
     let mut message = summary.to_string();
@@ -42,6 +46,21 @@ pub fn commit(repo: &Path, req: &CommitRequest) -> Result<String> {
         return Err(AppError::GitFailed(
             "cannot amend while a merge, rebase, revert or cherry-pick is in progress".into(),
         ));
+    }
+    if !req.partial.is_empty() {
+        if in_operation {
+            return Err(AppError::GitFailed(
+                "cannot commit part of a file while a merge, rebase, revert or cherry-pick is in progress".into(),
+            ));
+        }
+        if let Some(p) = req.partial.iter().find(|p| req.paths.contains(&p.path)) {
+            return Err(AppError::InvalidInput(format!(
+                "'{}' is both whole and partial",
+                p.path
+            )));
+        }
+        patch::commit_from_index(repo, &req.paths, &req.partial, &message, req.amend)?;
+        return head(repo);
     }
     let spec = PathspecFile::new(&req.paths)?;
     if !req.paths.is_empty() {
@@ -61,7 +80,10 @@ pub fn commit(repo: &Path, req: &CommitRequest) -> Result<String> {
         }
     }
     git.run().map_err(AppError::classify_git)?;
+    head(repo)
+}
 
+fn head(repo: &Path) -> Result<String> {
     Ok(Git::new(repo)
         .args(["rev-parse", "HEAD"])
         .run_string()?
@@ -160,6 +182,7 @@ mod tests {
             description: "本文".into(),
             paths: vec!["a b.txt".into(), "日本語.txt".into()],
             amend: false,
+            partial: vec![],
         };
         let hash = commit(p, &req).unwrap();
         assert_eq!(hash.len(), 40);
@@ -190,6 +213,7 @@ mod tests {
             description: String::new(),
             paths: vec!["new.txt".into(), "old.txt".into()],
             amend: false,
+            partial: vec![],
         };
         commit(p, &req).unwrap();
 
@@ -210,6 +234,7 @@ mod tests {
                 description: String::new(),
                 paths: vec!["a.txt".into()],
                 amend: false,
+                partial: vec![],
             },
         )
         .unwrap();
@@ -221,6 +246,7 @@ mod tests {
                 description: "body".into(),
                 paths: vec!["b.txt".into()],
                 amend: false,
+                partial: vec![],
             },
         )
         .unwrap();
@@ -233,6 +259,7 @@ mod tests {
                 description: String::new(),
                 paths: vec![],
                 amend: true,
+                partial: vec![],
             },
         )
         .unwrap();
@@ -271,6 +298,7 @@ mod tests {
             description: String::new(),
             paths: vec!["x".into()],
             amend: false,
+            partial: vec![],
         };
         assert!(matches!(commit(dir.path(), &req), Err(AppError::EmptySummary)));
     }

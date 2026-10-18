@@ -1,17 +1,39 @@
-// The changes tab: file selection and working-tree diff, the commit form,
-// discard / resolve / ignore and stashes. Builds on `app` (state.svelte.ts),
-// which loads the status these act on.
-import { SvelteSet } from 'svelte/reactivity'
-import { api, isAppError, type FileChange, type FileDiff, type RepoStatus, type StashEntry } from './api'
+// The changes tab: file selection (whole files or picked lines) and the
+// working-tree diff, the commit form, discard / resolve / ignore and stashes.
+// Builds on `app` (state.svelte.ts), which loads the status these act on.
+import { SvelteMap, SvelteSet } from 'svelte/reactivity'
+import { api, isAppError, type FileChange, type FileDiff, type LineSelection, type RepoStatus, type StashEntry } from './api'
+import type { LinePicker } from './components/DiffView.svelte'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
+import { menu } from './menu.svelte'
 import { perf } from './perf'
 import { prefs } from './prefs.svelte'
 import { app, describeError } from './state.svelte'
 
+/** `hunk:line` of a line in a diff. */
+const lineKey = (h: number, l: number) => `${h}:${l}`
+
+/** The added and deleted lines of a diff, as line keys. */
+function changeKeys(diff: FileDiff): string[] {
+  return diff.hunks.flatMap((hunk, h) =>
+    hunk.lines.flatMap((line, l) => (line.kind === 'add' || line.kind === 'delete' ? [lineKey(h, l)] : [])),
+  )
+}
+
+/** A file of which only some lines are checked: the lines left out, for the diff with `token`. */
+interface LinePicks {
+  token: string
+  untracked: boolean
+  changes: string[]
+  excluded: SvelteSet<string>
+}
+
 class ChangesState {
   /** Paths unchecked by the user; everything else is included in the commit. */
   excluded = new SvelteSet<string>()
+  /** Files with only some lines checked. */
+  picks = new SvelteMap<string, LinePicks>()
   selectedFile = $state<string | null>(null)
   workingDiff = $state.raw<FileDiff | null>(null)
   summary = $state('')
@@ -35,6 +57,7 @@ class ChangesState {
   /** Forgets everything about the previous repository (called by `app.selectRepo`). */
   resetRepoView() {
     this.excluded.clear()
+    this.picks.clear()
     this.selectedFile = null
     this.workingDiff = null
     this.summary = ''
@@ -50,6 +73,7 @@ class ChangesState {
     // Forget exclusions for files that are gone.
     const present = new Set(status.files.map((f) => f.path))
     for (const p of [...this.excluded]) if (!present.has(p)) this.excluded.delete(p)
+    for (const p of [...this.picks.keys()]) if (!present.has(p)) this.picks.delete(p)
     const keep = this.selectedFile && present.has(this.selectedFile) ? this.selectedFile : (status.files[0]?.path ?? null)
     await this.selectFile(keep)
   }
@@ -72,16 +96,95 @@ class ChangesState {
     }
     await perf.view('diff.file', async () => {
       const diff = await app.guard(() => api.getWorkingDiff(repo, file))
-      if (diff && this.selectedFile === path && repo === app.selectedPath) this.workingDiff = diff
+      if (!diff || this.selectedFile !== path || repo !== app.selectedPath) return
+      // Picked lines refer to the diff they were picked in.
+      const picks = this.picks.get(file.path)
+      if (picks && picks.token !== diff.token) {
+        this.picks.delete(file.path)
+        app.toast(t('changes.partialReset', { path: file.path }))
+      }
+      this.workingDiff = diff
     })
   }
 
   toggleFile(path: string) {
+    this.picks.delete(path)
     if (this.excluded.has(path)) this.excluded.delete(path)
     else this.excluded.add(path)
   }
 
+  /** Whether a file is checked: wholly, partly (some lines) or not at all. */
+  fileState(path: string): 'all' | 'some' | 'none' {
+    return this.excluded.has(path) ? 'none' : this.picks.has(path) ? 'some' : 'all'
+  }
+
+  /** Picking lines of the selected file's diff (DiffView in the Changes tab). */
+  readonly picker: LinePicker = {
+    included: (h, l) => {
+      const path = this.selectedFile
+      return !!path && !this.excluded.has(path) && !this.picks.get(path)?.excluded.has(lineKey(h, l))
+    },
+    setLines: (lines, include) => this.setLines(lines, include),
+    onmenu: (e, h, l) => this.lineMenu(e, h, l),
+  }
+
+  private setLines(lines: [number, number][], include: boolean) {
+    const file = this.selectedChange
+    const diff = this.workingDiff
+    if (!file || !diff?.selectable) return
+    const changes = changeKeys(diff)
+    let picks = this.picks.get(file.path)
+    if (!picks) {
+      // Starting from the file's checkbox: everything or nothing included.
+      const excluded = new SvelteSet(this.excluded.has(file.path) ? changes : [])
+      picks = { token: diff.token, untracked: file.kind === 'untracked', changes, excluded }
+    }
+    for (const [h, l] of lines) {
+      if (include) picks.excluded.delete(lineKey(h, l))
+      else picks.excluded.add(lineKey(h, l))
+    }
+    this.picks.delete(file.path)
+    if (picks.excluded.size >= changes.length) {
+      this.excluded.add(file.path)
+    } else {
+      this.excluded.delete(file.path)
+      if (picks.excluded.size > 0) this.picks.set(file.path, picks)
+    }
+  }
+
+  /** Right click on a diff line: discard that line or its hunk. */
+  private lineMenu(e: MouseEvent, h: number, l: number | null) {
+    const diff = this.workingDiff
+    const hunk = diff?.hunks[h]
+    if (!diff?.selectable || !hunk) return
+    const isChange = (i: number) => hunk.lines[i].kind === 'add' || hunk.lines[i].kind === 'delete'
+    const hunkLines = hunk.lines.flatMap((_, i) => (isChange(i) ? [[h, i] as [number, number]] : []))
+    const idle = app.busy === null
+    menu.open(e, [
+      ...(l !== null && isChange(l)
+        ? [{ label: t('discard.line'), action: () => this.discardLines([[h, l]]), disabled: !idle, danger: true }]
+        : []),
+      { label: t('discard.hunk'), action: () => this.discardLines(hunkLines), disabled: !idle, danger: true },
+    ])
+  }
+
+  /** Discards some lines of the selected file (the file goes to the Recycle Bin first). */
+  async discardLines(lines: [number, number][]) {
+    const file = this.selectedChange
+    const diff = this.workingDiff
+    if (!file || !diff || lines.length === 0) return
+    if (lines.length >= changeKeys(diff).length) return this.discard([file.path])
+    const question = t('discard.linesConfirm', { path: file.path, count: lines.length })
+    if (!(await confirmDialog(`${question}\n${t('discard.confirmNote')}`, t('discard.title')))) return
+    const selection: LineSelection = { path: file.path, untracked: file.kind === 'untracked', token: diff.token, lines }
+    const done = await app.run('discard', (repo) => api.discardLines(repo, selection))
+    if (done === undefined) return
+    app.toast(t('discard.linesDone', { count: lines.length }))
+    await app.loadStatus()
+  }
+
   toggleAll() {
+    this.picks.clear()
     if (this.includedFiles.length === app.files.length) {
       for (const f of app.files) this.excluded.add(f.path)
     } else {
@@ -112,11 +215,20 @@ class ChangesState {
 
   async commit() {
     if (!this.canCommit) return
-    const paths = this.includedFiles.flatMap((f: FileChange) => (f.origPath ? [f.path, f.origPath] : [f.path]))
+    const whole = this.includedFiles.filter((f) => !this.picks.has(f.path))
+    const paths = whole.flatMap((f: FileChange) => (f.origPath ? [f.path, f.origPath] : [f.path]))
+    const partial = this.includedFiles.flatMap((f): LineSelection[] => {
+      const picks = this.picks.get(f.path)
+      if (!picks) return []
+      const lines = picks.changes.filter((k) => !picks.excluded.has(k)).map((k) => k.split(':').map(Number) as [number, number])
+      return [{ path: f.path, untracked: picks.untracked, token: picks.token, lines }]
+    })
     const summary = this.summary.trim()
     const amend = this.amend
-    const hash = await app.run('commit', (repo) => api.commit(repo, { summary, description: this.description, paths, amend }))
+    const request = { summary, description: this.description, paths, amend, partial }
+    const hash = await app.run('commit', (repo) => api.commit(repo, request))
     if (!hash) return
+    this.picks.clear()
     this.summary = ''
     this.description = ''
     this.amend = false

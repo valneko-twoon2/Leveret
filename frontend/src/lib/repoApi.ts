@@ -77,6 +77,18 @@ export interface FileDiff {
   tooLarge: boolean
   truncated: boolean
   hunks: Hunk[]
+  /** Lines can be picked for a partial commit or discard. */
+  selectable: boolean
+  /** Identifies this exact diff; picked lines are sent with it. */
+  token: string
+}
+
+/** Some lines of a file: `[hunk, line]` indices into the diff with `token`. */
+export interface LineSelection {
+  path: string
+  untracked: boolean
+  token: string
+  lines: [number, number][]
 }
 
 export interface CommitRequest {
@@ -85,6 +97,8 @@ export interface CommitRequest {
   paths: string[]
   /** Replace the last commit. */
   amend?: boolean
+  /** Files of which only some lines are committed (not also in `paths`). */
+  partial?: LineSelection[]
 }
 
 export const repoApi = {
@@ -106,6 +120,7 @@ export const repoApi = {
   undoLastCommit: (repo: string) => call<string>('undo_last_commit', { repo }),
 
   discardChanges: (repo: string, paths: string[]) => call<void>('discard_changes', { repo, paths }),
+  discardLines: (repo: string, selection: LineSelection) => call<void>('discard_lines', { repo, selection }),
   markResolved: (repo: string, paths: string[], force: boolean) => call<void>('mark_resolved', { repo, paths, force }),
   resolveConflict: (repo: string, paths: string[], side: 'ours' | 'theirs') => call<void>('resolve_conflict', { repo, paths, side }),
   ignorePath: (repo: string, path: string, byExtension: boolean) => call<void>('ignore_path', { repo, path, byExtension }),

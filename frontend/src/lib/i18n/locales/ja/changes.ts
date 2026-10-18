@@ -9,6 +9,7 @@ export default {
     none: '変更はありません',
     noneBody: '作業ツリーはクリーンです。',
     selectFile: 'ファイルを選択すると差分が表示されます',
+    partialReset: '「{path}」が変更されたため、選んでいた行の指定を解除しました',
   },
   kind: {
     modified: '変更',
@@ -29,6 +30,9 @@ export default {
     mergeInTool: 'WinMerge でマージ',
     openInToolHint: 'WinMerge で差分を開きます（ダブルクリックでも開けます）',
     mergeInToolHint: 'WinMerge の 3 方向マージで競合を解決します。保存すると作業ツリーのファイルに書き込まれます',
+    pickLine: 'クリックでこの行をコミットに含める / 外す（ドラッグで複数行、Shift+クリックで範囲）',
+    pickHunk: 'このハンクをコミットに含める / 外す',
+    pickNeedsWhitespace: '「空白だけの変更を差分から除く」がオンの間は、行を選んでコミットできません',
   },
   commit: {
     needSummary: '概要を入力するとコミットできます',
@@ -70,6 +74,10 @@ export default {
     ignore: '.gitignore に追加',
     ignoreExtension: '*.{ext} をすべて .gitignore に追加',
     ignored: '.gitignore に追加しました',
+    line: 'この行の変更を破棄',
+    hunk: 'このハンクの変更を破棄',
+    linesConfirm: '「{path}」の {count} 行の変更を破棄しますか？',
+    linesDone: '{count} 行の変更を破棄しました（元のファイルはごみ箱に移動）',
   },
   stash: {
     title: 'スタッシュ',

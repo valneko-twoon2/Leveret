@@ -57,6 +57,8 @@ pub enum AppError {
     NoChanges,
     #[error("the commit has already been pushed")]
     AlreadyPushed,
+    #[error("the diff changed since the lines were picked: {0}")]
+    DiffChanged(String),
     #[error("issue #{0} was not found")]
     IssueNotFound(u64),
     #[error("the repository has no github.com remote")]
@@ -110,6 +112,7 @@ impl AppError {
             AppError::TagExists(_) => "tagExists",
             AppError::NoChanges => "noChanges",
             AppError::AlreadyPushed => "alreadyPushed",
+            AppError::DiffChanged(_) => "diffChanged",
             AppError::IssueNotFound(_) => "issueNotFound",
             AppError::NoGithubRemote => "noGithubRemote",
             AppError::DiffToolNotFound => "diffToolNotFound",
@@ -141,6 +144,7 @@ impl AppError {
             | AppError::BranchNotMerged(s)
             | AppError::TagExists(s)
             | AppError::ConflictMarkersRemain(s)
+            | AppError::DiffChanged(s)
             | AppError::GithubAuthFailed(s)
             | AppError::GithubApi(s)
             | AppError::Network(s)

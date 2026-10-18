@@ -50,8 +50,10 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       const r = find(args.repo)
       const req = args.request as CommitRequest
       if (!req.summary.trim()) fail('emptySummary')
-      if (!req.paths.length && !req.amend) fail('nothingSelected')
-      const committed = r.files.filter((f) => req.paths.includes(f.path))
+      const partial = (req.partial ?? []).map((p) => p.path)
+      if (!req.paths.length && !partial.length && !req.amend) fail('nothingSelected')
+      // Files committed in part keep their other lines as changes.
+      const committed = r.files.filter((f) => req.paths.includes(f.path) || partial.includes(f.path))
       r.files = r.files.filter((f) => !req.paths.includes(f.path))
       const files = committed.map((f) => ({ path: f.path, origPath: f.origPath, kind: f.kind === 'untracked' ? ('added' as const) : f.kind }))
       if (req.amend && r.commits[0]) {
@@ -115,6 +117,9 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       addCommit(r, subject, cmd === 'revert_commit' ? `This reverts commit ${c.hash}.` : c.body, c.files)
       return 'done' satisfies Outcome
     }
+    case 'discard_lines':
+      find(args.repo)
+      return null
     case 'discard_changes': {
       const r = find(args.repo)
       const paths = args.paths as string[]

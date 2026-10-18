@@ -267,6 +267,19 @@ export const scenes: Scene[] = [
       await new Promise((r) => setTimeout(r, 300))
     },
   },
+  {
+    id: '24-partial-commit',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('changes')
+      const file = app.files.find((f) => f.kind === 'modified') ?? app.files[0]
+      if (!file) return
+      await changes.selectFile(file.path)
+      // Leave the new doc comment and the else branch out of the commit.
+      changes.picker.setLines([[0, 2], [0, 8], [0, 9], [0, 10]], false)
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */

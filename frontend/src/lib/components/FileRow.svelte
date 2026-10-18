@@ -9,9 +9,11 @@
     origPath?: string | null
     kind: ChangeKind
     checked?: boolean
+    /** Only some lines are checked. */
+    indeterminate?: boolean
     ontoggle?: () => void
   }
-  let { path, origPath = null, kind, checked, ontoggle }: Props = $props()
+  let { path, origPath = null, kind, checked, indeterminate = false, ontoggle }: Props = $props()
 
   const [dir, name] = $derived(splitPath(path))
   const origName = $derived(origPath ? splitPath(origPath)[1] : '')
@@ -22,6 +24,7 @@
     <input
       type="checkbox"
       {checked}
+      {indeterminate}
       onchange={ontoggle}
       onmousedown={(e) => e.stopPropagation()}
       tabindex={-1}

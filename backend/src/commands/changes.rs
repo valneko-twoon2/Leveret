@@ -1,12 +1,14 @@
-//! Commands for the working tree: status, diffs of changed files, committing,
-//! discarding, ignoring, undoing the last commit and showing files in Explorer.
+//! Commands for the working tree: status, diffs of changed files, committing
+//! (whole files or picked lines), discarding, ignoring, undoing the last commit
+//! and showing files in Explorer.
 
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use super::blocking;
 use crate::error::{AppError, Result};
-use crate::git::diff::FileDiff;
+use crate::git::diff::{FileDiff, MAX_LINES};
+use crate::git::patch::LineSelection;
 use crate::git::status::RepoStatus;
 use crate::repos::RepoStore;
 use crate::{git, security};
@@ -42,7 +44,31 @@ pub async fn commit(store: State<'_, RepoStore>, repo: String, request: git::com
     for p in &request.paths {
         security::relative_path(p)?;
     }
+    for sel in &request.partial {
+        check_selection(sel)?;
+    }
     blocking(move || git::commit::commit(&repo, &request)).await
+}
+
+/// Picked lines refer to a diff the backend regenerates (and checks against the
+/// token); only the path and the amount need checking here.
+fn check_selection(sel: &LineSelection) -> Result<()> {
+    security::relative_path(&sel.path)?;
+    if sel.lines.len() > MAX_LINES || sel.token.len() > 64 {
+        return Err(AppError::InvalidInput(format!(
+            "too many lines picked in '{}'",
+            sel.path
+        )));
+    }
+    Ok(())
+}
+
+/// Undoes some lines of a file's changes; the current file goes to the Recycle Bin.
+#[tauri::command]
+pub async fn discard_lines(store: State<'_, RepoStore>, repo: String, selection: LineSelection) -> Result<()> {
+    let repo = store.require(&repo)?;
+    check_selection(&selection)?;
+    blocking(move || git::patch::discard(&repo, &selection)).await
 }
 
 /// Moves the files to the Recycle Bin and restores them from HEAD.

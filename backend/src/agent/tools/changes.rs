@@ -1,6 +1,8 @@
 //! Working tree tools: the uncommitted diff, showing a diff in WinMerge, committing,
 //! undoing the last commit, ignoring files and discarding changes.
 
+use std::path::Path;
+
 use serde_json::{Value, json};
 
 use super::args::{MAX_BYTES, max_bytes, opt_bool, opt_str, path_list, repo, resolve_commit, str_arg};
@@ -10,6 +12,8 @@ use super::{Context, Output, Tool, no_handler};
 use crate::agent::Level;
 use crate::error::{AppError, Result};
 use crate::git::operation::Outcome;
+use crate::git::patch::LineSelection;
+use crate::git::status::ChangeKind;
 use crate::{difftool, git, security};
 
 pub(super) fn tools() -> Vec<Tool> {
@@ -20,7 +24,7 @@ pub(super) fn tools() -> Vec<Tool> {
             "Get diff",
             Read,
             false,
-            "Unified diff of uncommitted changes against HEAD, including the content of untracked files. Give `path` for a single file. Long output is cut at `maxBytes`.",
+            "Unified diff of uncommitted changes against HEAD, including the content of untracked files. Give `path` for a single file. Long output is cut at `maxBytes`. Hunks are numbered from 0 per file in the order shown (for commit's `partial` and discard_hunks).",
             object(
                 json!({
                     "repo": repo_prop(),
@@ -50,13 +54,18 @@ pub(super) fn tools() -> Vec<Tool> {
             "Commit",
             Write,
             false,
-            "Commits changes. Without `paths`, every changed file is included. `amend` replaces the last (unpushed) commit instead.",
+            "Commits changes. Without `paths`, every changed file is included. `partial` commits only some hunks of a file (the rest stays as uncommitted changes). `amend` replaces the last (unpushed) commit instead.",
             object(
                 json!({
                     "repo": repo_prop(),
                     "summary": string("First line of the commit message."),
                     "description": string("Rest of the commit message."),
-                    "paths": paths("Files to commit (relative paths as in get_status). Default: all changed files."),
+                    "paths": paths("Files to commit whole (relative paths as in get_status). Default: all changed files, or none when `partial` is given."),
+                    "partial": {
+                        "type": "array",
+                        "description": "Files of which only some hunks are committed, e.g. [{\"path\": \"src/a.rs\", \"hunks\": [0, 2]}]. Modified, added and untracked text files only.",
+                        "items": hunks_schema(),
+                    },
                     "amend": boolean("Replace the last commit (only if it has not been pushed)."),
                 }),
                 &["repo", "summary"],
@@ -86,6 +95,14 @@ pub(super) fn tools() -> Vec<Tool> {
             ),
         ),
         tool(
+            "discard_hunks",
+            "Discard hunks",
+            Destructive,
+            false,
+            "Discards some hunks of one file's uncommitted changes, keeping the others. The file is copied to the Recycle Bin first. Modified, added and untracked text files only; use discard_changes for whole files.",
+            hunks_schema_with_repo(),
+        ),
+        tool(
             "discard_changes",
             "Discard changes",
             Destructive,
@@ -97,6 +114,45 @@ pub(super) fn tools() -> Vec<Tool> {
             ),
         ),
     ]
+}
+
+/// `{path, hunks}`: hunks of one file, numbered from 0 as get_diff shows them.
+fn hunks_properties() -> Value {
+    json!({
+        "path": string("File relative to the repository root."),
+        "hunks": {
+            "type": "array",
+            "description": "Hunk numbers, from 0 in the order get_diff shows the file's hunks.",
+            "items": { "type": "integer", "minimum": 0 },
+        },
+    })
+}
+
+fn hunks_schema() -> Value {
+    object(hunks_properties(), &["path", "hunks"])
+}
+
+fn hunks_schema_with_repo() -> Value {
+    let mut props = hunks_properties();
+    props["repo"] = repo_prop();
+    object(props, &["repo", "path", "hunks"])
+}
+
+/// Turns `{path, hunks}` into the lines of those hunks in the file's current diff.
+fn hunk_selection(repo: &Path, item: &Value) -> Result<LineSelection> {
+    let path = str_arg(item, "path")?.replace('\\', "/");
+    security::relative_path(&path)?;
+    let hunks: Vec<u32> = item
+        .get("hunks")
+        .and_then(Value::as_array)
+        .ok_or_else(|| AppError::InvalidInput("`hunks` must be an array of hunk numbers".into()))?
+        .iter()
+        .map(|h| h.as_u64().and_then(|h| u32::try_from(h).ok()))
+        .collect::<Option<_>>()
+        .ok_or_else(|| AppError::InvalidInput("`hunks` must be an array of hunk numbers".into()))?;
+    let file = git::status::get(repo)?.files.into_iter().find(|f| f.path == path);
+    let file = file.ok_or_else(|| AppError::InvalidInput(format!("'{path}' has no uncommitted changes")))?;
+    git::patch::select_hunks(repo, &path, file.kind == ChangeKind::Untracked, &hunks)
 }
 
 pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
@@ -135,8 +191,14 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
         "commit" => {
             let repo = repo(ctx, args)?;
             let amend = opt_bool(args, "amend")?.unwrap_or(false);
+            let partial = match args.get("partial") {
+                None | Some(Value::Null) => Vec::new(),
+                Some(Value::Array(items)) => items.iter().map(|i| hunk_selection(&repo, i)).collect::<Result<_>>()?,
+                Some(_) => return Err(AppError::InvalidInput("`partial` must be an array".into())),
+            };
             let paths = match path_list(args, "paths")? {
                 Some(p) => p,
+                None if !partial.is_empty() => Vec::new(),
                 None => git::status::get(&repo)?
                     .files
                     .iter()
@@ -148,6 +210,7 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
                 description: opt_str(args, "description")?.unwrap_or_default().to_string(),
                 paths,
                 amend,
+                partial,
             };
             let hash = git::commit::commit(&repo, &req)?;
             Ok(Output::Json(
@@ -166,6 +229,12 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
             let path = str_arg(args, "path")?.replace('\\', "/");
             security::relative_path(&path)?;
             git::commit::ignore(&repo, &path, opt_bool(args, "byExtension")?.unwrap_or(false))?;
+            outcome(&repo, Outcome::Done)
+        }
+        "discard_hunks" => {
+            let repo = repo(ctx, args)?;
+            let sel = hunk_selection(&repo, args)?;
+            git::patch::discard(&repo, &sel)?;
             outcome(&repo, Outcome::Done)
         }
         "discard_changes" => {

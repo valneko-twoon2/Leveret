@@ -81,6 +81,7 @@ pub fn run() {
             commands::changes::get_working_diff,
             commands::changes::commit,
             commands::changes::discard_changes,
+            commands::changes::discard_lines,
             commands::changes::undo_last_commit,
             commands::changes::ignore_path,
             commands::changes::show_in_explorer,

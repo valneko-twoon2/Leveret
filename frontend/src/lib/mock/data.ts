@@ -52,7 +52,7 @@ export const MOCK_ACCOUNT: GithubAccount = { login: 'valneko-twoon2', name: 'val
 export const AGENT_TOOLS: AgentTool[] = [
   ...['list_repositories', 'get_status', 'get_diff', 'open_in_diff_tool', 'get_log', 'get_commit', 'list_branches', 'list_stashes', 'list_tags', 'list_issues', 'get_issue'].map((name) => ({ name, level: 'read' as const })),
   ...['add_repository', 'clone_repository', 'commit', 'undo_last_commit', 'fetch', 'pull', 'push', 'create_branch', 'switch_branch', 'checkout_commit', 'merge_branch', 'rebase_branch', 'revert_commit', 'cherry_pick', 'mark_resolved', 'continue_operation', 'stash_save', 'stash_pop', 'create_tag', 'push_tag', 'ignore_path', 'create_issue', 'update_issue', 'comment_issue', 'publish_issue'].map((name) => ({ name, level: 'write' as const })),
-  ...['discard_changes', 'delete_branch', 'resolve_conflict', 'abort_operation', 'skip_operation', 'stash_drop', 'delete_tag', 'delete_issue'].map((name) => ({ name, level: 'destructive' as const })),
+  ...['discard_changes', 'discard_hunks', 'delete_branch', 'resolve_conflict', 'abort_operation', 'skip_operation', 'stash_drop', 'delete_tag', 'delete_issue'].map((name) => ({ name, level: 'destructive' as const })),
 ].map((t) => ({ ...t, title: t.name }))
 
 export const AGENT_ACTIVITY: AgentActivity[] = [
@@ -114,20 +114,21 @@ pub fn delete_branch(repo: &Path, name: &str) -> Result<()> {
 export function sampleDiff(kind: string, path: string): FileDiff {
   const lines = (text: string[], k: 'add' | 'delete') =>
     text.map((t, i) => ({ kind: k, oldNo: k === 'delete' ? i + 1 : null, newNo: k === 'add' ? i + 1 : null, text: t }))
-  if (path.endsWith('.png')) return { binary: true, tooLarge: false, truncated: false, hunks: [] }
+  // Like the backend: modified, added and untracked text files can be picked line by line.
+  const base = { binary: false, tooLarge: false, truncated: false, selectable: true, token: `${kind}:${path}` }
+  if (path.endsWith('.png')) return { ...base, binary: true, selectable: false, hunks: [] }
   if (kind === 'added' || kind === 'untracked') {
     const text = path.endsWith('.md')
       ? ['# 設計メモ', '', '## ブランチ作成', '', '- ログ画面の右クリックから作成できるようにする', '- 作成後にチェックアウトするかを選べる']
       : SAMPLE_NEW
-    return { binary: false, tooLarge: false, truncated: false, hunks: [{ header: `@@ -0,0 +1,${text.length} @@`, lines: lines(text, 'add') }] }
+    return { ...base, hunks: [{ header: `@@ -0,0 +1,${text.length} @@`, lines: lines(text, 'add') }] }
   }
   if (kind === 'deleted') {
-    return { binary: false, tooLarge: false, truncated: false, hunks: [{ header: `@@ -1,${SAMPLE_OLD.length} +0,0 @@`, lines: lines(SAMPLE_OLD, 'delete') }] }
+    return { ...base, selectable: false, hunks: [{ header: `@@ -1,${SAMPLE_OLD.length} +0,0 @@`, lines: lines(SAMPLE_OLD, 'delete') }] }
   }
   return {
-    binary: false,
-    tooLarge: false,
-    truncated: false,
+    ...base,
+    selectable: kind === 'modified',
     hunks: [
       {
         header: '@@ -1,6 +1,11 @@',

@@ -192,7 +192,7 @@
               {#if changes.selectedChange}
                 {@const file = changes.selectedChange}
                 <DiffHeader path={file.path} origPath={file.origPath} kind={file.kind} height={37} onopen={() => diffTool.openWorking(file)} />
-                <div class="main-body"><DiffView diff={changes.workingDiff} /></div>
+                <div class="main-body"><DiffView diff={changes.workingDiff} picker={changes.picker} /></div>
               {:else if app.status}
                 <div class="empty">
                   <Icon name="file" size={32} />

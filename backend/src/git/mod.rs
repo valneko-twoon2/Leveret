@@ -12,6 +12,7 @@ pub mod diff;
 pub mod discard;
 pub mod log;
 pub mod operation;
+pub mod patch;
 pub mod remote;
 pub mod resolve;
 pub mod stash;
