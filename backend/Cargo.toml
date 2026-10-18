@@ -41,8 +41,9 @@ windows = { version = "0.62", features = ["Win32_Storage_FileSystem", "Win32_Sys
 [profile.release]
 # Panics keep the default unwinding: a panic inside a command becomes an error
 # for that command instead of taking the whole app down.
-lto = true
-codegen-units = 1
+# Thin LTO: a rebuild takes 110 s instead of 265 s; the exe is 2.5 MB larger.
+lto = "thin"
+codegen-units = 16
 strip = true
 
 # Debug builds (dev, test, clippy) skip debug information: it made target/ grow to
