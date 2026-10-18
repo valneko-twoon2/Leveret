@@ -25,7 +25,10 @@
     if (!detail || !file) return
     const items: MenuItem[] = []
     if (diffTool.available) items.push({ label: t('diff.openInTool'), action: () => diffTool.openCommit(detail, file) }, 'separator')
-    items.push({ label: t('common.copyPath'), action: () => app.copy(file.path) })
+    items.push(
+      { label: t('history.showFileHistory'), action: () => history.showFileHistory(file.kind === 'deleted' ? (file.origPath ?? file.path) : file.path) },
+      { label: t('common.copyPath'), action: () => app.copy(file.path) },
+    )
     menu.open(e, items)
   }
 

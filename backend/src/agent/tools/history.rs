@@ -7,6 +7,7 @@ use super::render::{commit_diff, iso8601};
 use super::schema::{boolean, integer, object, repo_prop, string, tool};
 use super::{Context, Output, Tool, no_handler};
 use crate::agent::Level;
+use crate::commands::history::check_query;
 use crate::error::Result;
 use crate::git;
 
@@ -21,13 +22,17 @@ pub(super) fn tools() -> Vec<Tool> {
             "Get history",
             Read,
             false,
-            "Commit history, newest first: hash, subject, author, ISO date, parents and branch/tag labels. Optionally search subjects, authors and hashes.",
+            "Commit history, newest first: hash, subject, author, ISO date, parents and branch/tag labels. Filters search the whole history and combine (all must match); `file` gives one file's history across renames.",
             object(
                 json!({
                     "repo": repo_prop(),
                     "limit": integer("Number of commits (default 30).", 1, MAX_LOG_LIMIT as u64),
                     "allBranches": boolean("Include all local and remote branches and tags, not just the current branch."),
-                    "search": string("Only commits whose subject or author contains this text, or whose hash starts with it."),
+                    "message": string("Only commits whose message contains this text (case-insensitive; a commit hash also works)."),
+                    "author": string("Only commits whose author name or email contains this text (case-insensitive)."),
+                    "contains": string("Only commits that add or remove this exact text in a file (git log -S)."),
+                    "path": string("Only commits that touch this file or folder (relative to the repository root)."),
+                    "file": string("The history of this file, following renames; each commit lists the file's path at that time."),
                 }),
                 &["repo"],
             ),
@@ -61,29 +66,36 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
             } else {
                 git::log::LogScope::Head
             };
-            let search = opt_str(args, "search")?
-                .map(str::to_lowercase)
-                .filter(|s| !s.is_empty());
-            // Searching looks further back than the number of results asked for.
-            let fetch = if search.is_some() { 5_000 } else { limit };
-            let entries = git::log::get(&repo, scope, fetch)?;
+            let text = |key| opt_str(args, key).map(|v| v.map(str::to_string));
+            let path = |key| opt_str(args, key).map(|v| v.map(|s| s.replace('\\', "/")));
+            let query = git::log::LogQuery {
+                message: text("message")?,
+                author: text("author")?,
+                content: text("contains")?,
+                path: path("path")?,
+                file: path("file")?,
+            };
+            let entries = if query.is_empty() {
+                git::log::get(&repo, scope, limit)?
+            } else {
+                check_query(&query)?;
+                git::log::search(&repo, scope, limit, &query)?
+            };
             let out: Vec<Value> = entries
                 .iter()
-                .filter(|c| {
-                    search.as_ref().is_none_or(|q| {
-                        c.subject.to_lowercase().contains(q) || c.author_name.to_lowercase().contains(q) || c.hash.starts_with(q.as_str())
-                    })
-                })
-                .take(limit as usize)
                 .map(|c| {
-                    json!({
+                    let mut v = json!({
                         "hash": c.hash,
                         "subject": c.subject,
                         "author": c.author_name,
                         "date": iso8601(c.author_time),
                         "parents": c.parents,
                         "refs": c.refs.iter().map(|r| json!({ "name": r.name, "kind": r.kind, "current": r.current })).collect::<Vec<_>>(),
-                    })
+                    });
+                    if let Some(p) = &c.file_path {
+                        v["filePath"] = json!(p);
+                    }
+                    v
                 })
                 .collect();
             Ok(Output::Json(json!(out)))

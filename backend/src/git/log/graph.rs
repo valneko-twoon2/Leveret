@@ -137,6 +137,7 @@ mod tests {
             refs: Vec::new(),
             subject: String::new(),
             graph: GraphRow::default(),
+            file_path: None,
         }
     }
 

@@ -310,7 +310,7 @@ mod tests {
             json!({ "repo": repo.path().join("sub").display().to_string(), "summary": "second" }),
         );
         assert!(!err, "{text}");
-        let (_, log) = call(&server, "get_log", json!({ "repo": name, "search": "SECOND" }));
+        let (_, log) = call(&server, "get_log", json!({ "repo": name, "message": "SECOND" }));
         let log: Value = serde_json::from_str(&log).unwrap();
         assert_eq!(log.as_array().unwrap().len(), 1);
         let (_, detail) = call(&server, "get_commit", json!({ "repo": name, "commit": "HEAD" }));

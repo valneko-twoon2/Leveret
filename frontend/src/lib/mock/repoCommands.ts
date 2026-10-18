@@ -1,6 +1,6 @@
 // Mock commands for repositories, status, the commit form, history (including
 // revert / cherry-pick), discard / resolve / ignore and stashes.
-import type { CommitDetail, CommitRequest, LogEntry, LogScope, Outcome, RepoList, RepoStatus, StashDetail } from '../api'
+import type { CommitDetail, CommitFile, CommitRequest, LogEntry, LogQuery, LogScope, Outcome, RepoList, RepoStatus, StashDetail } from '../api'
 import { sampleDiff } from './data'
 import { addCommit, buildGraph, extras, makeHistory, moveBranchLabel } from './repo'
 import { db, fail, find, UNHANDLED } from './state'
@@ -71,7 +71,18 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       const r = find(args.repo)
       const limit = Number(args.limit)
       void (args.scope as LogScope)
-      const entries: LogEntry[] = r.commits.slice(0, limit).map((c) => ({
+      const q = (args.query as LogQuery | null) ?? null
+      const has = (text: string, part?: string) => !part || text.toLowerCase().includes(part.toLowerCase())
+      const touches = (files: CommitFile[], path?: string) => !path || files.some((f) => f.path.startsWith(path))
+      const matches = r.commits.filter(
+        (c) =>
+          !q ||
+          ((has(c.subject + c.body, q.message) || (!!q.message && c.hash.startsWith(q.message))) &&
+            has(`${c.authorName} ${c.authorEmail}`, q.author) &&
+            touches(c.files, q.content ?? q.path) &&
+            touches(c.files, q.file)),
+      )
+      const entries: LogEntry[] = matches.slice(0, limit).map((c) => ({
         hash: c.hash,
         parents: c.parents,
         authorName: c.authorName,
@@ -80,8 +91,10 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
         refs: r.refs.get(c.hash) ?? [],
         subject: c.subject,
         graph: { col: 0, color: 0, width: 1, edges: [] },
+        ...(q?.file ? { filePath: q.file } : {}),
       }))
-      buildGraph(entries)
+      // Like the backend: search results have no graph.
+      if (!q) buildGraph(entries)
       return entries
     }
     case 'get_commit': {

@@ -284,4 +284,14 @@ fn messages_table() {
         |s| stash_message(s).is_ok(),
         &["line 1\nline 2", "a\tb", "a\0b", &"x".repeat(1001)],
     );
+    accepts(
+        "search_text",
+        |s| search_text(s).is_ok(),
+        &["fix", "[wip] *", "-S--danger", "日本語", &"x".repeat(200)],
+    );
+    rejects(
+        "search_text",
+        |s| search_text(s).is_ok(),
+        &["", "  ", "a\nb", "a\0b", &"x".repeat(201)],
+    );
 }

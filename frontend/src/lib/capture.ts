@@ -292,6 +292,25 @@ export const scenes: Scene[] = [
       await stash.selectFile('src/ui/diff.css')
     },
   },
+  {
+    id: '26-history-search',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      await history.setSearchField('message')
+      await history.setFilter('差分', true)
+    },
+  },
+  {
+    id: '27-file-history',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      history.logFilter = ''
+      await history.showFileHistory('src/main.rs')
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */

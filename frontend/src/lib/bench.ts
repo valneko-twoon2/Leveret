@@ -39,12 +39,11 @@ async function benchRepo(path: string) {
     }
     list.scrollTop = 0
   }
-  await perf.view('history.filter', async () => {
-    history.logFilter = 'fix'
-  })
-  await perf.view('history.filter', async () => {
-    history.logFilter = ''
-  })
+  await history.setFilter('fix', true)
+  await history.setFilter('', true)
+  const file = history.detail?.files[0]?.path
+  if (file) await history.showFileHistory(file)
+  await history.closeFileHistory()
   await history.loadMoreLog()
   await history.setScope('all')
   await history.setScope('head')

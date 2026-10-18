@@ -4,6 +4,7 @@
   import { changes } from '../changes.svelte'
   import { diffTool } from '../difftool.svelte'
   import { formatRelative } from '../format'
+  import { history } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
   import { prefs } from '../prefs.svelte'
@@ -51,8 +52,10 @@
       items.push('separator', { label: t('discard.ignore'), action: () => changes.ignore(file.path, false), disabled: !idle })
       if (ext) items.push({ label: t('discard.ignoreExtension', { ext }), action: () => changes.ignore(file.path, true), disabled: !idle })
     }
+    const committed = file.kind !== 'untracked' && file.kind !== 'added'
     items.push(
       'separator',
+      { label: t('history.showFileHistory'), action: () => history.showFileHistory(file.origPath ?? file.path), disabled: !committed },
       { label: t('common.copyPath'), action: () => app.copy(file.path) },
       { label: t('common.showInExplorer'), action: () => app.showInExplorer(file.kind === 'deleted' ? undefined : file.path) },
     )

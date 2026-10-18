@@ -1,10 +1,10 @@
-<!-- Left column of the History tab: the commit list with its graph, search and a context menu. -->
+<!-- Left column of the History tab: the commit list with its graph, search, a file's history and a context menu. -->
 <script lang="ts">
   import type { LogEntry, LogScope, Tag } from '../api'
   import { branches } from '../branches.svelte'
   import { changes } from '../changes.svelte'
   import { formatDateTime, formatRelative, shortHash } from '../format'
-  import { history } from '../history.svelte'
+  import { history, type SearchField } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
   import { app } from '../state.svelte'
@@ -16,16 +16,20 @@
 
   const ROW = 52
   const MAX_LANES = 8
+  const FIELDS: SearchField[] = ['message', 'author', 'content', 'path']
   const lanes = $derived(Math.min(MAX_LANES, Math.max(1, ...history.log.map((c) => c.graph.width))))
-  const list = $derived(history.filteredLog)
-  // The graph only makes sense for the unfiltered history.
-  const showGraph = $derived(history.logFilter.trim() === '')
+  const list = $derived(history.log)
+  // Search results skip commits, so the graph only makes sense for the whole log.
+  const showGraph = $derived(history.query === null)
   const selectedIndex = $derived(list.findIndex((c) => c.hash === history.selectedCommit))
 
-  function clearOnEscape(e: KeyboardEvent) {
+  function onSearchKey(e: KeyboardEvent) {
     if (e.key === 'Escape' && history.logFilter) {
       e.preventDefault()
-      history.logFilter = ''
+      void history.setFilter('', true)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      void history.setFilter(history.logFilter, true)
     }
   }
 
@@ -65,23 +69,47 @@
       <option value="head">{t('history.scopeHead')}</option>
       <option value="all">{t('history.scopeAll')}</option>
     </select>
+    <select
+      class="field"
+      value={history.searchField}
+      onchange={(e) => history.setSearchField(e.currentTarget.value as SearchField)}
+      title={t(`history.fieldHint.${history.searchField}`)}
+      aria-label={t('history.searchIn')}
+    >
+      {#each FIELDS as f (f)}<option value={f}>{t(`history.field.${f}`)}</option>{/each}
+    </select>
     <div class="search">
       <Icon name="search" size={13} />
       <input
         id="history-search"
         type="text"
         placeholder={t('history.search')}
-        title={`${t('history.searchHint')} (${t('shortcuts.search')})`}
-        bind:value={history.logFilter}
-        onkeydown={clearOnEscape}
+        title={`${t(`history.fieldHint.${history.searchField}`)} (${t('shortcuts.search')})`}
+        value={history.logFilter}
+        oninput={(e) => history.setFilter(e.currentTarget.value)}
+        onkeydown={onSearchKey}
         aria-label={t('history.search')}
         spellcheck="false"
       />
-      {#if history.logFilter}
-        <span class="matches">{t('history.matches', { count: list.length })}</span>
+      {#if history.logFilter.trim()}
+        <span class="matches">
+          {history.logLoading
+            ? t('history.searching')
+            : t(history.logHasMore ? 'history.matchesMore' : 'history.matches', { count: list.length })}
+        </span>
       {/if}
     </div>
   </div>
+  {#if history.file}
+    <div class="file-history">
+      <Icon name="file" size={13} />
+      <span class="label">{t('history.fileHistory')}:</span>
+      <span class="path" title={history.file}><bdi>{history.file}</bdi></span>
+      <button class="icon-btn" title={t('history.fileHistoryClose')} aria-label={t('history.fileHistoryClose')} onclick={() => history.closeFileHistory()}>
+        <Icon name="x" size={14} />
+      </button>
+    </div>
+  {/if}
 
   <div class="list">
     {#if history.logLoading && history.log.length === 0}
@@ -97,7 +125,7 @@
         {selectedIndex}
         label={t('tabs.history')}
         onselect={(i) => list[i] && history.selectCommit(list[i].hash)}
-        onreachend={() => showGraph && history.loadMoreLog()}
+        onreachend={() => history.loadMoreLog()}
         oncontext={(i, e) => list[i] && commitMenu(list[i], e)}
       >
         {#snippet row(c)}
@@ -143,11 +171,39 @@
 
   select {
     flex: none;
+    max-width: 112px;
     height: 24px;
     padding: 0 4px;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--bg);
+  }
+
+  .file-history {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 6px 0 10px;
+    border-bottom: 1px solid var(--border-muted);
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    color: var(--fg-muted);
+    font-size: 12px;
+  }
+
+  .file-history .label {
+    flex: none;
+  }
+
+  .file-history .path {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--fg);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    direction: rtl;
+    text-align: left;
   }
 
   .search {

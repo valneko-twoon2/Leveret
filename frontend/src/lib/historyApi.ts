@@ -36,9 +36,24 @@ export interface LogEntry {
   refs: RefLabel[]
   subject: string
   graph: GraphRow
+  /** In a file's history: the file's path in this commit (it may have been renamed since). */
+  filePath?: string
 }
 
 export type LogScope = 'head' | 'all'
+
+/** Searching the history in git; every given condition must match. */
+export interface LogQuery {
+  /** Text in the message (a pasted hash finds its commit too). */
+  message?: string
+  author?: string
+  /** Commits that add or remove this text. */
+  content?: string
+  /** Commits that touch this file or folder. */
+  path?: string
+  /** One file's history, following renames. */
+  file?: string
+}
 
 export interface CommitFile {
   path: string
@@ -60,7 +75,8 @@ export interface CommitDetail {
 }
 
 export const historyApi = {
-  getLog: (repo: string, scope: LogScope, limit: number) => call<LogEntry[]>('get_log', { repo, scope, limit }),
+  getLog: (repo: string, scope: LogScope, limit: number, query: LogQuery | null = null) =>
+    call<LogEntry[]>('get_log', { repo, scope, limit, query }),
   getCommit: (repo: string, hash: string) => call<CommitDetail>('get_commit', { repo, hash }),
   getCommitDiff: (repo: string, detail: CommitDetail, file: CommitFile) =>
     call<FileDiff>('get_commit_diff', {

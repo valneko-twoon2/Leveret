@@ -1,4 +1,4 @@
-//! The commit log (with its graph and ref labels) and commit details.
+//! The commit log (with its graph and ref labels), searching it, and commit details.
 
 use std::path::Path;
 
@@ -9,10 +9,12 @@ use crate::error::Result;
 
 mod detail;
 mod graph;
+mod search;
 
 pub(crate) use detail::parse_name_status;
 pub use detail::{CommitDetail, CommitFile, detail};
 use graph::build_graph;
+pub use search::{LogQuery, search};
 
 pub(super) const FIELD: char = '\x1f';
 pub(super) const RECORD: char = '\x1e';
@@ -75,6 +77,9 @@ pub struct LogEntry {
     pub refs: Vec<RefLabel>,
     pub subject: String,
     pub graph: GraphRow,
+    /// In a file's history: the file's path in this commit (it may have been renamed since).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
@@ -86,17 +91,24 @@ pub enum LogScope {
     All,
 }
 
-pub fn get(repo: &Path, scope: LogScope, limit: u32) -> Result<Vec<LogEntry>> {
-    let format = format!("--format={RECORD}%H{FIELD}%P{FIELD}%an{FIELD}%ae{FIELD}%at{FIELD}%D{FIELD}%s");
-    let mut git = Git::new(repo)
-        .args(["log", "--date-order", "--decorate=full", "--no-color"])
-        .arg(format)
-        .arg(format!("--max-count={limit}"));
-    git = match scope {
+/// The `--format` that [`parse_entry`] reads.
+fn format() -> String {
+    format!("--format={RECORD}%H{FIELD}%P{FIELD}%an{FIELD}%ae{FIELD}%at{FIELD}%D{FIELD}%s")
+}
+
+fn scope_args(git: Git<'_>, scope: LogScope) -> Git<'_> {
+    match scope {
         LogScope::Head => git.arg("HEAD"),
         LogScope::All => git.args(["HEAD", "--branches", "--remotes", "--tags"]),
-    };
-    let out = match git.arg("--").run() {
+    }
+}
+
+pub fn get(repo: &Path, scope: LogScope, limit: u32) -> Result<Vec<LogEntry>> {
+    let git = Git::new(repo)
+        .args(["log", "--date-order", "--decorate=full", "--no-color"])
+        .arg(format())
+        .arg(format!("--max-count={limit}"));
+    let out = match scope_args(git, scope).arg("--").run() {
         Ok(out) => out,
         // A repository without commits has no HEAD to log. Checked only on failure,
         // to save a process on every call.
@@ -128,6 +140,7 @@ fn parse_entry(record: &str) -> Option<LogEntry> {
         refs: parse_refs(refs),
         subject: subject.into(),
         graph: GraphRow::default(),
+        file_path: None,
     })
 }
 
