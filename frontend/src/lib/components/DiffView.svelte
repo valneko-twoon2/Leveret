@@ -9,16 +9,19 @@
 </script>
 
 <script lang="ts">
-  import type { DiffLine, FileDiff } from '../api'
+  import { isImagePath, type DiffLine, type FileDiff, type ImageSides } from '../api'
   import { t } from '../i18n/index.svelte'
   import { prefs } from '../prefs.svelte'
+  import ImageDiff from './ImageDiff.svelte'
   import VirtualList from './VirtualList.svelte'
 
   interface Props {
     diff: FileDiff | null
     picker?: LinePicker
+    /** Where the pictures of an image file are (shown instead of "binary file"). */
+    images?: ImageSides
   }
-  let { diff, picker }: Props = $props()
+  let { diff, picker, images }: Props = $props()
 
   type Row = { type: 'hunk'; text: string; h: number } | { type: 'line'; line: DiffLine; h: number; l: number }
 
@@ -100,6 +103,8 @@
 <div class="diff" style:tab-size={prefs.tabSize}>
   {#if !diff}
     <div class="empty"></div>
+  {:else if diff.binary && images && isImagePath(images.new?.path ?? images.old?.path ?? '')}
+    <ImageDiff sides={images} />
   {:else if diff.binary}
     <div class="empty">{t('diff.binary')}</div>
   {:else if diff.tooLarge}

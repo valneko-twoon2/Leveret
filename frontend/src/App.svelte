@@ -24,6 +24,7 @@
   import IssuesPane from './lib/components/IssuesPane.svelte'
   import IssueView from './lib/components/IssueView.svelte'
   import Icon from './lib/components/Icon.svelte'
+  import { workingImages } from './lib/imageSides'
   import OperationBanner from './lib/components/OperationBanner.svelte'
   import Overlays from './lib/components/Overlays.svelte'
   import RepoHeader from './lib/components/RepoHeader.svelte'
@@ -198,7 +199,7 @@
               {:else if changes.selectedChange}
                 {@const file = changes.selectedChange}
                 <DiffHeader path={file.path} origPath={file.origPath} kind={file.kind} height={37} onopen={() => diffTool.openWorking(file)} />
-                <div class="main-body"><DiffView diff={changes.workingDiff} picker={changes.picker} /></div>
+                <div class="main-body"><DiffView diff={changes.workingDiff} picker={changes.picker} images={workingImages(file, app.status?.headOid ?? null)} /></div>
               {:else if app.status}
                 <div class="empty">
                   <Icon name="file" size={32} />

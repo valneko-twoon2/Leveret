@@ -103,7 +103,26 @@ export interface CommitRequest {
   partial?: LineSelection[]
 }
 
+/** A picture of the repository, for the image diff. */
+export interface ImageData {
+  mime: string
+  size: number
+  /** null when the picture is too large to show */
+  dataUrl: string | null
+}
+
+/** Where the two sides of an image diff are: a commit (`rev`) or the working tree (`rev` null); a side is null when the file is not there. */
+export interface ImageSides {
+  old: { rev: string | null; path: string } | null
+  new: { rev: string | null; path: string } | null
+}
+
+/** Picture file names (the backend serves the same formats). */
+export const isImagePath = (path: string) => /\.(png|jpe?g|gif|bmp|webp|ico)$/i.test(path)
+
 export const repoApi = {
+  /** A picture at `path` in commit `rev`, or in the working tree when `rev` is null. */
+  getImage: (repo: string, rev: string | null, path: string) => call<ImageData | null>('get_image', { repo, rev, path }),
   listRepos: () => call<RepoList>('list_repos'),
   addRepo: (path: string) => call<RepoEntry>('add_repo', { path }),
   removeRepo: (path: string) => call<void>('remove_repo', { path }),
@@ -116,7 +135,7 @@ export const repoApi = {
       path: file.path,
       origPath: file.origPath,
       untracked: file.kind === 'untracked',
-      ignoreWhitespace: prefs.ignoreWhitespace,
+      options: prefs.diffOptions,
     }),
   commit: (repo: string, request: CommitRequest) => call<string>('commit', { repo, request }),
   undoLastCommit: (repo: string) => call<string>('undo_last_commit', { repo }),

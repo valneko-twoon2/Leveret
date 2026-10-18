@@ -47,3 +47,10 @@ export function phaseLabel(phase: string): string {
   const key = PHASES[phase]
   return key ? t(key) : phase
 }
+
+/** A byte count for people: `812 B`, `34.5 KB`, `2.1 MB`. */
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}

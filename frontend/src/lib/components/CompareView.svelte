@@ -3,6 +3,7 @@
   import { diffTool } from '../difftool.svelte'
   import { formatRelative, shortHash } from '../format'
   import { history } from '../history.svelte'
+  import { commitImages } from '../imageSides'
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
   import type { LogEntry } from '../api'
@@ -79,7 +80,7 @@
             onopen={() => diffTool.openRange(c.base.hash, c.target.hash, selectedFile)}
           />
         {/if}
-        <div class="diff-body"><DiffView diff={c.diff} /></div>
+        <div class="diff-body"><DiffView diff={c.diff} images={selectedFile ? commitImages(selectedFile, c.base.hash, c.target.hash) : undefined} /></div>
       </div>
     </div>
   </div>

@@ -11,6 +11,7 @@ pub mod commit;
 pub mod config;
 pub mod diff;
 pub mod discard;
+pub mod image;
 pub mod log;
 pub mod operation;
 pub mod patch;

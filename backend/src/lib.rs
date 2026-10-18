@@ -105,6 +105,7 @@ pub fn run() {
             commands::history::get_blame,
             commands::history::compare_commits,
             commands::history::get_commit_diff,
+            commands::image::get_image,
             commands::issues::issue_sources,
             commands::issues::list_issues,
             commands::issues::get_issue,

@@ -129,6 +129,7 @@ export function makeRepos(): MockRepo[] {
         { path: 'src/old_dialog.rs', origPath: null, kind: 'deleted' },
         { path: 'src/ui/branch_dialog.rs', origPath: null, kind: 'added' },
         { path: 'src/ui/history.rs', origPath: 'src/ui/log.rs', kind: 'renamed' },
+        { path: 'assets/logo.png', origPath: null, kind: 'modified' },
       ],
       ...leveret,
       ...extras('main', true),

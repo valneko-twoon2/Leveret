@@ -1,7 +1,9 @@
 <!-- Main area of the Changes tab while a stash is open: its message, files and diffs, and what to do with it. -->
 <script lang="ts">
+  import type { CommitFile, StashDetail } from '../api'
   import { formatDateTime, formatRelative, shortHash } from '../format'
   import { t } from '../i18n/index.svelte'
+  import { commitImages } from '../imageSides'
   import { layout } from '../layout.svelte'
   import { stash } from '../stash.svelte'
   import { app } from '../state.svelte'
@@ -16,6 +18,11 @@
   const files = $derived(detail?.files ?? [])
   const selectedIndex = $derived(files.findIndex((f) => f.path === stash.file))
   const idle = $derived(app.busy === null)
+  const selectedFile = $derived(files.find((f) => f.path === stash.file) ?? null)
+
+  /** Untracked files are in the stash's third parent and have no earlier version. */
+  const stashImages = (f: CommitFile, d: StashDetail) =>
+    f.kind === 'untracked' ? commitImages(f, null, d.untracked ?? d.oid) : commitImages(f, d.base, d.oid)
 </script>
 
 {#if entry}
@@ -64,7 +71,7 @@
         </div>
       </div>
       <Splitter pane="commitFiles" />
-      <div class="diff"><DiffView diff={stash.diff} /></div>
+      <div class="diff"><DiffView diff={stash.diff} images={selectedFile && detail ? stashImages(selectedFile, detail) : undefined} /></div>
     </div>
   </div>
 {/if}

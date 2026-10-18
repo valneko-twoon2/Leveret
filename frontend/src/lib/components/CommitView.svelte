@@ -4,6 +4,7 @@
   import { diffTool } from '../difftool.svelte'
   import { formatDateTime, shortHash } from '../format'
   import { history } from '../history.svelte'
+  import { commitImages } from '../imageSides'
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
@@ -103,7 +104,10 @@
         {#if selectedFile}
           <DiffHeader path={selectedFile.path} origPath={selectedFile.origPath} kind={selectedFile.kind} height={34} onopen={() => diffTool.openCommit(detail, selectedFile)} />
         {/if}
-        <div class="diff-body"><DiffView diff={history.commitDiff} /></div>
+        <div class="diff-body"><DiffView
+            diff={history.commitDiff}
+            images={detail && selectedFile ? commitImages(selectedFile, detail.parents[0] ?? null, detail.hash) : undefined}
+          /></div>
       </div>
     </div>
   </div>

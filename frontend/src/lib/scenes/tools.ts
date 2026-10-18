@@ -112,4 +112,13 @@ export const toolScenes: Scene[] = [
       rewrite.setMessage(0, 'ブランチ一覧のテストを追加\n\n並べ替えの設定が保存されることも確認する。')
     },
   },
+  {
+    id: '35-image-diff',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('changes')
+      await changes.selectFile('assets/logo.png')
+    },
+  },
 ]

@@ -23,6 +23,11 @@ export default {
   },
   diff: {
     binary: 'バイナリファイルのため差分を表示できません',
+    imageBefore: '変更前',
+    imageAfter: '変更後',
+    imageNone: '（なし）',
+    imageTooLarge: '画像が大きすぎるため表示できません',
+    imageFailed: '画像を読み込めませんでした',
     tooLarge: 'ファイルが大きすぎるため差分を表示できません',
     truncated: '差分が大きいため途中までを表示しています',
     noChanges: '内容の変更はありません（モードや改行コードのみの変更の可能性があります）',

@@ -114,6 +114,13 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
         files: c.files,
       } satisfies CommitDetail
     }
+    case 'get_image': {
+      // A drawing whose colour follows the revision, so the two sides differ.
+      const hue = args.rev ? parseInt(String(args.rev).slice(0, 4), 16) % 360 : 140
+      const radius = args.rev ? 56 : 70
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="160"><rect width="240" height="160" rx="12" fill="hsl(${hue} 55% 92%)"/><circle cx="120" cy="80" r="${radius}" fill="hsl(${hue} 60% 50%)"/></svg>`
+      return { mime: 'image/png', size: 18432, dataUrl: `data:image/svg+xml;base64,${btoa(svg)}` }
+    }
     case 'get_commit_diff': {
       const r = find(args.repo)
       const c = r.commits.find((x) => x.hash === args.hash)
