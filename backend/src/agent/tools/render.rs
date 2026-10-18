@@ -36,7 +36,7 @@ pub(super) fn brief_status(repo: &Path) -> Result<Value> {
 }
 
 /// Cuts `text` at `max` bytes (on a character boundary) with a note.
-fn truncate(mut text: String, max: usize) -> String {
+pub(super) fn truncate(mut text: String, max: usize) -> String {
     if text.len() > max {
         let mut end = max;
         while !text.is_char_boundary(end) {

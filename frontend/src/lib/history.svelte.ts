@@ -117,6 +117,17 @@ class HistoryState {
     else await perf.view('history.file', () => this.loadLog())
   }
 
+  /** Selects a commit in the History tab, searching for it when it isn't in the loaded log. */
+  async jumpTo(hash: string) {
+    if (app.tab !== 'history') await app.setTab('history')
+    if (!this.log.some((c) => c.hash === hash)) {
+      this.file = null
+      this.searchField = 'message'
+      await this.setFilter(hash, true)
+    }
+    await this.selectCommit(hash)
+  }
+
   async closeFileHistory() {
     this.file = null
     this.logLimit = LOG_PAGE

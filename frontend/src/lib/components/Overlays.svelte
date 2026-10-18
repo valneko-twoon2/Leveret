@@ -1,6 +1,7 @@
 <!-- Dialogs, menus and toasts shown above the main layout, each while its store asks for it. -->
 <script lang="ts">
   import { agents } from '../agents.svelte'
+  import { blame } from '../blame.svelte'
   import { branches } from '../branches.svelte'
   import { github } from '../github.svelte'
   import { issues } from '../issues.svelte'
@@ -8,6 +9,7 @@
   import { app } from '../state.svelte'
   import { tags } from '../tags.svelte'
   import AgentDialog from './AgentDialog.svelte'
+  import BlameDialog from './BlameDialog.svelte'
   import BranchesDialog from './BranchesDialog.svelte'
   import CloneDialog from './CloneDialog.svelte'
   import ContextMenu from './ContextMenu.svelte'
@@ -28,6 +30,9 @@
   <NewBranchDialog />
 {/if}
 
+{#if blame.path}
+  <BlameDialog />
+{/if}
 {#if tags.newTag}
   <NewTagDialog />
 {/if}

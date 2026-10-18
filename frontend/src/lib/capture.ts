@@ -7,6 +7,7 @@
 import { tick } from 'svelte'
 import { agents } from './agents.svelte'
 import { api, usingMock, type CaptureRequest } from './api'
+import { blame } from './blame.svelte'
 import { branches } from './branches.svelte'
 import { changes } from './changes.svelte'
 import { github } from './github.svelte'
@@ -311,12 +312,22 @@ export const scenes: Scene[] = [
       await history.showFileHistory('src/main.rs')
     },
   },
+  {
+    id: '28-blame',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('changes')
+      await blame.open('src/git/branch.rs')
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */
 function closeOverlays() {
   menu.close()
   stash.close()
+  blame.close()
   tags.closeNewTag()
   settings.close()
   agents.closeAgent()

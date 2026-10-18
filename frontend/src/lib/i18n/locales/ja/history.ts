@@ -45,6 +45,13 @@ export default {
     copySubject: 'メッセージをコピー',
     createBranch: 'ここから新しいブランチを作成',
   },
+  blame: {
+    open: '注釈を表示（各行を最後に変更したコミット）',
+    title: '注釈: {path}',
+    titleAt: '注釈: {path}（{hash} 時点）',
+    uncommitted: '未コミット',
+    showCommit: 'クリックでこのコミットを履歴に表示',
+  },
   operation: {
     merge: 'マージ中',
     rebase: 'リベース中',

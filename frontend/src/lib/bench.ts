@@ -5,6 +5,7 @@
 // spans are what gets measured. Add a step here for every new screen.
 import { agents } from './agents.svelte'
 import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
+import { blame } from './blame.svelte'
 import { branches } from './branches.svelte'
 import { settings } from './settings.svelte'
 import { changes } from './changes.svelte'
@@ -44,6 +45,8 @@ async function benchRepo(path: string) {
   const file = history.detail?.files[0]?.path
   if (file) await history.showFileHistory(file)
   await history.closeFileHistory()
+  if (file) await blame.open(file, history.selectedCommit)
+  blame.close()
   await history.loadMoreLog()
   await history.setScope('all')
   await history.setScope('head')

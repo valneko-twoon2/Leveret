@@ -74,10 +74,30 @@ export interface CommitDetail {
   files: CommitFile[]
 }
 
+export interface BlameCommit {
+  /** All zeros for lines that are not committed yet. */
+  hash: string
+  authorName: string
+  authorTime: number
+  summary: string
+}
+
+/** Who last changed each line of a file. */
+export interface Blame {
+  commits: BlameCommit[]
+  /** Line `i` is number `i + 1`; `commit` indexes `commits`. */
+  lines: { commit: number; text: string }[]
+  binary: boolean
+  truncated: boolean
+}
+
 export const historyApi = {
   getLog: (repo: string, scope: LogScope, limit: number, query: LogQuery | null = null) =>
     call<LogEntry[]>('get_log', { repo, scope, limit, query }),
   getCommit: (repo: string, hash: string) => call<CommitDetail>('get_commit', { repo, hash }),
+  /** `rev`: the file at that commit; null: the working tree file. */
+  getBlame: (repo: string, rev: string | null, path: string, ignoreWhitespace: boolean) =>
+    call<Blame>('get_blame', { repo, rev, path, ignoreWhitespace }),
   getCommitDiff: (repo: string, detail: CommitDetail, file: CommitFile) =>
     call<FileDiff>('get_commit_diff', {
       repo,

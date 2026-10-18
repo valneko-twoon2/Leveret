@@ -1,5 +1,6 @@
 <!-- Main area of the History tab: commit message, metadata, files and the diff. -->
 <script lang="ts">
+  import { blame } from '../blame.svelte'
   import { diffTool } from '../difftool.svelte'
   import { formatDateTime, shortHash } from '../format'
   import { history } from '../history.svelte'
@@ -27,6 +28,7 @@
     if (diffTool.available) items.push({ label: t('diff.openInTool'), action: () => diffTool.openCommit(detail, file) }, 'separator')
     items.push(
       { label: t('history.showFileHistory'), action: () => history.showFileHistory(file.kind === 'deleted' ? (file.origPath ?? file.path) : file.path) },
+      { label: t('blame.open'), action: () => blame.open(file.path, detail.hash), disabled: file.kind === 'deleted' },
       { label: t('common.copyPath'), action: () => app.copy(file.path) },
     )
     menu.open(e, items)

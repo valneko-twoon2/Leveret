@@ -1,9 +1,11 @@
-//! Commands for the history: the commit log, commit details and file diffs of a commit.
+//! Commands for the history: the commit log (and searching it), commit details,
+//! file diffs of a commit and who last changed each line of a file.
 
 use tauri::State;
 
 use super::blocking;
 use crate::error::Result;
+use crate::git::blame::Blame;
 use crate::git::diff::FileDiff;
 use crate::git::log::{CommitDetail, LogEntry, LogQuery, LogScope};
 use crate::repos::RepoStore;
@@ -40,6 +42,24 @@ pub(crate) fn check_query(q: &LogQuery) -> Result<()> {
         security::relative_path(path)?;
     }
     Ok(())
+}
+
+/// `rev`: blame the file as it is in that commit; without it, the working tree file.
+#[tauri::command]
+pub async fn get_blame(
+    store: State<'_, RepoStore>,
+    repo: String,
+    rev: Option<String>,
+    path: String,
+    ignore_whitespace: Option<bool>,
+) -> Result<Blame> {
+    let repo = store.require(&repo)?;
+    if let Some(r) = &rev {
+        security::object_id(r)?;
+    }
+    security::relative_path(&path)?;
+    let ws = ignore_whitespace.unwrap_or(false);
+    blocking(move || git::blame::blame(&repo, rev.as_deref(), &path, ws)).await
 }
 
 #[tauri::command]

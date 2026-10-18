@@ -1,6 +1,6 @@
 // Mock commands for repositories, status, the commit form, history (including
 // revert / cherry-pick), discard / resolve / ignore and stashes.
-import type { CommitDetail, CommitFile, CommitRequest, LogEntry, LogQuery, LogScope, Outcome, RepoList, RepoStatus, StashDetail } from '../api'
+import type { Blame, CommitDetail, CommitFile, CommitRequest, LogEntry, LogQuery, LogScope, Outcome, RepoList, RepoStatus, StashDetail } from '../api'
 import { sampleDiff } from './data'
 import { addCommit, buildGraph, extras, makeHistory, moveBranchLabel } from './repo'
 import { db, fail, find, UNHANDLED } from './state'
@@ -119,6 +119,18 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       const c = r.commits.find((x) => x.hash === args.hash)
       const f = c?.files.find((x) => x.path === args.path)
       return sampleDiff(f?.kind ?? 'modified', String(args.path))
+    }
+    case 'get_blame': {
+      const r = find(args.repo)
+      const commits = r.commits.slice(0, 3).map((c) => ({ hash: c.hash, authorName: c.authorName, authorTime: c.authorTime, summary: c.subject }))
+      const text = sampleDiff('added', 'x').hunks[0].lines.map((l) => l.text)
+      const owner = [2, 2, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 0, 0, 0, 0]
+      return {
+        commits,
+        lines: text.map((line, i) => ({ commit: Math.min(owner[i] ?? 2, commits.length - 1), text: line })),
+        binary: false,
+        truncated: false,
+      } satisfies Blame
     }
     case 'revert_commit':
     case 'cherry_pick': {

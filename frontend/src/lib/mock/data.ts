@@ -50,7 +50,7 @@ export const FILES = ['src/ui/log.rs', 'src/git/branch.rs', 'src/main.rs', 'READ
 export const MOCK_ACCOUNT: GithubAccount = { login: 'valneko-twoon2', name: 'valneko-twoon2', htmlUrl: 'https://github.com/valneko-twoon2', avatar: null }
 
 export const AGENT_TOOLS: AgentTool[] = [
-  ...['list_repositories', 'get_status', 'get_diff', 'open_in_diff_tool', 'get_log', 'get_commit', 'list_branches', 'list_stashes', 'get_stash', 'list_tags', 'list_issues', 'get_issue'].map((name) => ({ name, level: 'read' as const })),
+  ...['list_repositories', 'get_status', 'get_diff', 'open_in_diff_tool', 'get_log', 'get_commit', 'blame_file', 'list_branches', 'list_stashes', 'get_stash', 'list_tags', 'list_issues', 'get_issue'].map((name) => ({ name, level: 'read' as const })),
   ...['add_repository', 'clone_repository', 'commit', 'undo_last_commit', 'fetch', 'pull', 'push', 'create_branch', 'switch_branch', 'checkout_commit', 'merge_branch', 'rebase_branch', 'revert_commit', 'cherry_pick', 'mark_resolved', 'continue_operation', 'stash_save', 'stash_apply', 'stash_pop', 'create_tag', 'push_tag', 'ignore_path', 'create_issue', 'update_issue', 'comment_issue', 'publish_issue'].map((name) => ({ name, level: 'write' as const })),
   ...['discard_changes', 'discard_hunks', 'delete_branch', 'resolve_conflict', 'abort_operation', 'skip_operation', 'stash_drop', 'delete_tag', 'delete_issue'].map((name) => ({ name, level: 'destructive' as const })),
 ].map((t) => ({ ...t, title: t.name }))

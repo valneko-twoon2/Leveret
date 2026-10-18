@@ -4,6 +4,7 @@
 //! user's config, credential helpers, SSH setup and hooks all behave exactly
 //! as they do on the command line.
 
+pub mod blame;
 pub mod branch;
 pub mod clone;
 pub mod commit;

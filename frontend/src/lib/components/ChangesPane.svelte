@@ -1,6 +1,7 @@
 <!-- Left column of the Changes tab: changed files with checkboxes, stashes, and the commit form. -->
 <script lang="ts">
   import type { FileChange, StashEntry } from '../api'
+  import { blame } from '../blame.svelte'
   import { changes } from '../changes.svelte'
   import { diffTool } from '../difftool.svelte'
   import { formatRelative } from '../format'
@@ -56,6 +57,7 @@
     items.push(
       'separator',
       { label: t('history.showFileHistory'), action: () => history.showFileHistory(file.origPath ?? file.path), disabled: !committed },
+      { label: t('blame.open'), action: () => blame.open(file.path), disabled: !committed || file.kind === 'deleted' },
       { label: t('common.copyPath'), action: () => app.copy(file.path) },
       { label: t('common.showInExplorer'), action: () => app.showInExplorer(file.kind === 'deleted' ? undefined : file.path) },
     )
