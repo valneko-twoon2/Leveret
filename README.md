@@ -144,7 +144,7 @@ args = ["--mcp"]
 | **Standard** (default) | also commit, push / pull / fetch, branch, merge, rebase, revert, cherry-pick, stash, create / edit / comment on / publish issues |
 | Full | also discard changes, delete branches, abort / skip operations, drop stashes, delete local issues |
 
-- **48 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
+- **49 tools** with JSON schemas and MCP annotations (read-only / destructive / open-world), written for models:
   repositories by name or path (a working directory inside one works too), branches like `main` or `origin/main`,
   revisions like `HEAD~1`; compact JSON results with next steps, e.g. the conflicted files after a rebase stops.
 - **Visible to the user**: every change an agent makes is logged; the app shows a notification and refreshes itself.

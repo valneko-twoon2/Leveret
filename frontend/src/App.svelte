@@ -13,9 +13,11 @@
   import { prefs } from './lib/prefs.svelte'
   import { stash } from './lib/stash.svelte'
   import { handleShortcut } from './lib/shortcuts'
+  import { history } from './lib/history.svelte'
   import { app, describeError } from './lib/state.svelte'
   import ChangesPane from './lib/components/ChangesPane.svelte'
   import CommitView from './lib/components/CommitView.svelte'
+  import CompareView from './lib/components/CompareView.svelte'
   import DiffHeader from './lib/components/DiffHeader.svelte'
   import DiffView from './lib/components/DiffView.svelte'
   import HistoryPane from './lib/components/HistoryPane.svelte'
@@ -204,7 +206,7 @@
                 </div>
               {/if}
             {:else if app.tab === 'history'}
-              <CommitView />
+              {#if history.compare}<CompareView />{:else}<CommitView />{/if}
             {:else}
               <IssueView />
             {/if}

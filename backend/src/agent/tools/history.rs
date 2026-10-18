@@ -3,7 +3,7 @@
 use serde_json::{Value, json};
 
 use super::args::{MAX_BYTES, max_bytes, opt_bool, opt_str, opt_u64, repo, resolve_commit, str_arg};
-use super::render::{commit_diff, iso8601, truncate};
+use super::render::{commit_diff, iso8601, range_diff, truncate};
 use super::schema::{boolean, integer, object, repo_prop, string, tool};
 use super::{Context, Output, Tool, no_handler};
 use crate::agent::Level;
@@ -35,6 +35,23 @@ pub(super) fn tools() -> Vec<Tool> {
                     "file": string("The history of this file, following renames; each commit lists the file's path at that time."),
                 }),
                 &["repo"],
+            ),
+        ),
+        tool(
+            "compare_commits",
+            "Compare commits",
+            Read,
+            false,
+            "What changed between any two commits (or branches, tags): the files and, optionally, the unified diff from `base` to `target`. Use it to review the difference between releases or branches.",
+            object(
+                json!({
+                    "repo": repo_prop(),
+                    "base": string("The older side: commit hash, branch, tag, HEAD~3, ..."),
+                    "target": string("The newer side (default HEAD)."),
+                    "includeDiff": boolean("Include the diff (default true)."),
+                    "maxBytes": integer("Maximum size of the diff text (default 100000).", 1000, MAX_BYTES as u64),
+                }),
+                &["repo", "base"],
             ),
         ),
         tool(
@@ -117,6 +134,20 @@ pub(super) fn run(ctx: &Context, name: &str, args: &Value) -> Result<Output> {
                 })
                 .collect();
             Ok(Output::Json(json!(out)))
+        }
+        "compare_commits" => {
+            let repo = repo(ctx, args)?;
+            let base = resolve_commit(&repo, str_arg(args, "base")?)?;
+            let target = resolve_commit(&repo, opt_str(args, "target")?.unwrap_or("HEAD"))?;
+            let mut v = json!({
+                "base": base,
+                "target": target,
+                "files": git::log::compare(&repo, &base, &target)?,
+            });
+            if opt_bool(args, "includeDiff")?.unwrap_or(true) {
+                v["diff"] = json!(range_diff(&repo, &base, &target, max_bytes(args)?)?);
+            }
+            Ok(Output::Json(v))
         }
         "blame_file" => {
             let repo = repo(ctx, args)?;

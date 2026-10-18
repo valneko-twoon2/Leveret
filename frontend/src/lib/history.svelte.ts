@@ -17,6 +17,15 @@ const SEARCH_DELAY_MS = 350
 /** What the search box looks in. */
 export type SearchField = 'message' | 'author' | 'content' | 'path'
 
+/** Two commits compared: the files between them and the selected file's diff. */
+export interface Comparison {
+  base: LogEntry
+  target: LogEntry
+  files: CommitFile[] | null
+  file: string | null
+  diff: FileDiff | null
+}
+
 class HistoryState {
   scope = $state<LogScope>('head')
   log = $state.raw<LogEntry[]>([])
@@ -32,6 +41,8 @@ class HistoryState {
   detail = $state.raw<CommitDetail | null>(null)
   detailFile = $state<string | null>(null)
   commitDiff = $state.raw<FileDiff | null>(null)
+  /** Two commits being compared (shown instead of the selected commit). */
+  compare = $state.raw<Comparison | null>(null)
 
   /** The search in effect, or null for the whole log (with its graph). */
   query = $derived.by<LogQuery | null>(() => {
@@ -51,6 +62,7 @@ class HistoryState {
     this.logHasMore = false
     this.logFilter = ''
     this.file = null
+    this.compare = null
     this.selectedCommit = null
     this.detail = null
     this.detailFile = null
@@ -117,6 +129,51 @@ class HistoryState {
     else await perf.view('history.file', () => this.loadLog())
   }
 
+  /** Compares two commits of the log (in history order: the older one is the base). */
+  async compareCommits(a: string, b: string) {
+    const repo = app.selectedPath
+    const ia = this.log.findIndex((c) => c.hash === a)
+    const ib = this.log.findIndex((c) => c.hash === b)
+    if (!repo || ia < 0 || ib < 0 || ia === ib) return
+    const [base, target] = ia > ib ? [this.log[ia], this.log[ib]] : [this.log[ib], this.log[ia]]
+    await this.showComparison(repo, base, target)
+  }
+
+  async swapComparison() {
+    const repo = app.selectedPath
+    const c = this.compare
+    if (repo && c) await this.showComparison(repo, c.target, c.base)
+  }
+
+  private async showComparison(repo: string, base: LogEntry, target: LogEntry) {
+    this.selectedCommit = target.hash
+    this.compare = { base, target, files: null, file: null, diff: null }
+    await perf.view('history.compare', async () => {
+      const files = await app.guard(() => api.compareCommits(repo, base.hash, target.hash))
+      if (!files || this.compare?.base !== base || this.compare.target !== target) return
+      this.compare = { ...this.compare, files }
+      await this.selectComparedFile(files[0]?.path ?? null)
+    })
+  }
+
+  async selectComparedFile(path: string | null) {
+    const repo = app.selectedPath
+    const c = this.compare
+    const file = c?.files?.find((f) => f.path === path)
+    if (!repo || !c) return
+    this.compare = { ...c, file: path, diff: null }
+    if (!file) return
+    const diff = await app.guard(() => api.getRangeDiff(repo, c.base.hash, c.target.hash, file))
+    if (diff && this.compare?.target === c.target && this.compare.base === c.base && this.compare.file === path) {
+      this.compare = { ...this.compare, diff }
+    }
+  }
+
+  async closeComparison() {
+    const target = this.compare?.target.hash ?? null
+    await this.selectCommit(target)
+  }
+
   /** Selects a commit in the History tab, searching for it when it isn't in the loaded log. */
   async jumpTo(hash: string) {
     if (app.tab !== 'history') await app.setTab('history')
@@ -135,6 +192,7 @@ class HistoryState {
   }
 
   async selectCommit(hash: string | null) {
+    this.compare = null
     this.selectedCommit = hash
     const repo = app.selectedPath
     if (!repo || !hash) {

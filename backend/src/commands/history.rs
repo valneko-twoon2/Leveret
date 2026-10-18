@@ -7,7 +7,7 @@ use super::blocking;
 use crate::error::Result;
 use crate::git::blame::Blame;
 use crate::git::diff::FileDiff;
-use crate::git::log::{CommitDetail, LogEntry, LogQuery, LogScope};
+use crate::git::log::{CommitDetail, CommitFile, LogEntry, LogQuery, LogScope};
 use crate::repos::RepoStore;
 use crate::{git, security};
 
@@ -42,6 +42,21 @@ pub(crate) fn check_query(q: &LogQuery) -> Result<()> {
         security::relative_path(path)?;
     }
     Ok(())
+}
+
+/// Files that differ between two commits; their diffs come from `get_commit_diff`
+/// with `parent` set to `base`.
+#[tauri::command]
+pub async fn compare_commits(
+    store: State<'_, RepoStore>,
+    repo: String,
+    base: String,
+    target: String,
+) -> Result<Vec<CommitFile>> {
+    let repo = store.require(&repo)?;
+    security::object_id(&base)?;
+    security::object_id(&target)?;
+    blocking(move || git::log::compare(&repo, &base, &target)).await
 }
 
 /// `rev`: blame the file as it is in that commit; without it, the working tree file.

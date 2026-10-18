@@ -21,8 +21,13 @@ class DiffToolState {
   }
 
   async openCommit(detail: CommitDetail, file: CommitFile) {
+    await this.openRange(detail.parents[0] ?? null, detail.hash, file)
+  }
+
+  /** A file from `base` to `target` (two compared commits). */
+  async openRange(base: string | null, target: string, file: CommitFile) {
     const repo = app.selectedPath
-    if (repo && this.available) await app.guard(() => api.openCommitInDiffTool(repo, detail, file))
+    if (repo && this.available) await app.guard(() => api.openCommitInDiffTool(repo, target, base, file))
   }
 }
 

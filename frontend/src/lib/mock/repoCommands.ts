@@ -120,6 +120,14 @@ export async function repoCommands(cmd: string, args: Record<string, unknown>): 
       const f = c?.files.find((x) => x.path === args.path)
       return sampleDiff(f?.kind ?? 'modified', String(args.path))
     }
+    case 'compare_commits': {
+      const r = find(args.repo)
+      const touched = new Map<string, CommitFile>()
+      const [a, b] = [args.base, args.target].map((h) => r.commits.findIndex((c) => c.hash === h))
+      if (a < 0 || b < 0) fail('gitFailed', 'bad revision')
+      for (const c of r.commits.slice(Math.min(a, b), Math.max(a, b))) for (const f of c.files) touched.set(f.path, f)
+      return [...touched.values()]
+    }
     case 'get_blame': {
       const r = find(args.repo)
       const commits = r.commits.slice(0, 3).map((c) => ({ hash: c.hash, authorName: c.authorName, authorTime: c.authorTime, summary: c.subject }))

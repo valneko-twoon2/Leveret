@@ -321,6 +321,19 @@ export const scenes: Scene[] = [
       await blame.open('src/git/branch.rs')
     },
   },
+  {
+    id: '29-compare',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      history.logFilter = ''
+      history.file = null
+      await history.setScope('head')
+      const [newer, older] = [history.log[0], history.log[4]]
+      if (newer && older) await history.compareCommits(newer.hash, older.hash)
+    },
+  },
 ]
 
 /** Closes dialogs and menus left open by the previous scene. */

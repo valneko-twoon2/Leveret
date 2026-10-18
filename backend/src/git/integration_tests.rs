@@ -74,6 +74,11 @@ fn history_with_merge_details_and_diffs() {
     assert_eq!(d.hunks[0].lines[0].text, "こんにちは");
 
     // Root commit diff (against the empty tree).
+    // Any two commits compare (the file list between them).
+    let files = log::compare(p, &entries[3].hash, &entries[0].hash).unwrap();
+    assert!(!files.is_empty());
+    assert!(log::compare(p, &entries[0].hash, &entries[0].hash).unwrap().is_empty());
+
     let root = log::detail(p, &entries[3].hash).unwrap();
     assert!(root.parents.is_empty());
     let d = diff::commit_file(p, &root.hash, None, "a.txt", None).unwrap();

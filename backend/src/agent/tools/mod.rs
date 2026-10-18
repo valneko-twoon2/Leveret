@@ -128,6 +128,7 @@ const ORDER: &[&str] = &[
     "open_in_diff_tool",
     "get_log",
     "get_commit",
+    "compare_commits",
     "blame_file",
     "list_branches",
     "list_stashes",

@@ -42,6 +42,7 @@
     const idle = app.busy === null
     const isHead = c.hash === app.status?.headOid
     const busyOp = !idle || app.operation !== null
+    const selected = history.compare?.target.hash ?? history.selectedCommit
     menu.open(e, [
       { label: t('history.createBranch'), hint: isHead ? t('shortcuts.newBranch') : undefined, action: () => branches.openNewBranch(c.hash, shortHash(c.hash)), disabled: !idle },
       { label: t('history.checkout'), action: () => history.checkoutCommit(c), disabled: busyOp || isHead },
@@ -57,6 +58,9 @@
       { label: t('history.cherryPick'), action: () => history.cherryPick(c), disabled: busyOp || isHead },
       ...(isHead ? [{ label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead }] : []),
       'separator',
+      ...(selected && selected !== c.hash
+        ? [{ label: t('history.compareWithSelected'), hint: t('history.compareHint'), action: () => history.compareCommits(selected, c.hash) }, 'separator' as const]
+        : []),
       { label: t('history.copySha'), action: () => app.copy(c.hash) },
       { label: t('history.copySubject'), action: () => app.copy(c.subject) },
     ])
@@ -124,12 +128,18 @@
         rowHeight={ROW}
         {selectedIndex}
         label={t('tabs.history')}
-        onselect={(i) => list[i] && history.selectCommit(list[i].hash)}
+        onselect={(i, e) => {
+          const c = list[i]
+          if (!c) return
+          // Ctrl+click: compare with the selected commit.
+          if (e?.ctrlKey && history.selectedCommit && history.selectedCommit !== c.hash) void history.compareCommits(history.selectedCommit, c.hash)
+          else void history.selectCommit(c.hash)
+        }}
         onreachend={() => history.loadMoreLog()}
         oncontext={(i, e) => list[i] && commitMenu(list[i], e)}
       >
         {#snippet row(c)}
-          <div class="commit" class:plain={!showGraph}>
+          <div class="commit" class:plain={!showGraph} class:compare-base={history.compare?.base.hash === c.hash}>
             {#if showGraph}<GraphCell graph={c.graph} {lanes} height={ROW} merge={c.parents.length > 1} />{/if}
             <div class="text">
               <div class="subject">
@@ -250,6 +260,12 @@
 
   .commit.plain {
     padding-left: 12px;
+  }
+
+  /* The older side of a comparison (the newer one is the selected row). */
+  .commit.compare-base {
+    box-shadow: inset 3px 0 0 var(--accent);
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
   }
 
   .text {

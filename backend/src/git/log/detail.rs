@@ -93,6 +93,23 @@ pub fn detail(repo: &Path, hash: &str) -> Result<CommitDetail> {
 }
 
 /// Parses `--name-status -z` output: `M\0path\0`, `R100\0old\0new\0`.
+/// Files that differ between two commits (`base` to `target`, any two commits).
+pub fn compare(repo: &Path, base: &str, target: &str) -> Result<Vec<CommitFile>> {
+    let out = Git::new(repo)
+        .args([
+            "diff-tree",
+            "-r",
+            "-M",
+            "--name-status",
+            "-z",
+            "--no-commit-id",
+            base,
+            target,
+        ])
+        .run()?;
+    Ok(parse_name_status(&decode(&out.stdout)))
+}
+
 pub(crate) fn parse_name_status(text: &str) -> Vec<CommitFile> {
     let mut files = Vec::new();
     let mut tokens = text.split('\0').filter(|t| !t.is_empty());

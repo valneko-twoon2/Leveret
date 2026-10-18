@@ -12,7 +12,7 @@ mod graph;
 mod search;
 
 pub(crate) use detail::parse_name_status;
-pub use detail::{CommitDetail, CommitFile, detail};
+pub use detail::{CommitDetail, CommitFile, compare, detail};
 use graph::build_graph;
 pub use search::{LogQuery, search};
 

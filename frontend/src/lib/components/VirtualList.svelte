@@ -10,7 +10,8 @@
     contentWidth?: string
     label?: string
     selectable?: boolean
-    onselect?: (index: number) => void
+    /** A click or arrow key on a row (`e`: the click, for Ctrl+click). */
+    onselect?: (index: number, e?: MouseEvent) => void
     onreachend?: () => void
     /** Right click or the context menu key on a row (the row is selected first). */
     oncontext?: (index: number, e: MouseEvent | KeyboardEvent) => void
@@ -122,7 +123,7 @@
         role="option"
         aria-selected={index === selectedIndex}
         tabindex="-1"
-        onmousedown={(e) => e.button === 0 && selectable && onselect?.(index)}
+        onmousedown={(e) => e.button === 0 && selectable && onselect?.(index, e)}
         ondblclick={(e) => !(e.target instanceof HTMLInputElement) && onactivate?.(index)}
         oncontextmenu={(e) => {
           if (!oncontext) return

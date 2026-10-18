@@ -108,6 +108,19 @@ export const historyApi = {
       ignoreWhitespace: prefs.ignoreWhitespace,
     }),
 
+  /** Files that differ between any two commits. */
+  compareCommits: (repo: string, base: string, target: string) => call<CommitFile[]>('compare_commits', { repo, base, target }),
+  /** A file's diff from `base` to `target`. */
+  getRangeDiff: (repo: string, base: string, target: string, file: CommitFile) =>
+    call<FileDiff>('get_commit_diff', {
+      repo,
+      hash: target,
+      parent: base,
+      path: file.path,
+      origPath: file.origPath,
+      ignoreWhitespace: prefs.ignoreWhitespace,
+    }),
+
   revertCommit: (repo: string, hash: string) => call<Outcome>('revert_commit', { repo, hash }),
   cherryPick: (repo: string, hash: string) => call<Outcome>('cherry_pick', { repo, hash }),
 }

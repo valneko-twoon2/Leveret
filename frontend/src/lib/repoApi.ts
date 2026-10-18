@@ -1,6 +1,6 @@
 // Types and backend calls for repositories, the working tree and commits
 // (backend/src/commands/{repos,changes,difftool}.rs). Combined into `api` by api.ts.
-import type { CommitDetail, CommitFile } from './historyApi'
+import type { CommitFile } from './historyApi'
 import { call } from './ipc'
 import { prefs } from './prefs.svelte'
 
@@ -129,12 +129,7 @@ export const repoApi = {
   getDiffTool: () => call<boolean>('get_diff_tool'),
   openWorkingInDiffTool: (repo: string, file: FileChange) =>
     call<void>('open_working_in_diff_tool', { repo, path: file.path, origPath: file.origPath }),
-  openCommitInDiffTool: (repo: string, detail: CommitDetail, file: CommitFile) =>
-    call<void>('open_commit_in_diff_tool', {
-      repo,
-      hash: detail.hash,
-      parent: detail.parents[0] ?? null,
-      path: file.path,
-      origPath: file.origPath,
-    }),
+  /** A file in `hash` against `parent` (null: against nothing). */
+  openCommitInDiffTool: (repo: string, hash: string, parent: string | null, file: CommitFile) =>
+    call<void>('open_commit_in_diff_tool', { repo, hash, parent, path: file.path, origPath: file.origPath }),
 }

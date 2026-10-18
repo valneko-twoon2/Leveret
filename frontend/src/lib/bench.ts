@@ -47,6 +47,8 @@ async function benchRepo(path: string) {
   await history.closeFileHistory()
   if (file) await blame.open(file, history.selectedCommit)
   blame.close()
+  if (history.log[5]) await history.compareCommits(history.log[0].hash, history.log[5].hash)
+  await history.closeComparison()
   await history.loadMoreLog()
   await history.setScope('all')
   await history.setScope('head')

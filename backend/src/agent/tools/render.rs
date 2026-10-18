@@ -125,6 +125,30 @@ pub(super) fn commit_diff(repo: &Path, hash: &str, max: usize) -> Result<String>
     Ok(truncate(decode(&out.stdout), max))
 }
 
+/// Unified diff text between two commits.
+pub(super) fn range_diff(repo: &Path, base: &str, target: &str, max: usize) -> Result<String> {
+    let out = Git::new(repo)
+        .args([
+            "diff",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-textconv",
+            "-M",
+            base,
+            target,
+        ])
+        .run()?;
+    let text = decode(&out.stdout);
+    Ok(truncate(
+        if text.is_empty() {
+            "No differences.\n".into()
+        } else {
+            text
+        },
+        max,
+    ))
+}
+
 /// A stash as unified diff text: tracked changes against the commit it was made
 /// on, then untracked files stashed with it.
 pub(super) fn stash_diff(repo: &Path, oid: &str, max: usize) -> Result<String> {
