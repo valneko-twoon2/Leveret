@@ -91,6 +91,21 @@ export interface Blame {
   truncated: boolean
 }
 
+/** What resetting the current branch to a commit would do. */
+export interface ResetInfo {
+  /** Commits that leave the branch. */
+  count: number
+  /** Of those, commits on a remote (pushing then needs a force push). */
+  pushed: number
+  /** Uncommitted changes to tracked files (a discarding reset is refused then). */
+  dirty: boolean
+}
+
+/** `keep`: the removed commits' changes stay as uncommitted changes. */
+export type ResetMode = 'keep' | 'discard'
+/** `version`: the file as in the commit; `undo`: the current file without the commit's change. */
+export type RestoreMode = 'version' | 'undo'
+
 export const historyApi = {
   getLog: (repo: string, scope: LogScope, limit: number, query: LogQuery | null = null) =>
     call<LogEntry[]>('get_log', { repo, scope, limit, query }),
@@ -120,6 +135,11 @@ export const historyApi = {
       origPath: file.origPath,
       ignoreWhitespace: prefs.ignoreWhitespace,
     }),
+
+  resetInfo: (repo: string, target: string) => call<ResetInfo>('reset_info', { repo, target }),
+  resetBranch: (repo: string, target: string, mode: ResetMode) => call<void>('reset_branch', { repo, target, mode }),
+  restoreFile: (repo: string, hash: string, file: CommitFile, mode: RestoreMode) =>
+    call<void>('restore_file', { repo, hash, path: file.path, origPath: file.origPath, mode }),
 
   revertCommit: (repo: string, hash: string) => call<Outcome>('revert_commit', { repo, hash }),
   cherryPick: (repo: string, hash: string) => call<Outcome>('cherry_pick', { repo, hash }),

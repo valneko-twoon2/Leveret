@@ -3,6 +3,7 @@
 import { blame } from '../blame.svelte'
 import { changes } from '../changes.svelte'
 import { history } from '../history.svelte'
+import { rewrite } from '../rewrite.svelte'
 import { stash } from '../stash.svelte'
 import { app } from '../state.svelte'
 import { type Scene, openRepo, closeOverlays } from './helpers'
@@ -71,6 +72,17 @@ export const toolScenes: Scene[] = [
       await history.setScope('head')
       const [newer, older] = [history.log[0], history.log[4]]
       if (newer && older) await history.compareCommits(newer.hash, older.hash)
+    },
+  },
+  {
+    id: '30-reset',
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      await app.setTab('history')
+      await history.closeComparison()
+      const target = history.log[3]
+      if (target) await rewrite.openReset(target)
     },
   },
 ]

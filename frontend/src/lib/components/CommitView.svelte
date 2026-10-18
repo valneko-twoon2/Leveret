@@ -7,6 +7,7 @@
   import { t } from '../i18n/index.svelte'
   import { layout } from '../layout.svelte'
   import { menu, type MenuItem } from '../menu.svelte'
+  import { rewrite } from '../rewrite.svelte'
   import { app } from '../state.svelte'
   import DiffHeader from './DiffHeader.svelte'
   import DiffView from './DiffView.svelte'
@@ -24,11 +25,20 @@
   function fileMenu(i: number, e: MouseEvent | KeyboardEvent) {
     const file = detail?.files[i]
     if (!detail || !file) return
+    const idle = app.busy === null
     const items: MenuItem[] = []
     if (diffTool.available) items.push({ label: t('diff.openInTool'), action: () => diffTool.openCommit(detail, file) }, 'separator')
     items.push(
       { label: t('history.showFileHistory'), action: () => history.showFileHistory(file.kind === 'deleted' ? (file.origPath ?? file.path) : file.path) },
       { label: t('blame.open'), action: () => blame.open(file.path, detail.hash), disabled: file.kind === 'deleted' },
+      'separator',
+      {
+        label: t(file.kind === 'deleted' ? 'restore.versionBefore' : 'restore.version'),
+        action: () => rewrite.restoreFile(detail, file, 'version'),
+        disabled: idle === false || (file.kind === 'deleted' && !detail.parents.length),
+      },
+      { label: t('restore.undo'), action: () => rewrite.restoreFile(detail, file, 'undo'), disabled: idle === false },
+      'separator',
       { label: t('common.copyPath'), action: () => app.copy(file.path) },
     )
     menu.open(e, items)

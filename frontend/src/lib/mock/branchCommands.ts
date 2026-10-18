@@ -1,6 +1,6 @@
 // Mock commands for merge / rebase and stopped operations, branches and remote
 // actions (fetch, pull, push, sync).
-import type { Outcome, RemoteOp, Tag } from '../api'
+import type { Outcome, RemoteOp, ResetInfo, Tag } from '../api'
 import { addCommit, finishOperation, listBranches, moveBranchLabel } from './repo'
 import { delay, fail, find, remoteListeners, UNHANDLED } from './state'
 
@@ -126,6 +126,28 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
         }
       }
       return 'done' satisfies Outcome
+    }
+    case 'reset_info': {
+      const r = find(args.repo)
+      const count = Math.max(0, r.commits.findIndex((c) => c.hash === args.target))
+      return { count, pushed: Math.max(0, count - r.ahead), dirty: r.files.some((f) => f.kind !== 'untracked') } satisfies ResetInfo
+    }
+    case 'reset_branch': {
+      const r = find(args.repo)
+      const index = r.commits.findIndex((c) => c.hash === args.target)
+      if (index < 0) fail('gitFailed', 'bad revision')
+      if (args.mode === 'discard' && r.files.some((f) => f.kind !== 'untracked')) fail('localChangesConflict', 'commit or stash the changes first')
+      const oldHead = r.commits[0]?.hash
+      const removed = r.commits.splice(0, index)
+      if (args.mode === 'keep') for (const c of removed) for (const f of c.files) if (!r.files.some((x) => x.path === f.path)) r.files.push({ ...f })
+      moveBranchLabel(r, oldHead, r.commits[0]?.hash)
+      r.ahead = Math.max(0, r.ahead - removed.length)
+      return null
+    }
+    case 'restore_file': {
+      const r = find(args.repo)
+      if (!r.files.some((f) => f.path === args.path)) r.files.push({ path: String(args.path), origPath: null, kind: 'modified' })
+      return null
     }
     default:
       return UNHANDLED

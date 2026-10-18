@@ -20,6 +20,7 @@ pub(crate) mod operations;
 pub(crate) mod perf;
 pub(crate) mod remote;
 pub(crate) mod repos;
+pub(crate) mod reset;
 pub(crate) mod settings;
 pub(crate) mod stash;
 pub(crate) mod tags;

@@ -15,6 +15,7 @@ pub mod log;
 pub mod operation;
 pub mod patch;
 pub mod remote;
+pub mod reset;
 pub mod resolve;
 pub mod stash;
 pub mod status;

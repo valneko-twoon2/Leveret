@@ -38,6 +38,7 @@ export default {
     tagExists: '同じ名前のタグがすでにあります: {detail}',
     noChanges: '変更がありません。',
     alreadyPushed: 'このコミットはすでにプッシュされているため取り消せません。',
+    changesDontApply: 'その後の変更と重なるため、「{detail}」の変更を取り消せませんでした。',
     diffChanged: '「{detail}」の内容が変わったため、選んだ行を使えませんでした。差分を確認して、もう一度選んでください。',
     other: '予期しないエラーが発生しました。',
   },

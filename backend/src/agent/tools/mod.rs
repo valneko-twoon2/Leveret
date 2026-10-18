@@ -18,6 +18,7 @@ mod operations;
 mod remote;
 mod render;
 mod repos;
+mod rewrite;
 mod schema;
 mod stash;
 mod tags;
@@ -115,6 +116,10 @@ const AREAS: &[Area] = &[
         tools: tags::tools,
         run: tags::run,
     },
+    Area {
+        tools: rewrite::tools,
+        run: rewrite::run,
+    },
 ];
 
 /// The order tools are listed to agents: read, then write, then destructive.
@@ -166,6 +171,8 @@ const ORDER: &[&str] = &[
     // destructive
     "discard_changes",
     "discard_hunks",
+    "reset_branch",
+    "restore_file",
     "delete_branch",
     "resolve_conflict",
     "abort_operation",

@@ -7,6 +7,7 @@
   import { history, type SearchField } from '../history.svelte'
   import { t } from '../i18n/index.svelte'
   import { menu } from '../menu.svelte'
+  import { rewrite } from '../rewrite.svelte'
   import { app } from '../state.svelte'
   import { tags } from '../tags.svelte'
   import GraphCell from './GraphCell.svelte'
@@ -57,6 +58,7 @@
       { label: t('history.revert'), action: () => history.revertCommit(c), disabled: busyOp },
       { label: t('history.cherryPick'), action: () => history.cherryPick(c), disabled: busyOp || isHead },
       ...(isHead ? [{ label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead }] : []),
+      ...(isHead ? [] : [{ label: t('reset.menu'), action: () => rewrite.openReset(c), disabled: busyOp, danger: true }]),
       'separator',
       ...(selected && selected !== c.hash
         ? [{ label: t('history.compareWithSelected'), hint: t('history.compareHint'), action: () => history.compareCommits(selected, c.hash) }, 'separator' as const]

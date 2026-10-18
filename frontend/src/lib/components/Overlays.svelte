@@ -5,6 +5,7 @@
   import { branches } from '../branches.svelte'
   import { github } from '../github.svelte'
   import { issues } from '../issues.svelte'
+  import { rewrite } from '../rewrite.svelte'
   import { settings } from '../settings.svelte'
   import { app } from '../state.svelte'
   import { tags } from '../tags.svelte'
@@ -18,6 +19,7 @@
   import NewBranchDialog from './NewBranchDialog.svelte'
   import NewTagDialog from './NewTagDialog.svelte'
   import PerfPanel from './PerfPanel.svelte'
+  import ResetDialog from './ResetDialog.svelte'
   import SettingsDialog from './settings/SettingsDialog.svelte'
   import SignInDialog from './SignInDialog.svelte'
   import Toasts from './Toasts.svelte'
@@ -30,6 +32,9 @@
   <NewBranchDialog />
 {/if}
 
+{#if rewrite.reset}
+  <ResetDialog />
+{/if}
 {#if blame.path}
   <BlameDialog />
 {/if}

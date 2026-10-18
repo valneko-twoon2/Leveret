@@ -6,6 +6,7 @@
 import { agents } from './agents.svelte'
 import { api, syncBackendPerf, usingMock, type BenchRequest } from './api'
 import { blame } from './blame.svelte'
+import { rewrite } from './rewrite.svelte'
 import { branches } from './branches.svelte'
 import { settings } from './settings.svelte'
 import { changes } from './changes.svelte'
@@ -49,6 +50,8 @@ async function benchRepo(path: string) {
   blame.close()
   if (history.log[5]) await history.compareCommits(history.log[0].hash, history.log[5].hash)
   await history.closeComparison()
+  if (history.log[3]) await rewrite.openReset(history.log[3])
+  rewrite.closeReset()
   await history.loadMoreLog()
   await history.setScope('all')
   await history.setScope('head')

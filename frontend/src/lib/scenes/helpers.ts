@@ -6,6 +6,7 @@ import { branches } from '../branches.svelte'
 import { github } from '../github.svelte'
 import { issues } from '../issues.svelte'
 import { menu } from '../menu.svelte'
+import { rewrite } from '../rewrite.svelte'
 import { settings } from '../settings.svelte'
 import { stash } from '../stash.svelte'
 import { app } from '../state.svelte'
@@ -28,6 +29,7 @@ export function closeOverlays() {
   menu.close()
   stash.close()
   blame.close()
+  rewrite.closeReset()
   tags.closeNewTag()
   settings.close()
   agents.closeAgent()
