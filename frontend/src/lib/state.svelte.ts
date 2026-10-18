@@ -299,23 +299,25 @@ class AppState {
 
   // --- remote ---------------------------------------------------------------
 
-  async remote(op: RemoteOp, options: { quiet?: boolean } = {}) {
+  /** Fetch, pull, push or sync. Returns whether it ran (and the views were refreshed). */
+  async remote(op: RemoteOp, options: { quiet?: boolean } = {}): Promise<boolean> {
     const branch = this.status?.branch
     const publishing = (op === 'push' || op === 'sync') && !this.status?.upstream
     const outcome = await this.run(op, (repo) => api.remote(repo, op), { ...options, name: `remote.${op}` })
     if (outcome === undefined) {
       // A failed quiet fetch still updates nothing; a failed visible one showed its error.
-      return
+      return false
     }
     if (outcome === 'conflicts') {
       await this.handleOutcome(outcome, '')
-      return
+      return true
     }
     if (!options.quiet) {
       const done = { fetch: t('remote.fetched'), pull: t('remote.pulled'), push: t('remote.pushed'), sync: t('remote.synced') }[op]
       this.toast(publishing && branch ? t('remote.published', { branch }) : done)
     }
     await this.refreshAfterChange()
+    return true
   }
 
   // --- operations -----------------------------------------------------------

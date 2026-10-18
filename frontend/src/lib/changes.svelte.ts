@@ -7,6 +7,7 @@ import type { LinePicker } from './components/DiffView.svelte'
 import { confirmDialog } from './dialogs'
 import { t } from './i18n/index.svelte'
 import { menu } from './menu.svelte'
+import { rememberMessage } from './messageHistory'
 import { perf } from './perf'
 import { prefs } from './prefs.svelte'
 import { app, describeError } from './state.svelte'
@@ -226,15 +227,30 @@ class ChangesState {
     const summary = this.summary.trim()
     const amend = this.amend
     const request = { summary, description: this.description, paths, amend, partial }
+    const repo = app.selectedPath
     const hash = await app.run('commit', (repo) => api.commit(repo, request))
     if (!hash) return
+    if (repo) rememberMessage(repo, { summary, description: this.description.trim() })
     this.picks.clear()
     this.summary = ''
     this.description = ''
     this.amend = false
     this.amendPrefill = null
     app.toast(amend ? t('commit.amended') : t('commit.done', { summary }))
+    // Push refreshes the views itself when it runs.
+    if (this.canPushAfterCommit && prefs.pushAfterCommit && (await app.remote('push'))) return
     await app.refreshAfterChange()
+  }
+
+  /** "Push after commit" applies: there is a remote and a branch to push. */
+  get canPushAfterCommit(): boolean {
+    return !!app.status?.hasRemote && !!app.status.branch
+  }
+
+  /** Puts a remembered message back into the form. */
+  useMessage(summary: string, description: string) {
+    this.summary = summary
+    this.description = description
   }
 
   /** Removes the last commit, keeping its changes and putting its message back into the form. */

@@ -13,6 +13,8 @@ interface Saved {
   tabSize: number
   /** Minutes between background fetches; 0 turns them off. */
   autoFetchMinutes: number
+  /** Push right after each commit. */
+  pushAfterCommit: boolean
 }
 
 const DEFAULTS: Saved = {
@@ -21,6 +23,7 @@ const DEFAULTS: Saved = {
   ignoreWhitespace: false,
   tabSize: 4,
   autoFetchMinutes: 10,
+  pushAfterCommit: false,
 }
 
 export const TAB_SIZES = [2, 4, 8] as const
@@ -43,6 +46,7 @@ function load(): Saved {
     ignoreWhitespace: pick('ignoreWhitespace', (v) => typeof v === 'boolean'),
     tabSize: pick('tabSize', (v) => (TAB_SIZES as readonly unknown[]).includes(v)),
     autoFetchMinutes: pick('autoFetchMinutes', (v) => (AUTO_FETCH_MINUTES as readonly unknown[]).includes(v)),
+    pushAfterCommit: pick('pushAfterCommit', (v) => typeof v === 'boolean'),
   }
 }
 
@@ -53,6 +57,7 @@ class Prefs {
   ignoreWhitespace = $state(this.saved.ignoreWhitespace)
   tabSize = $state(this.saved.tabSize)
   autoFetchMinutes = $state(this.saved.autoFetchMinutes)
+  pushAfterCommit = $state(this.saved.pushAfterCommit)
 
   /** Changes one preference and remembers it. */
   set<K extends keyof Saved>(key: K, value: Saved[K]) {
@@ -76,6 +81,7 @@ class Prefs {
       ignoreWhitespace: this.ignoreWhitespace,
       tabSize: this.tabSize,
       autoFetchMinutes: this.autoFetchMinutes,
+      pushAfterCommit: this.pushAfterCommit,
     }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(value))

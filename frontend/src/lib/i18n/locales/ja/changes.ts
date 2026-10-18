@@ -54,6 +54,13 @@ export default {
     blockedByOperation: '{operation}の途中です。上のバナーから続行または中止してください。',
     undo: '直前のコミットを取り消す',
     undone: 'コミットを取り消しました。変更はそのまま残っています。',
+    pushAfter: 'コミット後にプッシュ',
+    pushAfterTarget: 'コミット後にプッシュ（{target}）',
+    pushAfterHint: 'コミットしたら、続けて {target} へプッシュします',
+    pushAfterPublish: '{branch} を公開',
+    recent: '最近のコミットメッセージ',
+    recentEmpty: 'このリポジトリでコミットしたメッセージがここに表示されます',
+    recentClear: '履歴を消去',
   },
   discard: {
     one: '変更を破棄',

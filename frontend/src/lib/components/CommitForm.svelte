@@ -1,7 +1,11 @@
 <script lang="ts">
   import { changes } from '../changes.svelte'
   import { t } from '../i18n/index.svelte'
+  import { menu, type MenuItem } from '../menu.svelte'
+  import { forgetMessages, recentMessages } from '../messageHistory'
+  import { prefs } from '../prefs.svelte'
   import { app } from '../state.svelte'
+  import Icon from './Icon.svelte'
 
   const label = $derived.by(() => {
     if (app.busy === 'commit') return t('commit.committing')
@@ -23,6 +27,20 @@
     app.status?.upstream && app.status.ahead === 0 && app.status.headOid ? t('commit.amendPushed') : t('commit.amendHint'),
   )
 
+  /** Where "push after commit" pushes: the upstream, or the branch it would publish. */
+  const pushTarget = $derived(app.status?.upstream ?? t('commit.pushAfterPublish', { branch: app.status?.branch ?? '' }))
+
+  function historyMenu(e: MouseEvent) {
+    const repo = app.selectedPath
+    if (!repo) return
+    const messages = recentMessages(repo)
+    const items: MenuItem[] = messages.length
+      ? messages.map((m) => ({ label: m.summary, action: () => changes.useMessage(m.summary, m.description) }))
+      : [{ label: t('commit.recentEmpty'), action: () => {}, disabled: true }]
+    if (messages.length) items.push('separator', { label: t('commit.recentClear'), action: () => forgetMessages(repo) })
+    menu.open(e, items, e.currentTarget as HTMLElement)
+  }
+
   function onkeydown(e: KeyboardEvent) {
     if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault()
@@ -41,14 +59,26 @@
   {#if app.commitBlocked}
     <p class="blocked">{t('commit.blockedByOperation', { operation: app.operationName() })}</p>
   {/if}
-  <input
-    type="text"
-    placeholder={t('commit.summary')}
-    bind:value={changes.summary}
-    {onkeydown}
-    aria-label={t('commit.summary')}
-    disabled={app.commitBlocked}
-  />
+  <div class="summary">
+    <input
+      type="text"
+      placeholder={t('commit.summary')}
+      bind:value={changes.summary}
+      {onkeydown}
+      aria-label={t('commit.summary')}
+      disabled={app.commitBlocked}
+    />
+    <button
+      type="button"
+      class="icon-btn"
+      title={t('commit.recent')}
+      aria-label={t('commit.recent')}
+      disabled={app.commitBlocked}
+      onclick={historyMenu}
+    >
+      <Icon name="clock" size={15} />
+    </button>
+  </div>
   <textarea
     rows="3"
     placeholder={t('commit.description')}
@@ -57,7 +87,7 @@
     aria-label={t('commit.description')}
     disabled={app.commitBlocked}
   ></textarea>
-  <label class="amend" title={amendTitle}>
+  <label class="option" title={amendTitle}>
     <input
       type="checkbox"
       checked={changes.amend}
@@ -66,6 +96,12 @@
     />
     {t('commit.amend')}
   </label>
+  {#if changes.canPushAfterCommit}
+    <label class="option" title={t('commit.pushAfterHint', { target: pushTarget })}>
+      <input type="checkbox" checked={prefs.pushAfterCommit} onchange={(e) => prefs.set('pushAfterCommit', e.currentTarget.checked)} />
+      <span class="option-text">{t('commit.pushAfterTarget', { target: pushTarget })}</span>
+    </label>
+  {/if}
   <button class="btn primary" type="submit" disabled={!changes.canCommit} title={t('commit.shortcut')}>
     <span class="label">{label}</span>
   </button>
@@ -99,12 +135,41 @@
     font-size: 12px;
   }
 
-  .amend {
+  .summary {
+    position: relative;
+    display: flex;
+  }
+
+  .summary input {
+    flex: 1;
+    min-width: 0;
+    padding-right: 32px;
+  }
+
+  .summary .icon-btn {
+    position: absolute;
+    top: 50%;
+    right: 3px;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+  }
+
+  /* Only the box and its text toggle the option, not the whole row. */
+  .option {
     display: flex;
     align-items: center;
+    align-self: flex-start;
     gap: 6px;
+    max-width: 100%;
     color: var(--fg-muted);
     font-size: 12px;
+  }
+
+  .option-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .btn {
