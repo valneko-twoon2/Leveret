@@ -191,4 +191,100 @@ Light or dark follows your GitHub theme.
       <p align="center">Welcome — add or clone your first repository</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/24-partial-commit.png">
+        <img alt="Partial commit" src="screenshots/light/24-partial-commit.png">
+      </picture>
+      <p align="center">Commit only some lines or hunks</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/25-stash.png">
+        <img alt="A stash" src="screenshots/light/25-stash.png">
+      </picture>
+      <p align="center">Look inside a stash</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/26-history-search.png">
+        <img alt="History search" src="screenshots/light/26-history-search.png">
+      </picture>
+      <p align="center">Search the whole history</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/27-file-history.png">
+        <img alt="File history" src="screenshots/light/27-file-history.png">
+      </picture>
+      <p align="center">History of one file, across renames</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/28-blame.png">
+        <img alt="Annotate" src="screenshots/light/28-blame.png">
+      </picture>
+      <p align="center">The commit that last changed each line</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/29-compare.png">
+        <img alt="Compare commits" src="screenshots/light/29-compare.png">
+      </picture>
+      <p align="center">Compare any two commits</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/30-reset.png">
+        <img alt="Reset" src="screenshots/light/30-reset.png">
+      </picture>
+      <p align="center">Reset the branch to a commit</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/31-rebase.png">
+        <img alt="Interactive rebase" src="screenshots/light/31-rebase.png">
+      </picture>
+      <p align="center">Interactive rebase</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/32-ref-tree.png">
+        <img alt="Sidebar tree" src="screenshots/light/32-ref-tree.png">
+      </picture>
+      <p align="center">Branches, remotes, tags and stashes in a tree</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/33-remotes.png">
+        <img alt="Remotes" src="screenshots/light/33-remotes.png">
+      </picture>
+      <p align="center">Manage remotes</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/34-upstream.png">
+        <img alt="Upstream" src="screenshots/light/34-upstream.png">
+      </picture>
+      <p align="center">Choose the tracked remote branch</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/35-image-diff.png">
+        <img alt="Image diff" src="screenshots/light/35-image-diff.png">
+      </picture>
+      <p align="center">Before and after pictures</p>
+    </td>
+  </tr>
 </table>

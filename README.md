@@ -28,18 +28,20 @@ Pick a repository from your list, review the changes, commit. That's it.
 |---|---|
 | **Repository list** | Register repositories by folder picker or drag & drop, switch with one click. |
 | **GitHub sign-in & clone** | Sign in through the browser (or with a token), pick one of your repositories, clone it with a progress bar. |
-| **Commit what you pick** | Check the files to include, write a summary and description, `Ctrl+Enter`. Untracked files are marked apart and can be hidden; ignored files never show up. |
+| **Commit what you pick** | Check the files to include, write a summary and description, `Ctrl+Enter`. Click the line numbers of a diff to commit only some lines or hunks; discard single lines the same way. Untracked files are marked apart and can be hidden; ignored files never show up. Optionally push right after the commit; recent messages are one click away. |
 | **Fetch, pull, push** | One toolbar button that does the right thing (pull, push, publish, sync) with progress; fetches in the background every 10 minutes. |
-| **Branches & tags** | Switch, create, merge, rebase and delete from one dialog; remote branches become tracking branches. Create tags (lightweight or annotated) from the history, push or delete them. |
+| **Sidebar tree** | The open repository's branches, remotes, tags and stashes as a tree under the repository list: double-click to check out, right-click for the rest, arrow keys to move. |
+| **Branches & tags** | Switch, create, rename, merge, rebase and delete from one dialog or the tree; remote branches become tracking branches; set the upstream or delete a branch on the remote. Create tags (lightweight or annotated) from the history, push or delete them. Manage remotes (add, rename, change the URL, remove). |
+| **Rewrite history** | Interactive rebase (reorder, reword, squash, fixup, drop), reset the branch to a commit (keep or discard changes), restore a file to an earlier version or undo what a commit did to it. Pushed commits are never rewritten. |
 | **Undo-friendly** | Discarded changes go to the Recycle Bin; amend or undo the last commit; revert or cherry-pick any commit. |
 | **Clear conflicts** | A banner for stopped merges, rebases and reverts: mark resolved, continue, skip or abort. Take one side's version of a file, or merge it in WinMerge; leftover conflict markers are caught before marking a file resolved. |
-| **Stash** | Put work aside and bring it back later. |
+| **Stash** | Put work aside (everything or only the checked files), look inside, apply it while keeping it, or pop it. |
 | **Issues** | GitHub issues and local issues side by side: jot an issue down locally, publish it to GitHub when you want (optional). |
 | **Settings** | Theme, git identity and pull behaviour, diff options, background fetch, clone folder, agent access, and the licenses of Leveret and every bundled open source package (`Ctrl+,`). |
 | **Comfortable** | Resizable panes, right-click menus, keyboard shortcuts and history search. |
-| **Readable diffs** | Line numbers, hunk headers, and Shift_JIS files decoded correctly. |
+| **Readable diffs** | Line numbers, hunk headers, a setting for the lines of context, before / after pictures for image files, and Shift_JIS files decoded correctly. |
 | **WinMerge** | Open any diff in WinMerge (button, double click or right click); conflicted files open as a 3-way merge. Shown when WinMerge is installed. |
-| **History with a graph** | Branch lanes, branch / remote / tag labels, commit details and per-file diffs. |
+| **History with a graph** | Branch lanes, branch / remote / tag labels, commit details and per-file diffs. Search the whole history by message, author, changed text or path, follow a file's history across renames, see who last changed each line, and compare any two commits. |
 | **Light & dark** | Follows the Windows theme. |
 | **Ready for translation** | All UI text lives in typed message catalogs (Japanese today). |
 | **Built-in screenshots** | Captures every screen in the background — great for docs and reviews. |

@@ -9,8 +9,13 @@ import { type Scene, closeOverlays, openContextMenuOnSelectedRow, openRepo, sett
 export const refScenes: Scene[] = [
   {
     id: '32-ref-tree',
+    // Starts from fresh sample data: the rebase scene before it made commits.
+    mockOnly: true,
     run: async () => {
       closeOverlays()
+      const mock = await import('../mock/index')
+      mock.reset()
+      await app.init()
       await openRepo('Leveret')
       await app.setTab('history')
       for (const key of ['section:remotes', 'remote:origin', 'section:tags']) refTree.openKey(key, true)

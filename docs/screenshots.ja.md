@@ -191,4 +191,100 @@
       <p align="center">ようこそ — 最初のリポジトリを追加またはクローン</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/24-partial-commit.png">
+        <img alt="行単位のコミット" src="screenshots/light/24-partial-commit.png">
+      </picture>
+      <p align="center">行やハンクを選んでコミット</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/25-stash.png">
+        <img alt="スタッシュ" src="screenshots/light/25-stash.png">
+      </picture>
+      <p align="center">スタッシュの中身を表示</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/26-history-search.png">
+        <img alt="履歴の検索" src="screenshots/light/26-history-search.png">
+      </picture>
+      <p align="center">履歴全体を検索</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/27-file-history.png">
+        <img alt="ファイルの履歴" src="screenshots/light/27-file-history.png">
+      </picture>
+      <p align="center">1つのファイルの履歴（名前変更も追跡）</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/28-blame.png">
+        <img alt="行ごとの変更履歴" src="screenshots/light/28-blame.png">
+      </picture>
+      <p align="center">各行を最後に変更したコミット</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/29-compare.png">
+        <img alt="コミットの比較" src="screenshots/light/29-compare.png">
+      </picture>
+      <p align="center">2つのコミットを比較</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/30-reset.png">
+        <img alt="リセット" src="screenshots/light/30-reset.png">
+      </picture>
+      <p align="center">ブランチをコミットまでリセット</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/31-rebase.png">
+        <img alt="インタラクティブリベース" src="screenshots/light/31-rebase.png">
+      </picture>
+      <p align="center">インタラクティブリベース</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/32-ref-tree.png">
+        <img alt="サイドバーのツリー" src="screenshots/light/32-ref-tree.png">
+      </picture>
+      <p align="center">ブランチ・リモート・タグ・スタッシュのツリー</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/33-remotes.png">
+        <img alt="リモート" src="screenshots/light/33-remotes.png">
+      </picture>
+      <p align="center">リモートの管理</p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/34-upstream.png">
+        <img alt="追跡先" src="screenshots/light/34-upstream.png">
+      </picture>
+      <p align="center">追跡するリモートブランチを選ぶ</p>
+    </td>
+    <td width="50%">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="screenshots/dark/35-image-diff.png">
+        <img alt="画像の差分" src="screenshots/light/35-image-diff.png">
+      </picture>
+      <p align="center">変更前後の画像</p>
+    </td>
+  </tr>
 </table>
