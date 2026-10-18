@@ -1,10 +1,10 @@
-//! Listing, creating, switching and deleting branches.
+//! Listing, creating, switching, renaming and deleting branches, and their upstreams.
 
 use std::path::Path;
 
 use serde::Serialize;
 
-use super::{Git, decode};
+use super::{Git, decode, remote};
 use crate::error::{AppError, Result};
 
 const FIELD: char = '\x1f';
@@ -133,12 +133,11 @@ pub fn switch(repo: &Path, full_ref: &str) -> Result<()> {
     let git = if let Some(local) = full_ref.strip_prefix("refs/heads/") {
         Git::new(repo).args(["switch", "--no-guess", local])
     } else if let Some(remote) = full_ref.strip_prefix("refs/remotes/") {
-        let local = remote.split_once('/').map(|(_, b)| b).filter(|b| !b.is_empty());
-        let local = local.ok_or_else(|| AppError::InvalidInput(full_ref.into()))?;
-        if branch_exists(repo, local)? {
-            Git::new(repo).args(["switch", "--no-guess", local])
+        let (_, local) = split_remote(repo, remote).ok_or_else(|| AppError::InvalidInput(full_ref.into()))?;
+        if branch_exists(repo, &local)? {
+            Git::new(repo).args(["switch", "--no-guess", &local])
         } else {
-            Git::new(repo).args(["switch", "-c", local, "--track", remote])
+            Git::new(repo).args(["switch", "-c", &local, "--track", remote])
         }
     } else {
         return Err(AppError::InvalidInput(full_ref.into()));
@@ -165,6 +164,67 @@ pub fn delete(repo: &Path, name: &str, force: bool) -> Result<()> {
             AppError::GitFailed(msg) if msg.contains("not fully merged") => AppError::BranchNotMerged(name.into()),
             e => e.classify_git(),
         })?;
+    Ok(())
+}
+
+/// Renames a local branch (its upstream setting moves with it).
+pub fn rename(repo: &Path, old: &str, new: &str) -> Result<()> {
+    if !branch_exists(repo, old)? {
+        return Err(AppError::InvalidInput(old.into()));
+    }
+    if old != new && branch_exists(repo, new)? {
+        return Err(AppError::BranchExists(new.into()));
+    }
+    Git::new(repo)
+        .args(["branch", "-m", "--", old, new])
+        .run()
+        .map_err(AppError::classify_git)?;
+    Ok(())
+}
+
+/// Makes `upstream` (a full `refs/remotes/..` ref) the upstream of the local branch,
+/// or removes the upstream when `None`.
+pub fn set_upstream(repo: &Path, local: &str, upstream: Option<&str>) -> Result<()> {
+    let option = match upstream {
+        Some(u) => format!("--set-upstream-to={u}"),
+        None => "--unset-upstream".to_string(),
+    };
+    Git::new(repo)
+        .args(["branch", &option, "--", local])
+        .run()
+        .map_err(AppError::classify_git)?;
+    Ok(())
+}
+
+/// Splits `origin/feature/x` into the configured remote (the longest match, as names
+/// may contain `/`) and the branch name on it.
+fn split_remote(repo: &Path, name: &str) -> Option<(String, String)> {
+    let remotes = remote::remotes(repo).ok()?;
+    remotes
+        .iter()
+        .filter_map(|r| {
+            name.strip_prefix(r.as_str())
+                .and_then(|b| b.strip_prefix('/'))
+                .map(|b| (r, b))
+        })
+        .max_by_key(|(r, _)| r.len())
+        .filter(|(_, b)| !b.is_empty())
+        .map(|(r, b)| (r.clone(), b.to_string()))
+}
+
+/// Deletes a branch on its remote (`push --delete`); the remote is told apart from
+/// the branch name by the configured remotes, as names may contain `/`.
+pub fn delete_remote(repo: &Path, envs: Vec<(String, String)>, full_ref: &str) -> Result<()> {
+    let name = full_ref
+        .strip_prefix("refs/remotes/")
+        .ok_or_else(|| AppError::InvalidInput(full_ref.into()))?;
+    let (remote, branch) = split_remote(repo, name).ok_or_else(|| AppError::InvalidInput(full_ref.into()))?;
+    Git::new(repo)
+        .envs(envs)
+        .args(["push", "--delete", "--", &remote])
+        .arg(format!("refs/heads/{branch}"))
+        .run()
+        .map_err(AppError::classify_git)?;
     Ok(())
 }
 
@@ -261,5 +321,75 @@ mod tests {
         checkout_detached(p, &head).unwrap();
         let st = crate::git::status::get(p).unwrap();
         assert!(st.branch.is_none());
+    }
+
+    #[test]
+    fn rename_and_upstream() {
+        let origin = repo();
+        git(origin.path(), &["branch", "topic"]);
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        Git::new(p)
+            .args(["clone", "-q", "--"])
+            .arg(origin.path().as_os_str())
+            .arg(".")
+            .run()
+            .unwrap();
+        switch(p, "refs/remotes/origin/topic").unwrap();
+
+        rename(p, "topic", "機能/topic").unwrap();
+        let b = list(p).unwrap();
+        let renamed = b.iter().find(|b| b.name == "機能/topic").unwrap();
+        assert!(renamed.current && !b.iter().any(|b| b.name == "topic"));
+        // The upstream moved with the branch.
+        assert_eq!(renamed.upstream.as_deref(), Some("origin/topic"));
+        assert!(matches!(
+            rename(p, "機能/topic", "main"),
+            Err(AppError::BranchExists(_))
+        ));
+        assert!(matches!(rename(p, "nope", "x"), Err(AppError::InvalidInput(_))));
+
+        set_upstream(p, "機能/topic", None).unwrap();
+        assert!(
+            list(p)
+                .unwrap()
+                .iter()
+                .find(|b| b.name == "機能/topic")
+                .unwrap()
+                .upstream
+                .is_none()
+        );
+        set_upstream(p, "機能/topic", Some("refs/remotes/origin/main")).unwrap();
+        let b = list(p).unwrap();
+        assert_eq!(
+            b.iter().find(|b| b.name == "機能/topic").unwrap().upstream.as_deref(),
+            Some("origin/main")
+        );
+    }
+
+    #[test]
+    fn deletes_a_remote_branch() {
+        let origin = repo();
+        git(origin.path(), &["branch", "topic"]);
+        let dir = tempfile::tempdir().unwrap();
+        let p = dir.path();
+        Git::new(p)
+            .args(["clone", "-q", "--"])
+            .arg(origin.path().as_os_str())
+            .arg(".")
+            .run()
+            .unwrap();
+        delete_remote(p, Vec::new(), "refs/remotes/origin/topic").unwrap();
+        assert!(!git_out(origin.path(), &["branch", "--list", "topic"]).contains("topic"));
+        assert!(!list(p).unwrap().iter().any(|b| b.name == "origin/topic"));
+        // Not a remote branch, or no such remote.
+        assert!(matches!(
+            delete_remote(p, Vec::new(), "refs/heads/main"),
+            Err(AppError::InvalidInput(_))
+        ));
+        assert!(matches!(
+            delete_remote(p, Vec::new(), "refs/remotes/nowhere/x"),
+            Err(AppError::InvalidInput(_))
+        ));
     }
 }

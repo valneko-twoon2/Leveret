@@ -49,6 +49,8 @@ pub enum AppError {
     NoOperation,
     #[error("branch already exists: {0}")]
     BranchExists(String),
+    #[error("remote already exists: {0}")]
+    RemoteExists(String),
     #[error("tag already exists: {0}")]
     TagExists(String),
     #[error("branch is not fully merged: {0}")]
@@ -114,6 +116,7 @@ impl AppError {
             AppError::BranchExists(_) => "branchExists",
             AppError::BranchNotMerged(_) => "branchNotMerged",
             AppError::TagExists(_) => "tagExists",
+            AppError::RemoteExists(_) => "remoteExists",
             AppError::NoChanges => "noChanges",
             AppError::AlreadyPushed => "alreadyPushed",
             AppError::DiffChanged(_) => "diffChanged",
@@ -149,6 +152,7 @@ impl AppError {
             | AppError::BranchExists(s)
             | AppError::BranchNotMerged(s)
             | AppError::TagExists(s)
+            | AppError::RemoteExists(s)
             | AppError::ConflictMarkersRemain(s)
             | AppError::DiffChanged(s)
             | AppError::ChangesDontApply(s)

@@ -16,6 +16,7 @@ pub mod operation;
 pub mod patch;
 pub mod rebase;
 pub mod remote;
+pub mod remotes;
 pub mod reset;
 pub mod resolve;
 pub mod stash;

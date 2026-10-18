@@ -170,6 +170,24 @@ pub fn branch_ref(name: &str) -> Result<&str> {
     if ok { Ok(name) } else { Err(invalid("branch", name)) }
 }
 
+/// The name of a new remote: a ref component without `/`, at most 64 characters.
+pub fn remote_name(name: &str) -> Result<&str> {
+    if name.len() <= 64 && !name.contains('/') && ref_name(name).is_ok() {
+        Ok(name)
+    } else {
+        Err(invalid("remote name", name))
+    }
+}
+
+/// A remote branch as a full ref (`refs/remotes/<remote>/<branch>`).
+pub fn remote_branch_ref(name: &str) -> Result<&str> {
+    if name.starts_with("refs/remotes/") {
+        branch_ref(name)
+    } else {
+        Err(invalid("remote branch", name))
+    }
+}
+
 /// A start point for a new branch: an object id or a full branch ref.
 pub fn revision(rev: &str) -> Result<&str> {
     if object_id(rev).is_ok() || branch_ref(rev).is_ok() {

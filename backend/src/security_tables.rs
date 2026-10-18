@@ -295,6 +295,32 @@ fn messages_table() {
         &["a\0b", "a\u{1b}[2J", &"x".repeat(10_001)],
     );
     accepts(
+        "remote_name",
+        |s| remote_name(s).is_ok(),
+        &["origin", "upstream", "my.fork", "fork-2", "個人"],
+    );
+    rejects(
+        "remote_name",
+        |s| remote_name(s).is_ok(),
+        &["", "a/b", "-x", "..", "a b", "a:b", "HEAD", &"x".repeat(65)],
+    );
+    accepts(
+        "remote_branch_ref",
+        |s| remote_branch_ref(s).is_ok(),
+        &["refs/remotes/origin/main", "refs/remotes/origin/feature/x"],
+    );
+    rejects(
+        "remote_branch_ref",
+        |s| remote_branch_ref(s).is_ok(),
+        &[
+            "refs/heads/main",
+            "origin/main",
+            "refs/remotes/origin",
+            "refs/remotes/-x/y",
+            "refs/remotes/o/../x",
+        ],
+    );
+    accepts(
         "search_text",
         |s| search_text(s).is_ok(),
         &["fix", "[wip] *", "-S--danger", "日本語", &"x".repeat(200)],
