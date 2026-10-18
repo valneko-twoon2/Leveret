@@ -231,7 +231,7 @@ leveret.exe --capture out --mock --theme dark --scenes 02-changes,04-history
 ```
 
 画面外で描画し（タスクバーにも出ず、フォーカスも奪いません）、
-[`frontend/src/lib/capture.ts`](frontend/src/lib/capture.ts) のシーンを順に表示して `out\<シーン>.png` に保存し、終了します。
+[`frontend/src/lib/scenes/`](frontend/src/lib/scenes) のシーンを順に表示して `out\<シーン>.png` に保存し、終了します。
 使用中は **Ctrl+Shift+S** で表示中の画面を `ピクチャ\Leveret\` に保存できます。
 
 ## パフォーマンス
@@ -278,7 +278,7 @@ frontend/                 Svelte の UI（package.json、vite.config.ts、tsconf
   src/lib/perf.ts           計測値、目安、パフォーマンスパネルのデータ
   src/lib/bench.ts          --bench のベンチマーク手順
   src/lib/mock/             ブラウザ / --mock 用のダミーバックエンド
-  src/lib/capture.ts        撮影シーンの定義
+  src/lib/scenes/           撮影シーンの定義
   src/lib/lockdown.ts       ブラウザのショートカットや操作を無効化
   src/lib/layout.svelte.ts  幅を変えられる領域のサイズ
   src/lib/menu.svelte.ts    アプリ独自の右クリックメニュー

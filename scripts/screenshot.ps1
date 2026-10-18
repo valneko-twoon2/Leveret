@@ -15,7 +15,7 @@
   Always rebuild the app first (otherwise it is rebuilt only when sources are newer).
 .PARAMETER Scenes
   Scene ids to capture (e.g. 02-changes,04-history). All scenes when omitted.
-  See frontend/src/lib/capture.ts.
+  See frontend/src/lib/scenes/.
 .PARAMETER Size
   Window size for -Browser, e.g. 900x560 (the app's minimum) to check narrow layouts. Default 1280x800.
 .PARAMETER OutDir
@@ -40,8 +40,11 @@ $OutDir = [IO.Path]::GetFullPath($OutDir)
 $Scenes = @($Scenes | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
 
 function Get-SceneIds {
-    $source = Get-Content (Join-Path $Frontend 'src\lib\capture.ts') -Raw -Encoding UTF8
-    [regex]::Matches($source, "id:\s*'([^']+)'") | ForEach-Object { $_.Groups[1].Value }
+    # Scene ids start with their number, so sorting keeps the capture order.
+    Get-ChildItem (Join-Path $Frontend 'src\lib\scenes') -Filter '*.ts' | ForEach-Object {
+        $source = Get-Content $_.FullName -Raw -Encoding UTF8
+        [regex]::Matches($source, "id:\s*'([^']+)'") | ForEach-Object { $_.Groups[1].Value }
+    } | Sort-Object
 }
 
 function Invoke-AppCapture([string]$Dir, [string]$ThemeName) {

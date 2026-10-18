@@ -72,7 +72,7 @@ feat: add fetch, pull and push
   reuse the same validators as the Tauri command, write the description for a model (what it does, when to use it),
   and return compact JSON with next steps on stops such as conflicts. Each area module holds its tools'
   definitions and handlers; add new names to `ORDER` in `tools/mod.rs` (a test checks it).
-- **New screens or states** get a capture scene in `frontend/src/lib/capture.ts`; check them with
+- **New screens or states** get a capture scene in `frontend/src/lib/scenes/`; check them with
   `scripts\screenshot.bat` (add `-Browser` to skip the Rust build, `-Size 900x560` to check the minimum window).
   Refreshed screenshots go to `docs/screenshots/` and the gallery pages `docs/screenshots.md` / `.ja.md`.
 - Rust: `cargo fmt` style (`backend/rustfmt.toml`), no clippy warnings. Frontend: `npm run check` must be clean.

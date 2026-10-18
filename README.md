@@ -231,7 +231,7 @@ leveret.exe --capture out --mock --theme dark --scenes 02-changes,04-history
 ```
 
 It renders off-screen (no taskbar entry, no focus), walks through the scenes defined in
-[`frontend/src/lib/capture.ts`](frontend/src/lib/capture.ts), writes `out\<scene>.png` and exits.
+[`frontend/src/lib/scenes/`](frontend/src/lib/scenes), writes `out\<scene>.png` and exits.
 While using the app, **Ctrl+Shift+S** saves the current screen to `Pictures\Leveret\`.
 
 ## Performance
@@ -278,7 +278,7 @@ frontend/                 Svelte UI (its own package.json, vite.config.ts, tscon
   src/lib/perf.ts           timings, budgets, the performance panel's data
   src/lib/bench.ts          benchmark steps for --bench
   src/lib/mock/             sample-data backend for the browser and --mock
-  src/lib/capture.ts        screenshot scenes
+  src/lib/scenes/           screenshot scenes
   src/lib/lockdown.ts       blocks browser shortcuts and gestures
   src/lib/layout.svelte.ts  resizable pane sizes
   src/lib/menu.svelte.ts    the app's own context menu

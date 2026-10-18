@@ -3,7 +3,7 @@
   Shows the UI only: opens the frontend in a browser without building Rust.
   In a browser the app runs on mock data (frontend/src/lib/mock/) instead of real git.
 .PARAMETER Scene
-  Capture scene to show first (e.g. 04-history). See frontend/src/lib/capture.ts.
+  Capture scene to show first (e.g. 04-history). See frontend/src/lib/scenes/.
 .PARAMETER Theme
   Force the light or dark theme.
 .PARAMETER App
