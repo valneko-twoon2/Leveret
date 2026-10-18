@@ -19,6 +19,7 @@
   import NewBranchDialog from './NewBranchDialog.svelte'
   import NewTagDialog from './NewTagDialog.svelte'
   import PerfPanel from './PerfPanel.svelte'
+  import RebaseDialog from './RebaseDialog.svelte'
   import ResetDialog from './ResetDialog.svelte'
   import SettingsDialog from './settings/SettingsDialog.svelte'
   import SignInDialog from './SignInDialog.svelte'
@@ -32,6 +33,9 @@
   <NewBranchDialog />
 {/if}
 
+{#if rewrite.rebase}
+  <RebaseDialog />
+{/if}
 {#if rewrite.reset}
   <ResetDialog />
 {/if}

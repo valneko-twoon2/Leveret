@@ -106,6 +106,26 @@ export type ResetMode = 'keep' | 'discard'
 /** `version`: the file as in the commit; `undo`: the current file without the commit's change. */
 export type RestoreMode = 'version' | 'undo'
 
+/** A commit of an interactive rebase, oldest first. */
+export interface PlanCommit {
+  hash: string
+  subject: string
+  message: string
+  authorName: string
+  authorTime: number
+  /** On a remote branch: rewriting it is refused (it would need a force push). */
+  pushed: boolean
+}
+
+export type RebaseAction = 'pick' | 'reword' | 'squash' | 'fixup' | 'drop'
+
+export interface RebaseStep {
+  hash: string
+  action: RebaseAction
+  /** The new message for `reword`. */
+  message: string | null
+}
+
 export const historyApi = {
   getLog: (repo: string, scope: LogScope, limit: number, query: LogQuery | null = null) =>
     call<LogEntry[]>('get_log', { repo, scope, limit, query }),
@@ -136,6 +156,11 @@ export const historyApi = {
       ignoreWhitespace: prefs.ignoreWhitespace,
     }),
 
+  /** The commits after `base` (null: from the first commit), oldest first. */
+  rebasePlan: (repo: string, base: string | null) => call<PlanCommit[]>('rebase_plan', { repo, base }),
+  /** `steps`: every commit of the plan once, oldest first, in the new order. */
+  interactiveRebase: (repo: string, base: string | null, steps: RebaseStep[]) =>
+    call<Outcome>('interactive_rebase', { repo, base, steps }),
   resetInfo: (repo: string, target: string) => call<ResetInfo>('reset_info', { repo, target }),
   resetBranch: (repo: string, target: string, mode: ResetMode) => call<void>('reset_branch', { repo, target, mode }),
   restoreFile: (repo: string, hash: string, file: CommitFile, mode: RestoreMode) =>

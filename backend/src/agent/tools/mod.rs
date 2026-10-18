@@ -139,6 +139,7 @@ const ORDER: &[&str] = &[
     "list_stashes",
     "get_stash",
     "list_tags",
+    "get_rebase_plan",
     "list_issues",
     "get_issue",
     // write
@@ -171,6 +172,7 @@ const ORDER: &[&str] = &[
     // destructive
     "discard_changes",
     "discard_hunks",
+    "interactive_rebase",
     "reset_branch",
     "restore_file",
     "delete_branch",

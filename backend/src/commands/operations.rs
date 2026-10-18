@@ -6,6 +6,7 @@ use tauri::State;
 use super::blocking;
 use crate::error::{AppError, Result};
 use crate::git::operation::Outcome;
+use crate::git::rebase::{PlanCommit, Step};
 use crate::repos::RepoStore;
 use crate::{git, security};
 
@@ -95,4 +96,36 @@ pub async fn cherry_pick(store: State<'_, RepoStore>, repo: String, hash: String
         git::operation::cherry_pick(&repo, &hash, is_merge)
     })
     .await
+}
+
+/// The commits after `base` (from the first commit without one), oldest first,
+/// for the interactive rebase dialog.
+#[tauri::command]
+pub async fn rebase_plan(store: State<'_, RepoStore>, repo: String, base: Option<String>) -> Result<Vec<PlanCommit>> {
+    let repo = store.require(&repo)?;
+    if let Some(b) = &base {
+        security::object_id(b)?;
+    }
+    blocking(move || git::rebase::plan(&repo, base.as_deref())).await
+}
+
+/// Reorders, rewords, squashes and drops the commits after `base`.
+#[tauri::command]
+pub async fn interactive_rebase(
+    store: State<'_, RepoStore>,
+    repo: String,
+    base: Option<String>,
+    steps: Vec<Step>,
+) -> Result<Outcome> {
+    let repo = store.require(&repo)?;
+    if let Some(b) = &base {
+        security::object_id(b)?;
+    }
+    for s in &steps {
+        security::object_id(&s.hash)?;
+        if let Some(m) = &s.message {
+            security::commit_message(m)?;
+        }
+    }
+    blocking(move || git::rebase::run(&repo, base.as_deref(), &steps)).await
 }

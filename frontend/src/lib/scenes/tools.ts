@@ -1,5 +1,6 @@
 // Screenshot scenes of the history and change tools (24 onwards): picked lines,
 // stashes, search, file history, annotate, compare, reset, rebase, refs, remotes.
+import { api } from '../api'
 import { blame } from '../blame.svelte'
 import { changes } from '../changes.svelte'
 import { history } from '../history.svelte'
@@ -83,6 +84,32 @@ export const toolScenes: Scene[] = [
       await history.closeComparison()
       const target = history.log[3]
       if (target) await rewrite.openReset(target)
+    },
+  },
+  {
+    id: '31-rebase',
+    // Makes commits first (the sample history has a merge near the top).
+    mockOnly: true,
+    run: async () => {
+      closeOverlays()
+      await openRepo('Leveret')
+      const repo = app.selectedPath
+      if (!repo) return
+      const subjects = ['ブランチ一覧に並べ替えを追加', 'typo を修正', '並べ替えの設定を保存', 'テストを追加']
+      for (const [i, summary] of subjects.entries()) {
+        const file = app.files[i % app.files.length]
+        if (file) await api.commit(repo, { summary, description: '', paths: [file.path] })
+      }
+      await app.setTab('history')
+      await app.refreshAfterChange()
+      const from = history.log[subjects.length - 1]
+      if (!from) return
+      await rewrite.openRebase(from)
+      // Newest first: move "typo" right above the change it fixes, squash it, reword the newest.
+      rewrite.moveRow(2, 1)
+      rewrite.setAction(2, 'fixup')
+      rewrite.setAction(0, 'reword')
+      rewrite.setMessage(0, 'ブランチ一覧のテストを追加\n\n並べ替えの設定が保存されることも確認する。')
     },
   },
 ]

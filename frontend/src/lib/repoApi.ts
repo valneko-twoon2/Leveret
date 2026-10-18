@@ -30,6 +30,8 @@ export interface Operation {
   /** Rebase: current step / number of steps. */
   step: number | null
   total: number | null
+  /** An interactive rebase (skipping a step isn't offered). */
+  interactive: boolean
 }
 
 /** Result of a command that may stop on conflicts. */

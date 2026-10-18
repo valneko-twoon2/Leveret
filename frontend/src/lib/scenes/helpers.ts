@@ -30,6 +30,7 @@ export function closeOverlays() {
   stash.close()
   blame.close()
   rewrite.closeReset()
+  rewrite.closeRebase()
   tags.closeNewTag()
   settings.close()
   agents.closeAgent()

@@ -14,6 +14,7 @@ pub mod discard;
 pub mod log;
 pub mod operation;
 pub mod patch;
+pub mod rebase;
 pub mod remote;
 pub mod reset;
 pub mod resolve;

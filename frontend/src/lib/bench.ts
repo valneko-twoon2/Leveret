@@ -52,6 +52,8 @@ async function benchRepo(path: string) {
   await history.closeComparison()
   if (history.log[3]) await rewrite.openReset(history.log[3])
   rewrite.closeReset()
+  if (history.log[3]) await rewrite.openRebase(history.log[3])
+  rewrite.closeRebase()
   await history.loadMoreLog()
   await history.setScope('all')
   await history.setScope('head')

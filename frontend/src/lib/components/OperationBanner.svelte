@@ -37,7 +37,7 @@
       </button>
     {/if}
     {#if op}
-      {#if op.kind !== 'merge'}
+      {#if op.kind !== 'merge' && !op.interactive}
         <button class="btn" disabled={!idle} onclick={() => app.skipOperation()}>{t('operation.skip')}</button>
       {/if}
       <button class="btn danger" disabled={!idle} onclick={() => app.abortOperation()}>{t('operation.abort')}</button>

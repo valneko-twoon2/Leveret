@@ -61,6 +61,8 @@ pub enum AppError {
     DiffChanged(String),
     #[error("the changes no longer apply to: {0}")]
     ChangesDontApply(String),
+    #[error("the commits include merge commits")]
+    MergesInRange,
     #[error("issue #{0} was not found")]
     IssueNotFound(u64),
     #[error("the repository has no github.com remote")]
@@ -116,6 +118,7 @@ impl AppError {
             AppError::AlreadyPushed => "alreadyPushed",
             AppError::DiffChanged(_) => "diffChanged",
             AppError::ChangesDontApply(_) => "changesDontApply",
+            AppError::MergesInRange => "mergesInRange",
             AppError::IssueNotFound(_) => "issueNotFound",
             AppError::NoGithubRemote => "noGithubRemote",
             AppError::DiffToolNotFound => "diffToolNotFound",
@@ -166,6 +169,7 @@ impl AppError {
             | AppError::NoOperation
             | AppError::NoChanges
             | AppError::AlreadyPushed
+            | AppError::MergesInRange
             | AppError::NoGithubRemote
             | AppError::DiffToolNotFound
             | AppError::GithubClientIdMissing

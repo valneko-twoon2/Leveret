@@ -1,6 +1,6 @@
 // Mock commands for merge / rebase and stopped operations, branches and remote
 // actions (fetch, pull, push, sync).
-import type { Outcome, RemoteOp, ResetInfo, Tag } from '../api'
+import type { Outcome, PlanCommit, RebaseStep, RemoteOp, ResetInfo, Tag } from '../api'
 import { addCommit, finishOperation, listBranches, moveBranchLabel } from './repo'
 import { delay, fail, find, remoteListeners, UNHANDLED } from './state'
 
@@ -15,7 +15,7 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
       // feature/rebase touches the same lines as main: show the conflict flow.
       if (ref.endsWith('/feature/rebase')) {
         const isRebase = cmd === 'rebase_branch'
-        r.operation = { kind: isRebase ? 'rebase' : 'merge', branch: isRebase ? r.branch : null, step: isRebase ? 1 : null, total: isRebase ? 3 : null }
+        r.operation = { kind: isRebase ? 'rebase' : 'merge', branch: isRebase ? r.branch : null, step: isRebase ? 1 : null, total: isRebase ? 3 : null, interactive: false }
         if (isRebase) r.branch = null
         r.files = [
           { path: 'src/git/rebase.rs', origPath: null, kind: 'conflicted' },
@@ -125,6 +125,38 @@ export async function branchCommands(cmd: string, args: Record<string, unknown>)
           if (!r.remoteBranches.includes(r.upstream)) r.remoteBranches.push(r.upstream)
         }
       }
+      return 'done' satisfies Outcome
+    }
+    case 'rebase_plan': {
+      const r = find(args.repo)
+      const end = args.base ? r.commits.findIndex((c) => c.hash === args.base) : r.commits.length
+      if (end < 0) fail('invalidInput', 'the commit is not in the current branch')
+      const range = r.commits.slice(0, end)
+      if (range.some((c) => c.parents.length > 1)) fail('mergesInRange')
+      return range
+        .map((c, i) => ({ hash: c.hash, subject: c.subject, message: c.body ? `${c.subject}\n\n${c.body}` : c.subject, authorName: c.authorName, authorTime: c.authorTime, pushed: i >= r.ahead }))
+        .reverse() satisfies PlanCommit[]
+    }
+    case 'interactive_rebase': {
+      const r = find(args.repo)
+      const steps = args.steps as RebaseStep[]
+      const byHash = new Map(r.commits.map((c) => [c.hash, c]))
+      const kept: typeof r.commits = []
+      for (const s of steps) {
+        const c = byHash.get(s.hash)
+        if (!c) fail('invalidInput', 'the commits have changed; reload them')
+        if (s.action === 'drop') continue
+        if ((s.action === 'squash' || s.action === 'fixup') && kept.length) {
+          kept[0].files = [...kept[0].files, ...c.files]
+          if (s.action === 'squash') kept[0].body = [kept[0].body, c.subject].filter(Boolean).join('\n\n')
+          continue
+        }
+        if (s.action === 'reword' && s.message) [c.subject, c.body] = [s.message.split('\n')[0], s.message.split('\n').slice(2).join('\n')]
+        kept.unshift(c)
+      }
+      const oldHead = r.commits[0]?.hash
+      r.commits = [...kept, ...r.commits.slice(steps.length)]
+      moveBranchLabel(r, oldHead, r.commits[0]?.hash)
       return 'done' satisfies Outcome
     }
     case 'reset_info': {

@@ -113,6 +113,14 @@ pub fn tag_message(text: &str) -> Result<&str> {
     Ok(text)
 }
 
+/// A commit message: at most 10 000 characters, no control characters but line breaks and tabs.
+pub fn commit_message(text: &str) -> Result<&str> {
+    if text.chars().count() > 10_000 || text.chars().any(|c| c.is_control() && !"\n\r\t".contains(c)) {
+        return Err(invalid("commit message", ""));
+    }
+    Ok(text)
+}
+
 /// Text to search the history for: one line, at most 200 characters.
 pub fn search_text(text: &str) -> Result<&str> {
     if text.trim().is_empty() || text.chars().count() > 200 || text.chars().any(char::is_control) {

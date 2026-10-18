@@ -58,6 +58,7 @@
       { label: t('history.revert'), action: () => history.revertCommit(c), disabled: busyOp },
       { label: t('history.cherryPick'), action: () => history.cherryPick(c), disabled: busyOp || isHead },
       ...(isHead ? [{ label: t('commit.undo'), action: () => changes.undoLastCommit(), disabled: !idle || !app.canRewriteHead }] : []),
+      { label: t('rebase.menu'), action: () => rewrite.openRebase(c), disabled: busyOp || history.scope !== 'head' || history.query !== null },
       ...(isHead ? [] : [{ label: t('reset.menu'), action: () => rewrite.openReset(c), disabled: busyOp, danger: true }]),
       'separator',
       ...(selected && selected !== c.hash

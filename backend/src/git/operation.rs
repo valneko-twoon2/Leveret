@@ -26,6 +26,9 @@ pub struct Operation {
     /// For a rebase: the current step and the number of steps.
     pub step: Option<u32>,
     pub total: Option<u32>,
+    /// An interactive rebase (skipping a step would apply its later steps to
+    /// the wrong commit, so it isn't offered).
+    pub interactive: bool,
 }
 
 /// Result of a command that may stop on conflicts.
@@ -55,6 +58,7 @@ pub fn current_in(dir: &Path) -> Option<Operation> {
                 branch: branch.filter(|b| b != "detached HEAD"),
                 step: num(["msgnum", "next"]),
                 total: num(["end", "last"]),
+                interactive: d.join("interactive").exists(),
             });
         }
     }
@@ -72,6 +76,7 @@ pub fn current_in(dir: &Path) -> Option<Operation> {
         branch: None,
         step: None,
         total: None,
+        interactive: false,
     })
 }
 

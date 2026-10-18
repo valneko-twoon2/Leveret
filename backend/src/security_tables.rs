@@ -285,6 +285,16 @@ fn messages_table() {
         &["line 1\nline 2", "a\tb", "a\0b", &"x".repeat(1001)],
     );
     accepts(
+        "commit_message",
+        |s| commit_message(s).is_ok(),
+        &["", "件名\n\n本文\r\n\t- 箇条書き"],
+    );
+    rejects(
+        "commit_message",
+        |s| commit_message(s).is_ok(),
+        &["a\0b", "a\u{1b}[2J", &"x".repeat(10_001)],
+    );
+    accepts(
         "search_text",
         |s| search_text(s).is_ok(),
         &["fix", "[wip] *", "-S--danger", "日本語", &"x".repeat(200)],

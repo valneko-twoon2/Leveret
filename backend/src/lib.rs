@@ -119,6 +119,8 @@ pub fn run() {
             commands::operations::skip_operation,
             commands::operations::abort_operation,
             commands::operations::cherry_pick,
+            commands::operations::rebase_plan,
+            commands::operations::interactive_rebase,
             commands::perf::perf_samples,
             commands::perf::perf_report,
             commands::perf::bench_save,
