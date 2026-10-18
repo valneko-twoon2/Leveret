@@ -41,7 +41,7 @@
 </script>
 
 {#if plan}
-  <Modal title={t('rebase.title')} width={760} onclose={() => rewrite.closeRebase()} closeOnBackdrop={false}>
+  <Modal title={t('rebase.title')} width={860} onclose={() => rewrite.closeRebase()} closeOnBackdrop={false}>
     <p class="intro">{t('rebase.intro')}</p>
     <ol class="rows">
       {#each plan.rows as row, i (row.commit.hash)}
@@ -156,7 +156,7 @@
 
   select {
     flex: none;
-    width: 230px;
+    width: 300px;
     height: 26px;
     border: 1px solid var(--border);
     border-radius: var(--radius);

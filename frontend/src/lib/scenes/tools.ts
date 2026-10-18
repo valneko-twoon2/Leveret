@@ -95,7 +95,7 @@ export const toolScenes: Scene[] = [
       await openRepo('Leveret')
       const repo = app.selectedPath
       if (!repo) return
-      const subjects = ['ブランチ一覧に並べ替えを追加', 'typo を修正', '並べ替えの設定を保存', 'テストを追加']
+      const subjects = ['ブランチ一覧に並べ替えを追加', '並べ替えの設定を保存', 'typo を修正', 'テストを追加']
       for (const [i, summary] of subjects.entries()) {
         const file = app.files[i % app.files.length]
         if (file) await api.commit(repo, { summary, description: '', paths: [file.path] })
@@ -106,7 +106,7 @@ export const toolScenes: Scene[] = [
       if (!from) return
       await rewrite.openRebase(from)
       // Newest first: move "typo" right above the change it fixes, squash it, reword the newest.
-      rewrite.moveRow(2, 1)
+      rewrite.moveRow(1, 1)
       rewrite.setAction(2, 'fixup')
       rewrite.setAction(0, 'reword')
       rewrite.setMessage(0, 'ブランチ一覧のテストを追加\n\n並べ替えの設定が保存されることも確認する。')
