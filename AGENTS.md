@@ -82,7 +82,8 @@ feat: add fetch, pull and push
   Refreshed screenshots go to `docs/screenshots/` and the gallery pages `docs/screenshots.md` / `.ja.md`.
 - **Build profiles** (`backend/Cargo.toml`): dev and test builds carry no debug info (`target/` was past 20 GB);
   release uses thin LTO (a rebuild is about 110 s, full LTO took 265 s for 2.5 MB less). Measure before changing.
-- A new feature (command, tool, error, dialog) follows the `add-command` skill (`.claude/skills/add-command/`).
+- **Skills** (`.claude/skills/`): `add-command` (a new feature end to end), `app-security` (review before commit),
+  `screenshots`, `benchmark`, `release`. Follow them for those tasks.
 - Rust: `cargo fmt` style (`backend/rustfmt.toml`), no clippy warnings. Frontend: `npm run check` must be clean.
 - **Line endings**: LF in every file, `.ps1` and `.bat` included (`.editorconfig`, `.gitattributes`). Scripts that
   write files use `"`n"` and UTF-8 without BOM.
