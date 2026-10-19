@@ -56,7 +56,12 @@ feat: add fetch, pull and push
   Map well-known git failures with `AppError::classify_git`; decide "stopped on conflicts" from the repository
   state (`git::operation::run_stoppable`), not from message text.
 - **Actions that change a repository** run through `AppState.run()` in `state.svelte.ts`, which allows one at a time.
-  Destructive actions ask for confirmation, and discarded files go to the Recycle Bin.
+  Destructive actions ask for confirmation, and discarded files go to the Recycle Bin. `run()` returns `undefined`
+  when the action failed, so a callback that has nothing to return must return `true`, or success looks like failure.
+- **Layout under pressure**: truncate the variable text (commit subjects), never fixed-meaning labels (ref badges,
+  buttons); check long names at `-Size 900x560`.
+- **No silent states**: every action ends with a toast, a visible change or an error; a state with nothing to show
+  (no remote, no commits) says what to do next and, where possible, is the button that does it.
 - **Robustness**: no `unwrap()` / `expect()` outside tests; long work runs in `blocking()` so a panic only fails that
   command (it is logged by `crash.rs`). Persist files atomically (write a temporary file, then rename).
 - Keep the mock backend (`frontend/src/lib/mock/`, commands by area) in sync with new commands so the UI preview and
@@ -75,6 +80,9 @@ feat: add fetch, pull and push
 - **New screens or states** get a capture scene in `frontend/src/lib/scenes/`; check them with
   `scripts\screenshot.bat` (add `-Browser` to skip the Rust build, `-Size 900x560` to check the minimum window).
   Refreshed screenshots go to `docs/screenshots/` and the gallery pages `docs/screenshots.md` / `.ja.md`.
+- **Build profiles** (`backend/Cargo.toml`): dev and test builds carry no debug info (`target/` was past 20 GB);
+  release uses thin LTO (a rebuild is about 110 s, full LTO took 265 s for 2.5 MB less). Measure before changing.
+- A new feature (command, tool, error, dialog) follows the `add-command` skill (`.claude/skills/add-command/`).
 - Rust: `cargo fmt` style (`backend/rustfmt.toml`), no clippy warnings. Frontend: `npm run check` must be clean.
 - **Line endings**: LF in every file, `.ps1` and `.bat` included (`.editorconfig`, `.gitattributes`). Scripts that
   write files use `"`n"` and UTF-8 without BOM.
@@ -132,7 +140,7 @@ The webview is treated as untrusted; the Rust backend is the trust boundary.
 - **Rewriting history** (`git/rebase.rs`, `git/reset.rs`, `git/patch.rs`): rebase todo lists (`exec` is shell), patches
   and messages are built in Rust from validated object ids and picked line numbers, never accepted as text from the
   webview or agents; messages go in through blobs (`hash-object`), not command lines. Pushed commits are refused
-  (there is no force push), and files that are overwritten or discarded are copied to the Recycle Bin first.
+  (force push exists, but only as its own confirmed action with `--force-with-lease`), and files that are overwritten or discarded are copied to the Recycle Bin first.
 - **Remotes**: adding a remote or changing its URL is app-only (not an agent tool), because a prompt-injected agent
   could redirect where the code is pushed; `list_remotes` hides credentials embedded in URLs.
 - **Pictures** for the image diff (`git/image.rs`): a fixed list of formats (no SVG), 8 MB at most, and a working tree
