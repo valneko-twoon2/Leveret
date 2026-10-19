@@ -5,20 +5,18 @@
   let { label }: { label: RefLabel } = $props()
 </script>
 
-<span class="ref ref-badge {label.kind}" class:current={label.current} class:short={label.name.length <= 8} title={label.name}>
+<span class="ref ref-badge {label.kind}" class:current={label.current} title={label.name}>
   {#if label.kind === 'tag'}<Icon name="tag" size={11} />{:else if label.kind === 'remote'}<Icon name="cloud" size={11} />{/if}
   <span class="text">{label.name}</span>
 </span>
 
 <style>
-  /* The commit subject gives way first; a badge never shrinks below a readable stub. */
+  /* Keep reference names intact; the commit subject uses the remaining width. */
   .ref {
-    flex: 0 1 auto;
+    flex: none;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    min-width: 64px;
-    max-width: 140px;
     height: 18px;
     padding: 0 6px;
     border: 1px solid;
@@ -28,12 +26,6 @@
     line-height: 1;
     overflow: hidden;
     white-space: nowrap;
-  }
-
-  /* Short names (main, HEAD, v1.2.0) are cheap to show in full. */
-  .short {
-    min-width: 0;
-    flex: none;
   }
 
   .ref :global(svg) {
